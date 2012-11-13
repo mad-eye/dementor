@@ -1,0 +1,9 @@
+{
+  "name": "application-name",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "browserchannel": "~0.4.2",
+    "watch-tree": "~0.1.1"
+  }
+}
