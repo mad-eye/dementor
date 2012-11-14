@@ -7,21 +7,18 @@ class AzkabanConnection
   constructor: (@httpHost, @httpPort, @bcHost, @bcPort) ->
 
   openBrowserChannel: ->
-    @socket = new BCSocket 'http://#{@bcHost}:#{@bcPort}/channel'
-    @socket.onopen = ->
-      console.log "socket opened"
+    @socket = new BCSocket 'http://localhost:4321/channel'
+    @socket.onopen = =>
       @socket.send {hi:'there'}
-    @socket.onmessage = (message) ->
+    @socket.onmessage = (message) =>
       console.log 'got message', message
 
-  #does azkaban enforce a one client per id rule on the server?
-  enable: (@dementor) ->
+  enable: (@dementor, done) ->
     unless @dementor.config.id
       @initialize()
-    openBrowserChannel()
-    #try to enable dementor
-    #TODO handle exceptional states (this dementor is already running at ..)
-    #@addFiles(@dementor.getfiletre)
+    @openBrowserChannel()
+    #@addFiles(@dementor.getfiletree())
+    done()
 
   initialize: ->
     console.log "fetching ID from server"

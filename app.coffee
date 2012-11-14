@@ -23,7 +23,8 @@ if program.init
   azkaban.enable dementor
 
 if program.start
-  project.watchFileTree (operation, file, body) ->
+  azkaban.enable dementor
+  dementor.watchFileTree (operation, file, body) ->
     switch operation
       when "add" then azkaban.addFiles [file]
       when "delete" then azkaban.deleteFiles [file]
