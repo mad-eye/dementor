@@ -1,20 +1,36 @@
-class Azkaban
-  constructor: (@server) ->
+#TODO rename test
+
+{BCSocket} = require 'browserchannel'
+
+class AzkabanConnection
+
+  constructor: (@httpHost, @httpPort, @bcHost, @bcPort) ->
+
+  openBrowserChannel: ->
+    @socket = new BCSocket 'http://#{@bcHost}:#{@bcPort}/channel'
+    @socket.onopen = ->
+      console.log "socket opened"
+      @socket.send {hi:'there'}
+    @socket.onmessage = (message) ->
+      console.log 'got message', message
 
   #does azkaban enforce a one client per id rule on the server?
   enable: (@dementor) ->
     unless @dementor.config.id
-      console.log "fetching ID from server"
-      #fetch id
-      #dementor.setId(adfasd)  set id
-      #@dementorId = id
+      @initialize()
+    openBrowserChannel()
     #try to enable dementor
-    #TODO handle excpetional states (this dementor is already running at ..)
-    #TODO set up browser channel
+    #TODO handle exceptional states (this dementor is already running at ..)
+    #@addFiles(@dementor.getfiletre)
+
+  initialize: ->
+    console.log "fetching ID from server"
+    #fetch id
+    #dementor.setId(adfasd)  set id
+    #@dementorId = id
 
   disable: ->
-    #tear down browser channel
-    #disable dementor
+    @socket.close()
 
   addFiles: (files) ->
     console.log "adding files #{filesToAdd}"
@@ -22,10 +38,10 @@ class Azkaban
   removeFiles: (files) ->
     console.log "removing files #{filesToRemove}"
 
-  editFiles: (file, newContents) ->
+  editFiles: (files, newContents) ->
     console.log "modify file #{file} to be #{newContents}"
 
   listenForOrders: (orders) ->
 
 
-exports.Azkaban = Azkaban
+exports.AzkabanConnection = AzkabanConnection

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 Dementor = require('./dementor.coffee').Dementor
-Azkaban = require('./azkaban.coffee').Azkaban
+AzkabanConnection = require('./azkaban.coffee').AzkabanConnection
 program = require 'commander'
 
 #TODO should be able to grab last arugment and use it as filename/dir
@@ -10,13 +10,13 @@ program = require 'commander'
 
 program
   .version('0.1.0')
-  .option('--start', 'start the deemon')
+  .option('--start', 'start the daemon')
   .option('--init', 'iniitialize the project')
   .option('--server', 'point to a non-standard server')
   .parse(process.argv)
 
 server = program.server if program.server else "localhost:4000"
-azkaban = new Azkaban server
+azkaban = new AzkabanConnection server
 dementor = new Dementor process.cwd()
 
 if program.init

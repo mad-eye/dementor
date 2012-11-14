@@ -1,4 +1,5 @@
 fs = require "fs"
+#watcher = require('watch-tree').watchTree(path, {'sample-rate': 5});
 
 class Dementor
   constructor: (@directory) ->
@@ -6,18 +7,23 @@ class Dementor
     #maybe retrieve git information here?
 
   configPath: ->
-    "#{@directory}/."
+    "#{@directory}/.madeye"
 
   config: ->
-    return @config if @config
+    if @_config
+      return @_config
     if fs.existsSync(@configPath())
-      @config = JSON.parse fs.readFileSync(@configPath())
+      @_config = JSON.parse fs.readFileSync(@configPath())
     else
-      @config = {}
-    return @config
+      console.log "file not found returning empty config"
+      @_config = {}
+    return @_config
+
+  disable: ->
+    #cancel any file watching etc
 
   save_config: ->
-    fs.writeFileSync(this.configPath, JSON.stringify(@config))
+    fs.writeFileSync(this.configPath, JSON.stringify(@_config))
 
   watchFileTree: (callback) ->
     callback("edit", "file1")

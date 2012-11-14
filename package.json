@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "browserchannel": "~0.4.2",
-    "watch-tree": "~0.1.1"
+    "watch-tree": "~0.1.1",
+    "wrench": "~1.4.2"
   }
 }
