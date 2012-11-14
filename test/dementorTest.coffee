@@ -4,8 +4,7 @@ fs = require 'fs'
 path = require 'path'
 
 #TODO make paths windows compatible
-#TODO try using fancy {Dementor} syntax adn remove .coffee?
-Dementor = require('../dementor.coffee').Dementor
+{Dementor} = require('../dementor.coffee')
 
 describe "dementor", ->
 

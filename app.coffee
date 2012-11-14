@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-Dementor = require('./dementor.coffee').Dementor
-AzkabanConnection = require('./azkabanConnection.coffee').AzkabanConnection
+{Dementor} = require('./dementor.coffee')
+{AzkabanConnection} = require('./azkabanConnection.coffee')
 program = require 'commander'
 
 #TODO should be able to grab last arugment and use it as filename/dir
