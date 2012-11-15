@@ -2,6 +2,8 @@
 
 {Dementor} = require('./dementor.coffee')
 {AzkabanConnection} = require('./azkabanConnection.coffee')
+{Settings} = require('./Settings')
+
 program = require 'commander'
 
 #TODO should be able to grab last arugment and use it as filename/dir
