@@ -1,10 +1,9 @@
 fs = require "fs"
-#watcher = require('watch-tree').watchTree(path, {'sample-rate': 5});
+_path = require "path"
 
 class Dementor
   constructor: (@directory) ->
     @id = this.config.id if @config
-    #maybe retrieve git information here?
 
   configPath: ->
     "#{@directory}/.madeye"
@@ -19,19 +18,47 @@ class Dementor
       @_config = {}
     return @_config
 
+  watchFileTree: (callback) ->
+    @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
+    @watcher.on "filePreexisted", (path)->
+      callback "preexisted", path
+    @watcher.on "fileCreated", (path)->
+      callback "add", path
+    @watcher.on "fileModified", (path)->
+      fs.readFile path, (err, data)->
+        callback "edit", path, data unless err
+    @watcher.on "fileDeleted", (path)->
+      callback "delete", path
+
   disable: ->
     #cancel any file watching etc
 
   save_config: ->
     fs.writeFileSync(this.configPath, JSON.stringify(@_config))
 
-  watchFileTree: (callback) ->
-    callback("edit", "file1")
-
   readFileTree: (callback) ->
-    callback(["file1", "file2"])
+    results = readdirSyncRecursive @directory
+    callback results
 
   setId: (@id) ->
     this.config()["id"]
+
+readdirSyncRecursive = (baseDir) ->
+  files = []
+  curFiles = null
+  nextDirs = null
+  isDir = (fname) ->
+    fs.statSync( _path.join(baseDir, fname) ).isDirectory()
+  prependBaseDir = (fname) ->
+    _path.join baseDir, fname
+
+  curFiles = fs.readdirSync(baseDir);
+  nextDirs = curFiles.filter(isDir);
+  files = files.concat( {dir: file in nextDirs , name: prependBaseDir(file)} for file in curFiles);
+
+  while nextDirs.length
+    files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )
+  return files;
+
 
 exports.Dementor = Dementor
