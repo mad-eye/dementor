@@ -9,12 +9,12 @@ assert = require "assert"
 
 describe "azkabanConnection", ->
   socket = dementor = connection = null
+  sentMessages = []
   describe "enable", ->
     before ->
       socket = new MockSocket(
         onsend: (message) ->
-          @sentMessages ?= []
-          @sentMessages.push message
+          sentMessages.push message
       )
       ChannelConnector.socket = socket
       dementor = new Dementor
@@ -23,5 +23,6 @@ describe "azkabanConnection", ->
 
     it "should create a browser channel", ->
       connection.enable dementor
-      #assert.equal connection.socket.readyState, 0
-      #connection.socket.close()
+      socket.completeConnection()
+      assert.equal sentMessages.length, 1
+      assert.equal sentMessages[0].action, 'openConnection'

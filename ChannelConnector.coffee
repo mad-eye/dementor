@@ -5,6 +5,7 @@ uuid = require 'node-uuid'
 #WARNING: Must call @destroy when done to close the channel.
 class ChannelConnection
   constructor: (@socket) ->
+    console.log "ChannelConnection constructed with socket", socket
     @sentMsgs = {}
 
   destroy: ->

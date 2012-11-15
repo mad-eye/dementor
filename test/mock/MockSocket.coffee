@@ -4,7 +4,12 @@ _ = require 'underscore'
 #also have 'onsend', which is called on send.
 class MockSocket
   constructor: (callbacks) ->
+    @readyState = 0
     _.extend(this, callbacks)
+
+  completeConnection: ->
+    @readyState = 1
+    @onopen() if @onopen?
 
   send: (message) ->
     @onsend message if @onsend?
