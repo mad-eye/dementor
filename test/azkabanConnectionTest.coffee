@@ -2,7 +2,7 @@
 {Dementor} = require "../dementor"
 {MockSocket} = require "./mock/MockSocket"
 {ChannelConnector} = require "../ChannelConnector"
-{HttpConnector} = require "../HttpConnector"
+{HttpConnection} = require "../HttpConnection"
 
 assert = require "assert"
 
@@ -19,7 +19,7 @@ describe "azkabanConnection", ->
       )
       ChannelConnector.socket = socket
       dementor = new Dementor
-      connection = new AzkabanConnection(HttpConnector.connectionInstance(), ChannelConnector.connectionInstance())
+      connection = new AzkabanConnection(new HttpConnection, ChannelConnector.connection())
       connection.enable dementor
       socket.completeConnection()
 
@@ -28,4 +28,3 @@ describe "azkabanConnection", ->
 
     it "should sent an 'openConnection' message", ->
       assert.equal sentMessages[0].action, 'openConnection'
-

@@ -26,14 +26,14 @@ class ChannelConnection
       else
         console.warn "No onMessage to handle message", message
 
-    
+
   openBrowserChannel: ->
     @socket.onopen = ->
       @send {action:'openConnection'}
     @socket.onmessage = (message) ->
       console.log 'ChannelConnector got message', message
       @handleMessage message
-  
+
   send: (data) ->
     data.uuid = uuid.v4()
     data.whenSent = new Date()
@@ -42,11 +42,11 @@ class ChannelConnection
 
 
 ChannelConnector =
+  #??
   socket: null,
 
-  connectionInstance: ->
+  connection: ->
     @socket ?= new BCSocket "http://#{@bcHost}:#{@bcPort}/channel", reconnect:true
     return new ChannelConnection(@socket)
 
 exports.ChannelConnector = ChannelConnector
-

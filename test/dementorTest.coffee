@@ -62,4 +62,12 @@ describe "dementor", ->
 
     it "should notice when i add a file", ->
 
+    it "should not noice imgages", ->
+
+    it "should ignore the .git directory", ->
+
+    it "should ignore the contents of the .gitignore or should it?", ->
+
+    it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
+
   describe "readFileTree", ->

@@ -2,6 +2,8 @@
 
 {Dementor} = require('./dementor.coffee')
 {AzkabanConnection} = require('./azkabanConnection.coffee')
+{HttpConnection} = require('./httpConnection.coffee')
+{ChannelConnection} = require('./channelConnector.coffee')
 {Settings} = require('./Settings')
 
 program = require 'commander'
@@ -9,6 +11,8 @@ program = require 'commander'
 #TODO should be able to grab last arugment and use it as filename/dir
 #TODO deal with broken connections on server and client
 #TODO gracefully handle ctrl-c
+#TODO turn this into class that takes argv and add some tests
+
 
 program
   .version('0.1.0')
@@ -17,8 +21,12 @@ program
   .option('--server', 'point to a non-standard server')
   .parse(process.argv)
 
-server = program.server if program.server else "localhost:4000"
-azkaban = new AzkabanConnection server
+if program.server
+  server = program.server
+else
+  server = "localhost:4000"
+
+azkaban = new AzkabanConnection new HttpConnection, new ChannelConnection
 dementor = new Dementor process.cwd()
 
 if program.init
@@ -26,6 +34,8 @@ if program.init
 
 if program.start
   azkaban.enable dementor
+  dementor.readFileTree (files) ->
+    console.log "adding files to azkaban", files
   dementor.watchFileTree (operation, file, body) ->
     switch operation
       when "add" then azkaban.addFiles [file]

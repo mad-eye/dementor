@@ -1,7 +1,8 @@
 {Settings} = require './Settings'
-request = require 'request'
 _ = require 'underscore'
+request = require 'request'
 
+#TODO use this? http://nodejs.org/api/querystring.html
 makeQueryString = (params) ->
   return "" unless params? and _.size(params)
   str = ""
@@ -14,7 +15,9 @@ makeQueryString = (params) ->
 
 #callback: (body) ->; takes an obj (parsed from JSON) body
 class HttpConnection
-  constructor: (@hostname, @port) ->
+  constructor: ->
+    @hostname = Settings.httpHost
+    @port = Settings.httpPort
 
   targetUrl: (action) ->
     "http://#{@hostname}:#{@port}/#{action}"
@@ -44,9 +47,4 @@ class HttpConnection
         body = JSON.parse(body)
       callback(body)
 
-
-HttpConnector =
-  connectionInstance: ->
-    return new HttpConnection(Settings.httpHost, Settings.httpPort)
-
-exports.HttpConnector = HttpConnector
+exports.HttpConnection = HttpConnection
