@@ -24,7 +24,7 @@ program
 if program.server
   server = program.server
 else
-  server = "localhost:4000"
+  server = "#{Settings.httpHost}:#{Settings.httpPort}"
 
 azkaban = new AzkabanConnection new HttpConnection, new ChannelConnection
 dementor = new Dementor process.cwd()
