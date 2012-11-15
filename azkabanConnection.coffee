@@ -1,44 +1,66 @@
-#TODO rename test
-
-{BCSocket} = require 'browserchannel'
-
 class AzkabanConnection
 
-  constructor: (@httpHost, @httpPort, @bcHost, @bcPort) ->
+  constructor: (@httpConnector, @channelConnector) ->
+    @channelConnector.onMessage = @onMessage
 
-  openBrowserChannel: ->
-    @socket = new BCSocket 'http://localhost:4321/channel'
-    @socket.onopen = =>
-      @socket.send {hi:'there'}
-    @socket.onmessage = (message) =>
-      console.log 'got message', message
+  #message from ChannelConnection should be a JSON object
+  onMessage: (message) ->
+    if message.error
+      @handleError message.error
+      return
+    console.log "AzkabanConnection received message:", message
+    switch message.action
+      when 'change' then @changeLocalFiles message
+      when 'add' then @addLocalFiles message
+      when 'remove' then @removeLocalFiles message
 
-  enable: (@dementor, done) ->
+  handleError: (error) ->
+    console.error "Error:", error
+
+  enable: (@dementor) ->
     unless @dementor.config.id
       @initialize()
-    @openBrowserChannel()
+    @channelConnector.openBrowserChannel()
     #@addFiles(@dementor.getfiletree())
-    done()
 
   initialize: ->
     console.log "fetching ID from server"
-    #fetch id
-    #dementor.setId(adfasd)  set id
-    #@dementorId = id
+    #@httpConnector.post {action:'init'}, (err, result) ->
+      #if err
+        #@handleError err
+      #else
+        #dementor.setId(result._id)
 
   disable: ->
-    @socket.close()
+    @channelConnector.destroy()
 
-  addFiles: (files) ->
-    console.log "adding files #{filesToAdd}"
+  addFiles: (files, projectId) ->
+    console.log "adding files #{files}"
+    data =
+      action: 'addFiles',
+      projectId: projectId,
+      files: files
+    @channelConnector.send data
 
-  removeFiles: (files) ->
-    console.log "removing files #{filesToRemove}"
+  removeFiles: (files, projectId) ->
+    console.log "removing files #{files}"
+    data =
+      action: 'removeFiles',
+      projectId: projectId,
+      files: files
+    @channelConnector.send data
 
-  editFiles: (files, newContents) ->
+  editFiles: (files, newContents, projectId) ->
     console.log "modify file #{file} to be #{newContents}"
 
-  listenForOrders: (orders) ->
+  @addLocalFiles: (message) ->
+    console.log "Adding local files:", message
+
+  @removeLocalFiles: (message) ->
+    console.log "Removing local files:", message
+
+  @changeLocalFiles: (message) ->
+    console.log "Changing local files:", message
 
 
 exports.AzkabanConnection = AzkabanConnection
