@@ -30,9 +30,9 @@ class ChannelConnection
 
 
   openBrowserChannel: ->
-    @socket.onopen = ->
+    @socket.onopen = =>
       @send {action:'openConnection'}
-    @socket.onmessage = (message) ->
+    @socket.onmessage = (message) =>
       console.log 'ChannelConnector got message', message
       @handleMessage message
 

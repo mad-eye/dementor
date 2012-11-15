@@ -25,7 +25,7 @@ class AzkabanConnection
 
   initialize: ->
     console.log "fetching ID from server"
-    @httpConnector.post {action:'init'}, (result) ->
+    @httpConnector.post {action:'init'}, (result) =>
       if result.error
         console.error "Received error from server:" + result.error
         @handleError result.error
