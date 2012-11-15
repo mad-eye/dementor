@@ -2,6 +2,7 @@
 {Dementor} = require "../dementor"
 {MockSocket} = require "./mock/MockSocket"
 {ChannelConnector} = require "../ChannelConnector"
+{HttpConnector} = require "../HttpConnector"
 
 assert = require "assert"
 
@@ -18,8 +19,7 @@ describe "azkabanConnection", ->
       )
       ChannelConnector.socket = socket
       dementor = new Dementor
-      #FIXME: Need to make an HttpConnection and pass it.
-      connection = new AzkabanConnection(null, ChannelConnector.connectionInstance())
+      connection = new AzkabanConnection(HttpConnector.connectionInstance(), ChannelConnector.connectionInstance())
       connection.enable dementor
       socket.completeConnection()
 

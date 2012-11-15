@@ -25,11 +25,13 @@ class AzkabanConnection
 
   initialize: ->
     console.log "fetching ID from server"
-    #@httpConnector.post {action:'init'}, (err, result) ->
-      #if err
-        #@handleError err
-      #else
-        #dementor.setId(result._id)
+    @httpConnector.post {action:'init'}, (result) ->
+      if result.error
+        console.error "Received error from server:" + result.error
+        @handleError result.error
+      else
+        console.log "Received result from server:", result
+        @dementor.setId(result._id)
 
   disable: ->
     @channelConnector.destroy()
