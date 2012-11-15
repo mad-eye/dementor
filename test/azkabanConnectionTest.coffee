@@ -1,7 +1,7 @@
 {AzkabanConnection} = require "../azkabanConnection"
 {Dementor} = require "../dementor"
 {MockSocket} = require "./mock/MockSocket"
-{ChannelConnector} = require "../ChannelConnector"
+{ChannelConnection} = require "../ChannelConnection"
 {HttpConnection} = require "../HttpConnection"
 
 assert = require "assert"
@@ -17,9 +17,8 @@ describe "azkabanConnection", ->
         onsend: (message) ->
           sentMessages.push message
       )
-      ChannelConnector.socket = socket
       dementor = new Dementor
-      connection = new AzkabanConnection(new HttpConnection, ChannelConnector.connection())
+      connection = new AzkabanConnection(new HttpConnection, new ChannelConnection(socket))
       connection.enable dementor
       socket.completeConnection()
 

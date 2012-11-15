@@ -3,7 +3,7 @@
 {Dementor} = require('./dementor.coffee')
 {AzkabanConnection} = require('./azkabanConnection.coffee')
 {HttpConnection} = require('./httpConnection.coffee')
-{ChannelConnection} = require('./channelConnector.coffee')
+{ChannelConnection} = require('./channelConnection.coffee')
 {Settings} = require('./Settings')
 
 program = require 'commander'

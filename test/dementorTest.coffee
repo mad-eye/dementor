@@ -48,26 +48,26 @@ describe "dementor", ->
       #TODO, figure out how to compare objects by values
       assert.deepEqual dementor.config(), {}
 
-    it "should not allow two dementors to monitor the same directory", ->
+    it "should not allow two dementors to monitor the same directory"
 
-    it "should not allow a dementor to watch a subdir of an existing dementor's territory", ->
+    it "should not allow a dementor to watch a subdir of an existing dementor's territory"
 
   describe "setId", ->
-    it "should persist across multliple dementor instances", ->
+    it "should persist across multliple dementor instances"
 
   describe "watchFileTree", ->
-    it "should notice when i change a file", ->
+    it "should notice when i change a file"
 
-    it "should notice when i delete a file", ->
+    it "should notice when i delete a file"
 
-    it "should notice when i add a file", ->
+    it "should notice when i add a file"
 
-    it "should not noice imgages", ->
+    it "should not noice imgages"
 
-    it "should ignore the .git directory", ->
+    it "should ignore the .git directory"
 
-    it "should ignore the contents of the .gitignore or should it?", ->
+    it "should ignore the contents of the .gitignore or should it?"
 
     it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
 
-  describe "readFileTree", ->
+#  describe "readFileTree", ->

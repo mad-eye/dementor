@@ -5,6 +5,8 @@ uuid = require 'node-uuid'
 #WARNING: Must call @destroy when done to close the channel.
 class ChannelConnection
   constructor: (@socket) ->
+    unless @socket
+      @socket = new BCSocket "http://#{@bcHost}:#{@bcPort}/channel", reconnect:true
     console.log "ChannelConnection constructed with socket", socket
     @sentMsgs = {}
 
@@ -40,13 +42,4 @@ class ChannelConnection
     @socket.send data
     @sentMsgs[data.uuid] = data
 
-
-ChannelConnector =
-  #??
-  socket: null,
-
-  connection: ->
-    @socket ?= new BCSocket "http://#{@bcHost}:#{@bcPort}/channel", reconnect:true
-    return new ChannelConnection(@socket)
-
-exports.ChannelConnector = ChannelConnector
+exports.ChannelConnection = ChannelConnection
