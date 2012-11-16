@@ -36,10 +36,10 @@ if program.start
   azkaban.enable dementor
   dementor.readFileTree (files) ->
     console.log "adding files to azkaban", files
-  dementor.watchFileTree (operation, file, body) ->
+  dementor.watchFileTree (operation, files) ->
     switch operation
-      when "add" then azkaban.addFiles [file]
-      when "delete" then azkaban.deleteFiles [file]
-      when "edit" then azkaban.editFiles {file: body}
+      when "add" then azkaban.addFiles files
+      when "delete" then azkaban.deleteFiles files
+      when "edit" then azkaban.editFiles files
 
 #wrap this in a run function and export it for easier testing?

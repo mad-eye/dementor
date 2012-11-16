@@ -21,14 +21,14 @@ class Dementor
   watchFileTree: (callback) ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path)->
-      callback "preexisted", path
+      callback "preexisted", [{path: path}]
     @watcher.on "fileCreated", (path)->
-      callback "add", path
+      callback "add", [{path: path}]
     @watcher.on "fileModified", (path)->
-      fs.readFile path, (err, data)->
-        callback "edit", path, data unless err
+      fs.readFile path, "utf-8", (err, data)->
+        callback "edit", [{path: path, data: data}]
     @watcher.on "fileDeleted", (path)->
-      callback "delete", path
+      callback "delete", [{path: path}]
 
   disable: ->
     #cancel any file watching etc
@@ -54,7 +54,8 @@ readdirSyncRecursive = (baseDir) ->
 
   curFiles = fs.readdirSync(baseDir);
   nextDirs = curFiles.filter(isDir);
-  files = files.concat( {dir: file in nextDirs , name: prependBaseDir(file)} for file in curFiles);
+  newFiles = {isDir: file in nextDirs , name: prependBaseDir(file)} for file in curFiles
+  files = files.concat newFiles
 
   while nextDirs.length
     files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )

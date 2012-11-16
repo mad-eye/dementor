@@ -36,7 +36,7 @@ class AzkabanConnection
   disable: ->
     @channelConnector.destroy()
 
-  addFiles: (files, projectId) ->
+  addFiles: (files) ->
     console.log "adding files #{files}"
     data =
       action: 'addFiles',
@@ -44,7 +44,7 @@ class AzkabanConnection
       files: files
     @channelConnector.send data
 
-  removeFiles: (files, projectId) ->
+  removeFiles: (files) ->
     console.log "removing files #{files}"
     data =
       action: 'removeFiles',
@@ -52,8 +52,10 @@ class AzkabanConnection
       files: files
     @channelConnector.send data
 
-  editFiles: (files, newContents, projectId) ->
-    console.log "modify file #{file} to be #{newContents}"
+  editFiles: (files) ->
+    console.log("connection got files", files)
+    for file in files
+      console.log "modifying file #{file['path']} to be #{file['data']}"
 
   @addLocalFiles: (message) ->
     console.log "Adding local files:", message
