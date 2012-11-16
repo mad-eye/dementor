@@ -84,3 +84,34 @@ describe "dementor", ->
     it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
 
   describe "readFileTree", ->
+    it "should correctly serialize an empty directory", (done)->
+      projectDir = createProject("vacuous", {})
+      dementor = new Dementor projectDir
+      dementor.readFileTree (results)->
+        assert.deepEqual results, []
+        done()
+
+    it "should correctly serialize a directory with one file", (done)->
+      projectDir = createProject "oneFile",
+        README: "nothing important here"
+      dementor = new Dementor projectDir
+      dementor.readFileTree (results)->
+        assert.deepEqual results, [
+          isDir: false
+          name: ".test_area/oneFile/README"
+        ]
+        done()
+
+    it "should correctly serialize a directory with two files", (done)->
+      projectDir = createProject "twoFile",
+        README: "nothing important here"
+        "app.js": "console.log('hello world');"
+      dementor = new Dementor projectDir
+      dementor.readFileTree (results)->
+        assert.deepEqual results, [
+          {isDir: false
+          name: ".test_area/twoFile/app.js"},
+          {isDir: false
+          name: ".test_area/twoFile/README"}
+        ]
+        done()

@@ -4,7 +4,6 @@ _path = require "path"
 class Dementor
 
   constructor: (@directory) ->
-    console.log "is it here?", @directory
     @project_id = @projects()[@directory]
 
   homeDir: ->
@@ -16,12 +15,10 @@ class Dementor
     _path.join @homeDir(), ".madeye_projects"
 
   projects: ->
-    if fs.existsSync @projectsDbPath()
+    if (fs.existsSync @projectsDbPath())
       projects = JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
-      console.log "projects = ", projects
       return projects
     else
-      console.log "no projectsDb file found, returning empty hash"
       {}
 
   registerProject: (projectId)->
@@ -60,12 +57,16 @@ readdirSyncRecursive = (baseDir) ->
 
   curFiles = fs.readdirSync(baseDir);
   nextDirs = curFiles.filter(isDir);
-  newFiles = {isDir: file in nextDirs , name: prependBaseDir(file)} for file in curFiles
-  files = files.concat newFiles
+  newFiles = []
+  for file in curFiles
+    newFiles.push {isDir: file in nextDirs , name: prependBaseDir(file)}
+
+  files = files.concat newFiles if newFiles
 
   while nextDirs.length
     files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )
-  return files;
+
+  return files.sort();
 
 
 exports.Dementor = Dementor
