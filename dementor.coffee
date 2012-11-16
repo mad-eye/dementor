@@ -2,21 +2,33 @@ fs = require "fs"
 _path = require "path"
 
 class Dementor
+
   constructor: (@directory) ->
-    @id = this.config.id if @config
+    console.log "is it here?", @directory
+    @project_id = @projects()[@directory]
 
-  configPath: ->
-    "#{@directory}/.madeye"
+  homeDir: ->
+    return process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]
+    envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"
+    return process.env[envVarName]
 
-  config: ->
-    if @_config
-      return @_config
-    if fs.existsSync(@configPath())
-      @_config = JSON.parse fs.readFileSync(@configPath())
+  projectsDbPath: ->
+    _path.join @homeDir(), ".madeye_projects"
+
+  projects: ->
+    if fs.existsSync @projectsDbPath()
+      projects = JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
+      console.log "projects = ", projects
+      return projects
     else
-      console.log "file not found returning empty config"
-      @_config = {}
-    return @_config
+      console.log "no projectsDb file found, returning empty hash"
+      {}
+
+  registerProject: (projectId)->
+    projects = @projects()
+    @projects()[@directory] = projectId
+    @projectId = projectId
+    fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
 
   watchFileTree: (callback) ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
@@ -31,17 +43,11 @@ class Dementor
       callback "delete", [{path: path}]
 
   disable: ->
-    #cancel any file watching etc
-
-  save_config: ->
-    fs.writeFileSync(this.configPath, JSON.stringify(@_config))
+    #cancel any file watching etc, flush config?
 
   readFileTree: (callback) ->
     results = readdirSyncRecursive @directory
     callback results
-
-  setId: (@id) ->
-    this.config()["id"]
 
 readdirSyncRecursive = (baseDir) ->
   files = []

@@ -18,10 +18,9 @@ class AzkabanConnection
     console.error "Error:", error
 
   enable: (@dementor) ->
-    unless @dementor.config.id
+    unless @dementor.projectId
       @initialize()
     @channelConnection.openBrowserChannel()
-    #@addFiles(@dementor.getfiletree())
 
   initialize: ->
     console.log "fetching ID from server"
@@ -32,24 +31,24 @@ class AzkabanConnection
         @handleError result.error
       else
         console.log "Received result from server:", result
-        @dementor.setId(result._id)
+        @dementor.registerProject(result._id)
 
   disable: ->
     @channelConnection.destroy()
 
   addFiles: (files) ->
     console.log "adding files #{files}"
-    data =
+    @channelConnection.send
       action: 'addFiles',
-      projectId: projectId,
-      files: files
-    @channelConnection.send data
+      projectId: @dementor.projectId
+      data:
+        files: files
 
-  removeFiles: (files) ->
-    console.log "removing files #{files}"
+  deleteFiles: (files) ->
+    console.log "delete files #{files}"
     data =
       action: 'removeFiles',
-      projectId: projectId,
+      projectId: @dementor.projectId
       files: files
     @channelConnection.send data
 
@@ -58,14 +57,13 @@ class AzkabanConnection
     for file in files
       console.log "modifying file #{file['path']} to be #{file['data']}"
 
-  @addLocalFiles: (message) ->
+  addLocalFiles: (message) ->
     console.log "Adding local files:", message
 
-  @removeLocalFiles: (message) ->
+  removeLocalFiles: (message) ->
     console.log "Removing local files:", message
 
-  @changeLocalFiles: (message) ->
-    console.log "Changing local files:", message
-
+  changeLocalFiles: (message) ->
+    console.log "change local files:", message
 
 exports.AzkabanConnection = AzkabanConnection

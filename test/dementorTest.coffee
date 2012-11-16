@@ -1,17 +1,21 @@
 wrench = require 'wrench'
 assert = require 'assert'
 fs = require 'fs'
-path = require 'path'
+_path = require 'path'
 
-#TODO make paths windows compatible
 {Dementor} = require('../dementor.coffee')
 
 describe "dementor", ->
+  homeDir = _path.join ".test_area", "fake_home"
+  process.env["MADEYE_HOME"] = homeDir
+
+  mkDir = (dir) ->
+    unless fs.existsSync dir
+      wrench.mkdirSyncRecursive dir
 
   createProject = (name, fileTree) ->
-    projectDir = path.join(".test_projects", name)
-    unless fs.existsSync ".test_projects"
-      fs.mkdirSync ".test_projects"
+    mkDir ".test_area"
+    projectDir = _path.join(".test_area", name)
     if fs.existsSync projectDir
       wrench.rmdirSyncRecursive(projectDir)
     fs.mkdirSync projectDir
@@ -32,28 +36,37 @@ describe "dementor", ->
       fs.mkdirSync root
     for key, value of filetree
       if typeof value == "string"
-        fs.writeFileSync(path.join(root, key), value)
+        fs.writeFileSync(_path.join(root, key), value)
       else
         createFileTree(key, value)
 
   describe "constructor", ->
-    it "should populate the config object if a .madeye file exists", ->
-      projectPath = createProject("polyjuice", {".madeye": JSON.stringify({id: "ABC123"})})
-      dementor = new Dementor projectPath
-      assert.equal dementor.config().id, "ABC123"
+    beforeEach ->
+      if fs.existsSync homeDir
+        wrench.rmdirSyncRecursive homeDir
+      mkDir homeDir
 
-    it "should return an empty config object if no .madeye file exists", ->
+    it "populates the project id if a record exists in .madeye_projects", ->
+      projectsDb = {}
+      projectsDb[_path.join(".test_area", "polyjuice")] = "ABC123"
+      projectsDbPath = _path.join homeDir, ".madeye_projects"
+      fs.writeFileSync(projectsDbPath, JSON.stringify projectsDb)
+
+      projectPath = createProject "polyjuice"
+      dementor = new Dementor projectPath
+      assert.equal dementor.project_id, "ABC123"
+
+    it "returns an undefined projecId when .madeye_projects does not exist", ->
       projectPath = createProject("madeyeless")
       dementor = new Dementor projectPath
-      #TODO, figure out how to compare objects by values
-      assert.deepEqual dementor.config(), {}
+      assert !dementor.projectId
 
     it "should not allow two dementors to monitor the same directory"
 
-    it "should not allow a dementor to watch a subdir of an existing dementor's territory"
+    it "should not allow a dementor to watch a subdir of an existing dementors territory"
 
-  describe "setId", ->
-    it "should persist across multliple dementor instances"
+  describe "registerProject", ->
+    it "should persist projectIdacross multliple dementor instances", ->
 
   describe "watchFileTree", ->
     it "should notice when i change a file"
@@ -70,4 +83,4 @@ describe "dementor", ->
 
     it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
 
-#  describe "readFileTree", ->
+  describe "readFileTree", ->
