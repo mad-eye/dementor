@@ -6,8 +6,8 @@ uuid = require 'node-uuid'
 class ChannelConnection
   constructor: (@socket) ->
     unless @socket
-      @socket = new BCSocket "http://#{@bcHost}:#{@bcPort}/channel", reconnect:true
-    console.log "ChannelConnection constructed with socket", socket
+      @socket = new BCSocket "http://#{Settings.bcHost}:#{Settings.bcPort}/channel", reconnect:true
+    console.log "ChannelConnection constructed with socket", @socket
     @sentMsgs = {}
 
   destroy: ->
@@ -28,13 +28,17 @@ class ChannelConnection
       else
         console.warn "No onMessage to handle message", message
 
-
   openBrowserChannel: ->
     @socket.onopen = =>
       @send {action:'openConnection'}
+      console.log "opening connection"
     @socket.onmessage = (message) =>
       console.log 'ChannelConnector got message', message
       @handleMessage message
+    @socket.onerror = (message) =>
+      console.log "ChannelConnector got error" , message
+    @socket.onclose = (message) =>
+      console.log "closing time", message
 
   send: (data) ->
     data.uuid = uuid.v4()
