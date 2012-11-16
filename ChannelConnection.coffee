@@ -14,12 +14,7 @@ class ChannelConnection
     @socket.close() if @socket?
     @socket = null
 
-  handleMessage: (messageTxt) ->
-    try
-      message = JSON.parse(messageTxt)
-    catch error
-      console.error "Error trying to parse message.\n\tError:", error, "\n\n\tMessage:", messageTxt
-      return
+  handleMessage: (message) ->
     if message.action == 'acknowlege'
       delete @sentMsgs[message.receivedId]
     else
@@ -40,10 +35,12 @@ class ChannelConnection
     @socket.onclose = (message) =>
       console.log "closing time", message
 
-  send: (data) ->
-    data.uuid = uuid.v4()
-    data.whenSent = new Date()
-    @socket.send data
-    @sentMsgs[data.uuid] = data
+  send: (message) ->
+    message.uuid = uuid.v4()
+    message.timestamp = new Date().getTime()
+    @socket.send message
+    @sentMsgs[message.uuid] = message
+
+
 
 exports.ChannelConnection = ChannelConnection
