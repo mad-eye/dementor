@@ -44,29 +44,30 @@ class Dementor
 
   readFileTree: (callback) ->
     results = readdirSyncRecursive @directory
+    console.log "results", results
     callback results
 
 readdirSyncRecursive = (baseDir) ->
   files = []
-  curFiles = null
-  nextDirs = null
+  nextDirs = []
+  newFiles = []
   isDir = (fname) ->
     fs.statSync( _path.join(baseDir, fname) ).isDirectory()
   prependBaseDir = (fname) ->
     _path.join baseDir, fname
 
   curFiles = fs.readdirSync(baseDir);
-  nextDirs = curFiles.filter(isDir);
-  newFiles = []
-  for file in curFiles
-    newFiles.push {isDir: file in nextDirs , name: prependBaseDir(file)}
+  nextDirs.push(file) for file in curFiles when isDir(file)
+  newFiles.push {isDir: file in nextDirs , name: prependBaseDir(file)} for file in curFiles
 
   files = files.concat newFiles if newFiles
+
+  console.log("nextDirs = ", nextDirs)
 
   while nextDirs.length
     files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )
 
-  return files.sort();
-
+  return files.sort (a,b)->
+    a.name > b.name
 
 exports.Dementor = Dementor

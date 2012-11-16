@@ -38,7 +38,7 @@ describe "dementor", ->
       if typeof value == "string"
         fs.writeFileSync(_path.join(root, key), value)
       else
-        createFileTree(key, value)
+        createFileTree(_path.join(root, key), value)
 
   describe "constructor", ->
     beforeEach ->
@@ -93,18 +93,18 @@ describe "dementor", ->
 
     it "should correctly serialize a directory with one file", (done)->
       projectDir = createProject "oneFile",
-        README: "nothing important here"
+        readme: "nothing important here"
       dementor = new Dementor projectDir
       dementor.readFileTree (results)->
         assert.deepEqual results, [
           isDir: false
-          name: ".test_area/oneFile/README"
+          name: ".test_area/oneFile/readme"
         ]
         done()
 
     it "should correctly serialize a directory with two files", (done)->
       projectDir = createProject "twoFile",
-        README: "nothing important here"
+        readme: "nothing important here"
         "app.js": "console.log('hello world');"
       dementor = new Dementor projectDir
       dementor.readFileTree (results)->
@@ -112,6 +112,33 @@ describe "dementor", ->
           {isDir: false
           name: ".test_area/twoFile/app.js"},
           {isDir: false
-          name: ".test_area/twoFile/README"}
+          name: ".test_area/twoFile/readme"}
+        ]
+        done()
+
+    it "should correctly serialize a deep complicated directory structure", (done)->
+      projectDir = createProject "manyFiles",
+        readme: "nothing important here"
+        "app.js": "console.log('hello world');"
+        dir1:
+          dir2:
+            ninja_turtles: "Cowabunga!"
+            dir3: {}
+
+      dementor = new Dementor projectDir
+      dementor.readFileTree (results)->
+        assert.deepEqual results, [
+          {isDir: false
+          name: ".test_area/manyFiles/app.js"},
+          {isDir: true
+          name: ".test_area/manyFiles/dir1"},
+          {isDir: true
+          name: ".test_area/manyFiles/dir1/dir2"},
+          {isDir: true
+          name: ".test_area/manyFiles/dir1/dir2/dir3"},
+          {isDir: false
+          name: ".test_area/manyFiles/dir1/dir2/ninja_turtles"},
+          {isDir: false
+          name: ".test_area/manyFiles/readme"}
         ]
         done()
