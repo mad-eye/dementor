@@ -1,7 +1,7 @@
 class AzkabanConnection
 
-  constructor: (@httpConnector, @channelConnector) ->
-    @channelConnector.onMessage = @onMessage
+  constructor: (@httpConnector, @channelConnection) ->
+    @channelConnection.onMessage = @onMessage
 
   #message from ChannelConnection should be a JSON object
   onMessage: (message) ->
@@ -20,12 +20,13 @@ class AzkabanConnection
   enable: (@dementor) ->
     unless @dementor.config.id
       @initialize()
-    @channelConnector.openBrowserChannel()
+    @channelConnection.openBrowserChannel()
     #@addFiles(@dementor.getfiletree())
 
   initialize: ->
     console.log "fetching ID from server"
     @httpConnector.post {action:'init'}, (result) =>
+      console.log "received a result.."
       if result.error
         console.error "Received error from server:" + result.error
         @handleError result.error
@@ -34,7 +35,7 @@ class AzkabanConnection
         @dementor.setId(result._id)
 
   disable: ->
-    @channelConnector.destroy()
+    @channelConnection.destroy()
 
   addFiles: (files) ->
     console.log "adding files #{files}"
@@ -42,7 +43,7 @@ class AzkabanConnection
       action: 'addFiles',
       projectId: projectId,
       files: files
-    @channelConnector.send data
+    @channelConnection.send data
 
   removeFiles: (files) ->
     console.log "removing files #{files}"
@@ -50,7 +51,7 @@ class AzkabanConnection
       action: 'removeFiles',
       projectId: projectId,
       files: files
-    @channelConnector.send data
+    @channelConnection.send data
 
   editFiles: (files) ->
     console.log("connection got files", files)
