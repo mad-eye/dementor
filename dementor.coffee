@@ -4,7 +4,7 @@ _path = require "path"
 class Dementor
 
   constructor: (@directory) ->
-    @project_id = @projects()[@directory]
+    @projectId = @projects()[@directory]
 
   homeDir: ->
     return process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]

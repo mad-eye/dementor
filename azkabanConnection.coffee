@@ -20,7 +20,7 @@ class AzkabanConnection
   enable: (@dementor) ->
     unless @dementor.projectId
       @initialize()
-    @channelConnection.openBrowserChannel()
+    @channelConnection.openBrowserChannel(@dementor.projectId)
 
   initialize: ->
     console.log "fetching ID from server"

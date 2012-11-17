@@ -54,7 +54,7 @@ describe "dementor", ->
 
       projectPath = createProject "polyjuice"
       dementor = new Dementor projectPath
-      assert.equal dementor.project_id, "ABC123"
+      assert.equal dementor.projectId, "ABC123"
 
     it "returns an undefined projectId when .madeye_projects does not exist", ->
       projectPath = createProject("madeyeless")

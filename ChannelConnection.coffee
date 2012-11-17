@@ -15,7 +15,7 @@ class ChannelConnection
     @socket = null
 
   handleMessage: (message) ->
-    if message.action == 'acknowlege'
+    if message.action == 'confirm'
       delete @sentMsgs[message.receivedId]
     else
       if @onMessage
@@ -23,9 +23,9 @@ class ChannelConnection
       else
         console.warn "No onMessage to handle message", message
 
-  openBrowserChannel: ->
+  openBrowserChannel: (@projectId) ->
     @socket.onopen = =>
-      @send {action:'openConnection'}
+      @send {action:'handshake'}
       console.log "opening connection"
     @socket.onmessage = (message) =>
       console.log 'ChannelConnector got message', message
@@ -38,6 +38,7 @@ class ChannelConnection
   send: (message) ->
     message.uuid = uuid.v4()
     message.timestamp = new Date().getTime()
+    message.projectId = @projectId
     @socket.send message
     @sentMsgs[message.uuid] = message
 
