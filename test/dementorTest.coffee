@@ -56,12 +56,13 @@ describe "dementor", ->
       dementor = new Dementor projectPath
       assert.equal dementor.project_id, "ABC123"
 
-    it "returns an undefined projecId when .madeye_projects does not exist", ->
+    it "returns an undefined projectId when .madeye_projects does not exist", ->
       projectPath = createProject("madeyeless")
       dementor = new Dementor projectPath
       assert !dementor.projectId
 
     it "should not allow two dementors to monitor the same directory"
+
 
     it "should not allow a dementor to watch a subdir of an existing dementors territory"
 
