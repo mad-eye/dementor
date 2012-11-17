@@ -35,7 +35,7 @@ if program.init
 if program.start
   azkaban.enable dementor
   dementor.readFileTree (files) ->
-    console.log "adding files to azkaban", files
+    azkaban.addFiles files
   dementor.watchFileTree (operation, files) ->
     switch operation
       when "add" then azkaban.addFiles files
