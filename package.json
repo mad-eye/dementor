@@ -1,7 +1,7 @@
 {
-  "name": "application-name",
+  "name": "madeye",
   "version": "0.0.1",
-  "private": true,
+  "private": false,
   "dependencies": {
     "browserchannel": "~0.4.2",
     "wrench": "~1.4.2",
