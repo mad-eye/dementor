@@ -17,12 +17,16 @@ class AzkabanConnection
   handleError: (error) ->
     console.error "Error:", error
 
-  enable: (@dementor) ->
+  enable: (@dementor, callback) ->
     unless @dementor.projectId
-      @initialize()
-    @channelConnection.openBrowserChannel(@dementor.projectId)
+      @initialize =>
+        @channelConnection.openBrowserChannel(@dementor.projectId)
+        callback()
+    else
+      @channelConnection.openBrowserChannel(@dementor.projectId)
+      callback()
 
-  initialize: ->
+  initialize: (callback)->
     console.log "fetching ID from server"
     @httpConnector.post {action:'init'}, (result) =>
       console.log "received a result.."
@@ -31,13 +35,14 @@ class AzkabanConnection
         @handleError result.error
       else
         console.log "Received result from server:", result
-        @dementor.registerProject(result._id)
+        @dementor.registerProject(result.id)
+        callback()
 
   disable: ->
     @channelConnection.destroy()
 
   addFiles: (files) ->
-    console.log "adding files #{files}"
+    throw "project id not set!" unless @dementor.projectId
     @channelConnection.send
       action: 'addFiles',
       projectId: @dementor.projectId

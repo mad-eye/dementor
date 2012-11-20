@@ -28,19 +28,14 @@ run = ->
   azkaban = new AzkabanConnection new HttpConnection, new ChannelConnection
   dementor = new Dementor process.cwd()
 
-  if program.init
-    azkaban.enable dementor
-
   if program.start
-    azkaban.enable dementor
-    dementor.readFileTree (files) ->
-      azkaban.addFiles files
-    dementor.watchFileTree (operation, files) ->
-      switch operation
-        when "add" then azkaban.addFiles files
-        when "delete" then azkaban.deleteFiles files
-        when "edit" then azkaban.editFiles files
-
-  #wrap this in a run function and export it for easier testing?
+    azkaban.enable dementor, ->
+      dementor.readFileTree (files) ->
+        azkaban.addFiles files
+      dementor.watchFileTree (operation, files) ->
+        switch operation
+          when "add" then azkaban.addFiles files
+          when "delete" then azkaban.deleteFiles files
+          when "edit" then azkaban.editFiles files
 
 exports.run = run
