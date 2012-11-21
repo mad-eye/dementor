@@ -21,10 +21,10 @@ class AzkabanConnection
     unless @dementor.projectId
       @initialize =>
         @channelConnection.openBrowserChannel(@dementor.projectId)
-        callback()
+        callback?()
     else
       @channelConnection.openBrowserChannel(@dementor.projectId)
-      callback()
+      callback?()
 
   initialize: (callback)->
     console.log "fetching ID from server"
@@ -36,7 +36,7 @@ class AzkabanConnection
       else
         console.log "Received result from server:", result
         @dementor.registerProject(result.id)
-        callback()
+        callback?()
 
   disable: ->
     @channelConnection.destroy()
