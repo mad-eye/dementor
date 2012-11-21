@@ -1,6 +1,6 @@
 {AzkabanConnection} = require "../azkabanConnection"
 {Dementor} = require "../dementor"
-{MockSocket} = require "./mock/MockSocket"
+{MockSocket} = require "madeye-common"
 {ChannelConnection} = require "../ChannelConnection"
 {HttpConnection} = require "../HttpConnection"
 uuid = require 'node-uuid'
