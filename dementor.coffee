@@ -57,7 +57,7 @@ readdirSyncRecursive = (baseDir) ->
 
   curFiles = fs.readdirSync(baseDir);
   nextDirs.push(file) for file in curFiles when isDir(file)
-  newFiles.push {isDir: file in nextDirs , name: prependBaseDir(file)} for file in curFiles
+  newFiles.push {isDir: file in nextDirs , path: prependBaseDir(file)} for file in curFiles
 
   files = files.concat newFiles if newFiles
 
