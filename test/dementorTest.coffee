@@ -99,7 +99,7 @@ describe "dementor", ->
       dementor.readFileTree (results)->
         assert.deepEqual results, [
           isDir: false
-          name: ".test_area/oneFile/readme"
+          path: ".test_area/oneFile/readme"
         ]
         done()
 
@@ -111,9 +111,9 @@ describe "dementor", ->
       dementor.readFileTree (results)->
         assert.deepEqual results, [
           {isDir: false
-          name: ".test_area/twoFile/app.js"},
+          path: ".test_area/twoFile/app.js"},
           {isDir: false
-          name: ".test_area/twoFile/readme"}
+          path: ".test_area/twoFile/readme"}
         ]
         done()
 
@@ -130,16 +130,16 @@ describe "dementor", ->
       dementor.readFileTree (results)->
         assert.deepEqual results, [
           {isDir: false
-          name: ".test_area/manyFiles/app.js"},
+          path: ".test_area/manyFiles/app.js"},
           {isDir: true
-          name: ".test_area/manyFiles/dir1"},
+          path: ".test_area/manyFiles/dir1"},
           {isDir: true
-          name: ".test_area/manyFiles/dir1/dir2"},
+          path: ".test_area/manyFiles/dir1/dir2"},
           {isDir: true
-          name: ".test_area/manyFiles/dir1/dir2/dir3"},
+          path: ".test_area/manyFiles/dir1/dir2/dir3"},
           {isDir: false
-          name: ".test_area/manyFiles/dir1/dir2/ninja_turtles"},
+          path: ".test_area/manyFiles/dir1/dir2/ninja_turtles"},
           {isDir: false
-          name: ".test_area/manyFiles/readme"}
+          path: ".test_area/manyFiles/readme"}
         ]
         done()

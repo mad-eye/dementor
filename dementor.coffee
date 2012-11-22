@@ -65,6 +65,6 @@ readdirSyncRecursive = (baseDir) ->
     files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )
 
   return files.sort (a,b)->
-    a.name > b.name
+    a.path > b.path
 
 exports.Dementor = Dementor

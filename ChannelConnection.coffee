@@ -7,7 +7,6 @@ class ChannelConnection
   constructor: (@socket) ->
     unless @socket
       @socket = new BCSocket "http://#{Settings.bcHost}:#{Settings.bcPort}/channel", reconnect:true
-    console.log "ChannelConnection constructed with socket", @socket
     @sentMsgs = {}
 
   destroy: ->
