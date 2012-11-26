@@ -1,3 +1,0 @@
-#! /bin/sh
-
-find test -name '*Test.coffee' -print0 | xargs -0 node_modules/mocha/bin/mocha --compilers coffee:coffee-script
