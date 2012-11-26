@@ -1,7 +1,7 @@
 {AzkabanConnection} = require "../azkabanConnection"
 {Dementor} = require "../dementor"
 {MockSocket} = require "madeye-common"
-{ChannelConnection} = require "../ChannelConnection"
+{SocketClient} = require "madeye-common"
 {HttpConnection} = require "../HttpConnection"
 uuid = require 'node-uuid'
 
@@ -20,7 +20,7 @@ describe "azkabanConnection", ->
       )
       dementor = new Dementor
       dementor.projectId = uuid.v4()
-      connection = new AzkabanConnection(new HttpConnection, new ChannelConnection(socket))
+      connection = new AzkabanConnection(new HttpConnection, new SocketClient(socket))
       connection.enable dementor
       socket.completeConnection()
 
@@ -30,4 +30,3 @@ describe "azkabanConnection", ->
     it "should send a 'handshake' message", ->
       assert.equal sentMessages[0].action, 'handshake'
       assert.equal sentMessages[0].projectId, dementor.projectId
-      

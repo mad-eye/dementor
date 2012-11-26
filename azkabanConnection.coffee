@@ -1,7 +1,7 @@
 class AzkabanConnection
 
-  constructor: (@httpConnector, @channelConnection) ->
-    @channelConnection.onMessage = @onMessage
+  constructor: (@httpConnector, @socketClient) ->
+    @socketClient.onMessage = @onMessage
 
   #message from ChannelConnection should be a JSON object
   onMessage: (message) ->
@@ -20,10 +20,10 @@ class AzkabanConnection
   enable: (@dementor, callback) ->
     unless @dementor.projectId
       @initialize =>
-        @channelConnection.openBrowserChannel(@dementor.projectId)
+        @socketClient.openConnection(@dementor.projectId)
         callback?()
     else
-      @channelConnection.openBrowserChannel(@dementor.projectId)
+      @socketClient.openConnection(@dementor.projectId)
       callback?()
 
   initialize: (callback)->
@@ -39,11 +39,11 @@ class AzkabanConnection
         callback?()
 
   disable: ->
-    @channelConnection.destroy()
+    @socketClient.destroy()
 
   addFiles: (files) ->
     throw "project id not set!" unless @dementor.projectId
-    @channelConnection.send
+    @socketClient.send
       action: 'addFiles',
       projectId: @dementor.projectId
       data:
@@ -55,7 +55,7 @@ class AzkabanConnection
       action: 'removeFiles',
       projectId: @dementor.projectId
       files: files
-    @channelConnection.send data
+    @socketClient.send data
 
   editFiles: (files) ->
     console.log("connection got files", files)

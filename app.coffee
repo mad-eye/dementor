@@ -1,7 +1,7 @@
 {Dementor} = require('./dementor.coffee')
 {AzkabanConnection} = require('./azkabanConnection.coffee')
 {HttpConnection} = require('./httpConnection.coffee')
-{ChannelConnection} = require('./channelConnection.coffee')
+{SocketClient} = require('madeye-common')
 {Settings} = require('./Settings')
 
 run = ->
@@ -12,11 +12,8 @@ run = ->
   #TODO gracefully handle ctrl-c
   #TODO turn this into class that takes argv and add some tests
 
-
   program
     .version('0.1.0')
-    .option('--start', 'start the daemon')
-    .option('--init', 'iniitialize the project')
     .option('--server', 'point to a non-standard server')
     .parse(process.argv)
 
@@ -25,17 +22,16 @@ run = ->
   else
     server = "#{Settings.httpHost}:#{Settings.httpPort}"
 
-  azkaban = new AzkabanConnection new HttpConnection, new ChannelConnection
+  azkaban = new AzkabanConnection new HttpConnection, new SocketClient
   dementor = new Dementor process.cwd()
 
-  if program.start
-    azkaban.enable dementor, ->
-      dementor.readFileTree (files) ->
-        azkaban.addFiles files
-      dementor.watchFileTree (operation, files) ->
-        switch operation
-          when "add" then azkaban.addFiles files
-          when "delete" then azkaban.deleteFiles files
-          when "edit" then azkaban.editFiles files
+  azkaban.enable dementor, ->
+    dementor.readFileTree (files) ->
+      azkaban.addFiles files
+    dementor.watchFileTree (operation, files) ->
+      switch operation
+        when "add" then azkaban.addFiles files
+        when "delete" then azkaban.deleteFiles files
+        when "edit" then azkaban.editFiles files
 
 exports.run = run
