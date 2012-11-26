@@ -1,3 +1,4 @@
+{messageMaker, messageAction} = require 'madeye-common'
 class AzkabanConnection
 
   constructor: (@httpConnector, @socketClient) ->
@@ -9,6 +10,7 @@ class AzkabanConnection
       @handleError message.error
       return
     console.log "AzkabanConnection received message:", message
+    #TODO: Replace these with appropriate messageAction constants.
     switch message.action
       when 'change' then @changeLocalFiles message
       when 'add' then @addLocalFiles message
@@ -42,20 +44,13 @@ class AzkabanConnection
     @socketClient.destroy()
 
   addFiles: (files) ->
+    #XXX: projectId is passed to @socketClient up above -- should we have a different condition here?
     throw "project id not set!" unless @dementor.projectId
-    @socketClient.send
-      action: 'addFiles',
-      projectId: @dementor.projectId
-      data:
-        files: files
+    @socketClient.send messageMaker.addFilesMessage(files)
 
   deleteFiles: (files) ->
     console.log "delete files #{files}"
-    data =
-      action: 'removeFiles',
-      projectId: @dementor.projectId
-      files: files
-    @socketClient.send data
+    @socketClient.send messageMaker.removeFilesMessage(files)
 
   editFiles: (files) ->
     console.log("connection got files", files)
