@@ -7,7 +7,8 @@
 uuid = require 'node-uuid'
 
 assert = require "assert"
-
+{messageMaker, messageAction} = require 'madeye-common'
+uuid = require 'node-uuid'
 #if azkaban isn't running don't proceed
 
 describe "azkabanConnection", ->
@@ -32,3 +33,9 @@ describe "azkabanConnection", ->
     it "should send a 'handshake' message"
       #assert.equal sentMessages[0].action, messageAction.HANDSHAKE
       #assert.equal sentMessages[0].projectId, dementor.projectId
+
+    it "shoud respond to a REQUEST_FILE message", ->
+      fileId = uuid.v4()
+      rfMessage = messageMaker.requestFileMessage fileId
+      socket.receive rfMessage
+      #XXX: find a way to listen to a reponse/callback.

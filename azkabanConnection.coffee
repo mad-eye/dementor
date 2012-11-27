@@ -2,19 +2,7 @@
 class AzkabanConnection
 
   constructor: (@httpConnector, @socketClient) ->
-    @socketClient.onMessage = @onMessage
-
-  #message from ChannelConnection should be a JSON object
-  onMessage: (message) ->
-    if message.error
-      @handleError message.error
-      return
-    console.log "AzkabanConnection received message:", message
-    #TODO: Replace these with appropriate messageAction constants.
-    switch message.action
-      when 'change' then @changeLocalFiles message
-      when 'add' then @addLocalFiles message
-      when 'remove' then @removeLocalFiles message
+    @socketClient.controller = new MessageController()
 
   handleError: (error) ->
     console.error "Error:", error
@@ -57,13 +45,37 @@ class AzkabanConnection
     for file in files
       console.log "modifying file #{file['path']} to be #{file['data']}"
 
-  addLocalFiles: (message) ->
+class MessageController
+  #message from ChannelConnection should be a JSON object
+  route: (message, callback) ->
+    console.log "AzkabanConnection received message:", message
+    if message.error
+      callback message.error
+      return
+    #TODO: Replace these with appropriate messageAction constants.
+    switch message.action
+      when messageAction.REQUEST_FILE then @requestLocalFile message, callback
+      when 'change' then @changeLocalFiles message, callback
+      when 'add' then @addLocalFiles message, callback
+      when 'remove' then @removeLocalFiles message, callback
+      else callback? new Error("Unknown action: " + message.action)
+
+  requestLocalFile: (message, callback) ->
+    console.log "Request local file:", message
+    unless message.fileId
+      callback new Error "Message does not contain fileId"
+      return
+    callback null, 'This is a test body.'
+
+  addLocalFiles: (message, callback) ->
     console.log "Adding local files:", message
 
-  removeLocalFiles: (message) ->
+  removeLocalFiles: (message, callback) ->
     console.log "Removing local files:", message
 
-  changeLocalFiles: (message) ->
+  changeLocalFiles: (message, callback) ->
     console.log "change local files:", message
+
+
 
 exports.AzkabanConnection = AzkabanConnection
