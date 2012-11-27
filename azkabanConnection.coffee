@@ -43,10 +43,10 @@ class AzkabanConnection
   disable: ->
     @socketClient.destroy()
 
-  addFiles: (files) ->
+  addFiles: (files, callback) ->
     #XXX: projectId is passed to @socketClient up above -- should we have a different condition here?
     throw "project id not set!" unless @dementor.projectId
-    @socketClient.send messageMaker.addFilesMessage(files)
+    @socketClient.send messageMaker.addFilesMessage(files), callback
 
   deleteFiles: (files) ->
     console.log "delete files #{files}"

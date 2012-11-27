@@ -1,8 +1,10 @@
 {Dementor} = require('./dementor.coffee')
 {AzkabanConnection} = require('./azkabanConnection.coffee')
 {HttpConnection} = require('./httpConnection.coffee')
-{SocketClient} = require('madeye-common')
+{FileTree, File, SocketClient} = require('madeye-common')
 {Settings} = require('./Settings')
+
+fileTree = undefined
 
 run = ->
   program = require 'commander'
@@ -26,8 +28,11 @@ run = ->
   dementor = new Dementor process.cwd()
 
   azkaban.enable dementor, ->
+    #this logic should live in dementor.coffee..
     dementor.readFileTree (files) ->
-      azkaban.addFiles files
+      azkaban.addFiles files, (error, message)->
+        fileTree = new FileTree message.data
+        console.log fileTree.files
     dementor.watchFileTree (operation, files) ->
       switch operation
         when "add" then azkaban.addFiles files
