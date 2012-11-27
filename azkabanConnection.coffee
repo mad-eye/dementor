@@ -65,7 +65,10 @@ class MessageController
     unless message.fileId
       callback new Error "Message does not contain fileId"
       return
-    callback null, 'This is a test body.'
+    replyMessage = messageMaker.replyMessage message,
+      fileId: message.fileId
+      body: 'This is a test body.'
+    callback null, replyMessage
 
   addLocalFiles: (message, callback) ->
     console.log "Adding local files:", message
