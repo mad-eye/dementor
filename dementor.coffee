@@ -46,6 +46,9 @@ class Dementor
     results = readdirSyncRecursive @directory
     callback results
 
+# based on a similar fucntion found in wrench
+# https://github.com/ryanmcgrath/wrench-js
+# but with an added isDir field
 readdirSyncRecursive = (baseDir) ->
   files = []
   nextDirs = []
