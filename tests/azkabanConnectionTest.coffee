@@ -43,9 +43,9 @@ describe "AzkabanConnection", ->
 
   describe "receiving REQUEST_FILE messages:", ->
     messageId = null
+    fileId = uuid.v4()
     before ->
       sentMessages = []
-      fileId = uuid.v4()
       rfMessage = messageMaker.requestFileMessage fileId
       messageId = rfMessage.id
       socket.receive rfMessage
@@ -57,3 +57,7 @@ describe "AzkabanConnection", ->
       assert.equal sentMessages[0].projectId, dementor.projectId
     it "should have set replyTo to message.id", ->
       assert.equal sentMessages[0].replyTo, messageId
+    it "should return fileId and body in message.data", ->
+      assert.equal sentMessages[0].data.fileId, fileId
+      assert.ok sentMessages[0].data.body
+
