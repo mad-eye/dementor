@@ -2,7 +2,7 @@
 {Dementor} = require "../dementor"
 {MockSocket} = require "madeye-common"
 {SocketClient} = require "madeye-common"
-{messageAction} = require 'madeye-common'
+{messageMaker, messageAction} = require 'madeye-common'
 {HttpConnection} = require "../HttpConnection"
 uuid = require 'node-uuid'
 
@@ -11,31 +11,49 @@ assert = require "assert"
 uuid = require 'node-uuid'
 #if azkaban isn't running don't proceed
 
-describe "azkabanConnection", ->
+describe "AzkabanConnection", ->
   socket = dementor = connection = null
-  sentMessages = []
+  sentMessages = null
+  before ->
+    socket = new MockSocket(
+      onsend: (message) ->
+        sentMessages.push message
+    )
+    dementor = new Dementor
+    dementor.projectId = uuid.v4()
+    socketClient = new SocketClient(socket)
+    connection = new AzkabanConnection(new HttpConnection(), socketClient)
+    socket.completeConnection()
+
   describe "enable", ->
+    before (done) ->
+      sentMessages = []
+      connection.enable dementor, (err) ->
+        if err
+          console.log "Found error enabling dementor", err
+          return
+        done()
+      
+    it "should send a 'handshake' message", ->
+      assert.equal sentMessages.length, 1
+    it "should set a 'handshake' message action", ->
+      assert.equal sentMessages[0].action, messageAction.HANDSHAKE
+    it "should have set projectId on handshake message", ->
+      assert.equal sentMessages[0].projectId, dementor.projectId
+
+  describe "receiving REQUEST_FILE messages:", ->
+    messageId = null
     before ->
-      socket = new MockSocket(
-        onsend: (message) ->
-          sentMessages.push message
-      )
-      dementor = new Dementor
-      dementor.projectId = uuid.v4()
-      socketClient = new SocketClient()
-      connection = new AzkabanConnection(new HttpConnection, new SocketClient(socket))
-      connection.enable dementor
-      socket.completeConnection()
-
-    it "should create a browser channel"
-      #assert.equal sentMessages.length, 1
-
-    it "should send a 'handshake' message"
-      #assert.equal sentMessages[0].action, messageAction.HANDSHAKE
-      #assert.equal sentMessages[0].projectId, dementor.projectId
-
-    it "shoud respond to a REQUEST_FILE message", ->
+      sentMessages = []
       fileId = uuid.v4()
       rfMessage = messageMaker.requestFileMessage fileId
+      messageId = rfMessage.id
       socket.receive rfMessage
-      #XXX: find a way to listen to a reponse/callback.
+    it "should send a replyMessage", ->
+      assert.equal sentMessages.length, 1
+    it "should set a 'reply' message action", ->
+      assert.equal sentMessages[0].action, messageAction.REPLY
+    it "should have set projectId on message", ->
+      assert.equal sentMessages[0].projectId, dementor.projectId
+    it "should have set replyTo to message.id", ->
+      assert.equal sentMessages[0].replyTo, messageId

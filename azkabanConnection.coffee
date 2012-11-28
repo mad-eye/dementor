@@ -7,13 +7,17 @@ class AzkabanConnection
   handleError: (error) ->
     console.error "Error:", error
 
+  handshake: ->
+    @socketClient.projectId = @dementor.projectId
+    @socketClient.send messageMaker.handshakeMessage()
+
   enable: (@dementor, callback) ->
     unless @dementor.projectId
       @initialize =>
-        @socketClient.openConnection(@dementor.projectId)
+        @handshake()
         callback?()
     else
-      @socketClient.openConnection(@dementor.projectId)
+      @handshake()
       callback?()
 
   initialize: (callback)->

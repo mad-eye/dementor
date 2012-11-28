@@ -24,6 +24,7 @@ run = ->
   else
     server = "#{Settings.httpHost}:#{Settings.httpPort}"
 
+  socketClient = new SocketClient
   azkaban = new AzkabanConnection new HttpConnection, new SocketClient
   dementor = new Dementor process.cwd()
 
