@@ -7,14 +7,16 @@ class AzkabanConnection
   handleError: (error) ->
     console.error "Error:", error
 
-  handshake: ->
+  handshake: (callback) ->
     @socketClient.projectId = @dementor.projectId
-    @socketClient.send messageMaker.handshakeMessage()
+    @socketClient.send messageMaker.handshakeMessage(), callback
 
   enable: (@dementor, callback) ->
+    #FIXME:  This is a really bad way of setting dementor for the controller.
+    @socketClient.controller.dementor = dementor
     unless @dementor.projectId
       @initialize =>
-        @handshake()
+        @handshake (err) -> callback
         callback?()
     else
       @handshake()
@@ -35,21 +37,30 @@ class AzkabanConnection
   disable: ->
     @socketClient.destroy()
 
+  #callback = (err, results) -> ... results are MongoDb Raw files
   addFiles: (files, callback) ->
-    #XXX: projectId is passed to @socketClient up above -- should we have a different condition here?
-    throw "project id not set!" unless @dementor.projectId
     @socketClient.send messageMaker.addFilesMessage(files), callback
 
-  deleteFiles: (files) ->
+  #callback = (err) -> ...
+  deleteFiles: (files, callback) ->
     console.log "delete files #{files}"
     @socketClient.send messageMaker.removeFilesMessage(files)
 
-  editFiles: (files) ->
-    console.log("connection got files", files)
-    for file in files
-      console.log "modifying file #{file['path']} to be #{file['data']}"
+  #TODO: STUB
+  #fileData = fileId:, oldPath:, newPath:
+  #callback = (err) -> ...
+  moveFile: (fileData, callback) ->
+    console.log "STUB: Would be sending move file data:", fileData
+
+  #TODO: STUB
+  #fileData = fileId:, oldBody:, newBody:, changes:,
+  #callback = (err, newFile) -> ...
+  editFile: (fileData, callback) ->
+    console.log "STUB: Would be sending edit file data:", fileData
 
 class MessageController
+  constructor: (@dementor) ->
+
   #message from ChannelConnection should be a JSON object
   route: (message, callback) ->
     console.log "AzkabanConnection received message:", message
@@ -66,13 +77,13 @@ class MessageController
 
   requestLocalFile: (message, callback) ->
     console.log "Request local file:", message
-    unless message.fileId
-      callback new Error "Message does not contain fileId"
-      return
-    replyMessage = messageMaker.replyMessage message,
-      fileId: message.fileId
-      body: 'This is a test body.'
-    callback null, replyMessage
+    unless message.fileId then callback new Error "Message does not contain fileId"; return
+    @dementor.getFileContents message.fileId, (err, body) ->
+      if err then callback err; return
+      replyMessage = messageMaker.replyMessage message,
+        fileId: message.fileId
+        body: body
+      callback null, replyMessage
 
   addLocalFiles: (message, callback) ->
     console.log "Adding local files:", message

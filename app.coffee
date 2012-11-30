@@ -25,19 +25,19 @@ run = ->
     server = "#{Settings.httpHost}:#{Settings.httpPort}"
 
   socketClient = new SocketClient
-  azkaban = new AzkabanConnection new HttpConnection, new SocketClient
+  azkaban = new AzkabanConnection new HttpConnection, socketClient
   dementor = new Dementor process.cwd()
 
-  azkaban.enable dementor, ->
-    #this logic should live in dementor.coffee..
-    dementor.readFileTree (files) ->
-      azkaban.addFiles files, (error, message)->
-        fileTree = new FileTree message.data
-        console.log fileTree.files
-    dementor.watchFileTree (operation, files) ->
-      switch operation
-        when "add" then azkaban.addFiles files
-        when "delete" then azkaban.deleteFiles files
-        when "edit" then azkaban.editFiles files
+  azkaban.enable dementor, (err) ->
+    try
+      throw new Error err if err
+      dementor.watchFileTree (err) ->
+        throw new Error err if err
+    catch error
+      handleError error
+
+handleError = (err) ->
+  console.error "Error received:", err
+  process.exit(err.code ? 1)
 
 exports.run = run

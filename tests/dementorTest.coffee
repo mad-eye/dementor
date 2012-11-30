@@ -5,41 +5,45 @@ _path = require 'path'
 
 {Dementor} = require('../dementor.coffee')
 
+#TODO: Replace this with new code in madeye-common
+homeDir = _path.join ".test_area", "fake_home"
+process.env["MADEYE_HOME"] = homeDir
+
+mkDir = (dir) ->
+  unless fs.existsSync dir
+    wrench.mkdirSyncRecursive dir
+
+createProject = (name, fileMap) ->
+  mkDir ".test_area"
+  projectDir = _path.join(".test_area", name)
+  if fs.existsSync projectDir
+    wrench.rmdirSyncRecursive(projectDir)
+  fs.mkdirSync projectDir
+  fileMap = defaultFileMap unless fileMap
+  createFileTree(projectDir, fileMap)
+  return projectDir
+
+defaultFileMap =
+  rootFile: "this is the rootfile"
+  dir1: {}
+  dir2:
+    moderateFile: "this is a moderate file"
+    dir3:
+      leafFile: "this is a leaf file"
+
+
+
+createFileTree = (root, filetree) ->
+  unless fs.existsSync root
+    fs.mkdirSync root
+  for key, value of filetree
+    if typeof value == "string"
+      fs.writeFileSync(_path.join(root, key), value)
+    else
+      createFileTree(_path.join(root, key), value)
+
+
 describe "dementor", ->
-  homeDir = _path.join ".test_area", "fake_home"
-  process.env["MADEYE_HOME"] = homeDir
-
-  mkDir = (dir) ->
-    unless fs.existsSync dir
-      wrench.mkdirSyncRecursive dir
-
-  createProject = (name, fileTree) ->
-    mkDir ".test_area"
-    projectDir = _path.join(".test_area", name)
-    if fs.existsSync projectDir
-      wrench.rmdirSyncRecursive(projectDir)
-    fs.mkdirSync projectDir
-    fileTree = defaultFileTree unless fileTree
-    createFileTree(projectDir, fileTree)
-    return projectDir
-
-  defaultFileTree = ->
-    rootFile: "this is the rootfile"
-    dir1: {}
-    dir2:
-      moderateFile: "this is a moderate file"
-      dir3:
-        leafFile: "this is a leaf file"
-
-  createFileTree = (root, filetree) ->
-    unless fs.existsSync root
-      fs.mkdirSync root
-    for key, value of filetree
-      if typeof value == "string"
-        fs.writeFileSync(_path.join(root, key), value)
-      else
-        createFileTree(_path.join(root, key), value)
-
   describe "constructor", ->
     beforeEach ->
       if fs.existsSync homeDir
@@ -67,7 +71,7 @@ describe "dementor", ->
     it "should not allow a dementor to watch a subdir of an existing dementors territory"
 
   describe "registerProject", ->
-    it "should persist projectIdacross multliple dementor instances", ->
+    it "should persist projectIdacross multliple dementor instances"
 
   describe "watchFileTree", ->
     it "should notice when i change a file"
@@ -84,20 +88,22 @@ describe "dementor", ->
 
     it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
 
-  describe "readFileTree", ->
+  describe "watchFileTree", ->
     it "should correctly serialize an empty directory", (done)->
       projectDir = createProject("vacuous", {})
       dementor = new Dementor projectDir
-      dementor.readFileTree (results)->
-        assert.deepEqual results, []
+      dementor.watchFileTree (err)->
+        assert.equal err, null
+        assert.deepEqual dementor.fileTree['files'], []
         done()
 
-    it "should correctly serialize a directory with one file", (done)->
+    it "should correctly serialize a directory with one file fweep", (done)->
       projectDir = createProject "oneFile",
         readme: "nothing important here"
       dementor = new Dementor projectDir
-      dementor.readFileTree (results)->
-        assert.deepEqual results, [
+      dementor.watchFileTree (err)->
+        assert.equal err, null, "Found error: #{err}"
+        assert.deepEqual dementor.fileTree['files'], [
           isDir: false
           path: ".test_area/oneFile/readme"
         ]
