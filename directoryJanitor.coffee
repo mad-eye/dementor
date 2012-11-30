@@ -1,18 +1,59 @@
 fs = require "fs"
 _path = require "path"
 
+fileEventType =
+  ADD : 'add'
+  REMOVE: 'remove'
+  EDIT: 'edit'
+  MOVE: 'move'
+
+#File Events:
+#  type: fileEventType
+#  data: #Event specific data
+#  [For ADD]
+#    files: [file,...]
+#  [For REMOVE]
+#    files: [file,...]
+#  [For EDIT]
+#    fileId:
+#    oldBody:
+#    newBody:
+#    changes:
+#  [For MOVE]
+#    fileId:
+#    oldPath:
+#    newPath:
+
 class DirectoryJanitor
   constructor: (@directory) ->
 
 
-  #TODO: stub
-  readFile: (filePath) ->
-    return "contents!"
+  #Callback = (err, body) -> ...
+  readFile: (filePath, absolute=false, callback) ->
+    if typeof absolute == 'function'
+      callback = absolute
+      absolute = false
+    filePath = _path.join @directory, filePath unless absolute
+    #TODO: Change this to async and use callback
+    contents = fs.readFileSync(filePath, "utf-8")
+    callback?(null, contents)
+    return contents
 
-  #TODO: stub
-  writeFile: (filePath, contents) ->
-    null
+  #Callback = (err) -> ...
+  writeFile: (filePath, contents, absolute=false, callback) ->
+    if typeof absolute == 'function'
+      callback = absolute
+      absolute = false
+    filePath = _path.join @directory, filePath unless absolute
+    #TODO: Change this to async and use callback
+    fs.writeFileSync filePath, contents
+    callback?()
 
+  exists: (filePath, absolute=false) ->
+    filePath = _path.join @directory, filePath unless absolute
+    return fs.existsSync filePath
+
+  #callback = (err, event) ->
   watchFileTree: (callback) ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path)->
@@ -27,7 +68,8 @@ class DirectoryJanitor
 
   readFileTree: (callback) ->
     results = readdirSyncRecursive @directory
-    callback results
+    console.log "Read file tree and found", results
+    callback null, results
 
 
 
@@ -57,3 +99,4 @@ readdirSyncRecursive = (baseDir) ->
 
 
 exports.DirectoryJanitor = DirectoryJanitor
+exports.fileEventType = fileEventType
