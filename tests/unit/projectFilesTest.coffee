@@ -132,8 +132,6 @@ describe 'ProjectFiles', ->
         readme: "nothing important here"
       projectFiles = new ProjectFiles projectDir
       projectFiles.readFileTree (err, results) ->
-        console.log "Found results:", results
-        console.log "Found err:", err
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree for empty directory should return true results."
         assert.deepEqual results, [
@@ -142,7 +140,49 @@ describe 'ProjectFiles', ->
         ]
         done()
 
-    it 'should correctly serialize directory with two file'
-    it 'should correctly serialize a deep complicated directory structure'
+    it 'should correctly serialize directory with two file', (done) ->
+      projectDir = fileUtils.createProject "twoFile",
+        readme: "nothing important here"
+        "app.js": "console.log('hello world');"
+      projectFiles = new ProjectFiles projectDir
+      projectFiles.readFileTree (err, results) ->
+        assert.equal err, null, "Should not have returned an error."
+        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.deepEqual results, [
+          {isDir: false
+          path: ".test_area/twoFile/app.js"},
+          {isDir: false
+          path: ".test_area/twoFile/readme"}
+        ]
+        done()
+      
+
+    it 'should correctly serialize a deep complicated directory structure', (done) ->
+      projectDir = fileUtils.createProject "manyFiles",
+        readme: "nothing important here"
+        "app.js": "console.log('hello world');"
+        dir1:
+          dir2:
+            ninja_turtles: "Cowabunga!"
+            dir3: {}
+      projectFiles = new ProjectFiles projectDir
+      projectFiles.readFileTree (err, results) ->
+        assert.equal err, null, "Should not have returned an error."
+        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.deepEqual results, [
+          {isDir: false
+          path: ".test_area/manyFiles/app.js"},
+          {isDir: true
+          path: ".test_area/manyFiles/dir1"},
+          {isDir: true
+          path: ".test_area/manyFiles/dir1/dir2"},
+          {isDir: true
+          path: ".test_area/manyFiles/dir1/dir2/dir3"},
+          {isDir: false
+          path: ".test_area/manyFiles/dir1/dir2/ninja_turtles"},
+          {isDir: false
+          path: ".test_area/manyFiles/readme"}
+        ]
+        done()
 
   #TODO: Write event handlers for watchFileTree
