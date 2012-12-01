@@ -21,6 +21,15 @@ fileUtils =
     @createFileTree(projectDir, fileMap)
     return projectDir
 
+  createFileTree : (root, filetree) ->
+    unless fs.existsSync root
+      fs.mkdirSync root
+    for key, value of filetree
+      if typeof value == "string"
+        fs.writeFileSync(_path.join(root, key), value)
+      else
+        @createFileTree(_path.join(root, key), value)
+
   defaultFileMap :
     rootFile: "this is the rootfile"
     dir1: {}

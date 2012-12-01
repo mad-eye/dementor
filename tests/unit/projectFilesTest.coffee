@@ -11,9 +11,12 @@ homeDir = fileUtils.homeDir
 process.env["MADEYE_HOME"] = fileUtils.homeDir
 
 resetHome = ->
-  if fs.existsSync homeDir
-    wrench.rmdirSyncRecursive homeDir
-  fileUtils.mkDir homeDir
+  resetProject homeDir
+
+resetProject = (rootDir) ->
+  if fs.existsSync rootDir
+    wrench.rmdirSyncRecursive rootDir
+  fileUtils.mkDir rootDir
 
 describe 'ProjectFiles', ->
   projectFiles = null
@@ -96,7 +99,7 @@ describe 'ProjectFiles', ->
       filePath = _path.join homeDir, fileName
       fs.writeFileSync filePath, fileBody
 
-    it 'should return true when a file exists fweep', ->
+    it 'should return true when a file exists', ->
       assert.equal projectFiles.exists(filePath), true
 
     it 'should return false when a file does not exist', ->
@@ -104,17 +107,41 @@ describe 'ProjectFiles', ->
       assert.equal projectFiles.exists(noFilePath), false
 
   describe 'readFileTree', ->
+    projectFiles = null
+
     it 'should return error if no directory exists', (done) ->
-      rootDir = _path.join homeDir, 'notADir'
-      projectFiles = new ProjectFiles rootDir
+      noRootDir = _path.join homeDir, 'notADir'
+      projectFiles = new ProjectFiles noRootDir
       projectFiles.readFileTree (err, results) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
         assert.equal results, null
         done()
 
-    it 'should correctly serialize empty directory'
-    it 'should correctly serialize directory with one file'
+    it 'should correctly serialize empty directory', (done) ->
+      projectDir = fileUtils.createProject("vacuous", {})
+      projectFiles = new ProjectFiles projectDir
+      projectFiles.readFileTree (err, results) ->
+        assert.equal err, null, "Should not have returned an error."
+        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.deepEqual results, []
+        done()
+
+    it 'should correctly serialize directory with one file fweep', (done) ->
+      projectDir = fileUtils.createProject "oneFile",
+        readme: "nothing important here"
+      projectFiles = new ProjectFiles projectDir
+      projectFiles.readFileTree (err, results) ->
+        console.log "Found results:", results
+        console.log "Found err:", err
+        assert.equal err, null, "Should not have returned an error."
+        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.deepEqual results, [
+          isDir: false
+          path: ".test_area/oneFile/readme"
+        ]
+        done()
+
     it 'should correctly serialize directory with two file'
     it 'should correctly serialize a deep complicated directory structure'
 
