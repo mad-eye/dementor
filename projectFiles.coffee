@@ -24,7 +24,7 @@ fileEventType =
 #    oldPath:
 #    newPath:
 
-class DirectoryJanitor
+class ProjectFiles
   constructor: (@directory) ->
 
 
@@ -98,5 +98,5 @@ readdirSyncRecursive = (baseDir) ->
     a.path > b.path
 
 
-exports.DirectoryJanitor = DirectoryJanitor
+exports.ProjectFiles = ProjectFiles
 exports.fileEventType = fileEventType

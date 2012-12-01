@@ -1,10 +1,10 @@
 _path = require "path"
-{DirectoryJanitor, fileEventType} = require './directoryJanitor'
+{ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree} = require 'madeye-common'
 
 class Dementor
   constructor: (@directory) ->
-    @directoryJanitor = new DirectoryJanitor(@directory)
+    @projectFiles = new ProjectFiles(@directory)
     @projectId = @projects()[@directory]
     @fileTree = new FileTree
 
@@ -23,8 +23,8 @@ class Dementor
     _path.join @homeDir(), ".madeye_projects"
 
   projects: ->
-    if (@directoryJanitor.exists @projectsDbPath(), true)
-      projects = JSON.parse @directoryJanitor.readFile @projectsDbPath(), true
+    if (@projectFiles.exists @projectsDbPath(), true)
+      projects = JSON.parse @projectFiles.readFile @projectsDbPath(), true
       #console.log "Found projects", projects
       return projects
     else
@@ -34,26 +34,26 @@ class Dementor
   registerProject: (@projectId) ->
     projects = @projects()
     @projects()[@directory] = projectId
-    @directoryJanitor.writeFile @projectsDbPath(), JSON.stringify(projects), true
+    @projectFiles.writeFile @projectsDbPath(), JSON.stringify(projects), true
     
 
   #callback: (err, body) -> ...
   getFileContents: (fileId, callback) ->
     file = @fileTree.findById fileId
     unless file then callback new Error "Can't find file"; return
-    callback null, @directoryJanitor.readFile file.path
+    callback null, @projectFiles.readFile file.path
 
   #callback: (err) ->
   watchFileTree: (callback) ->
     console.log "Reading filetree"
-    @directoryJanitor.readFileTree (err, results) =>
+    @projectFiles.readFileTree (err, results) =>
       if err? then callback? err; return
       @handleFileEvent {
         type: fileEventType.ADD
         data:
           files: results
       }, callback
-    @directoryJanitor.watchFileTree (err, event) ->
+    @projectFiles.watchFileTree (err, event) ->
       callback? err if err?
       @handleFileEvent event
 
