@@ -10,17 +10,23 @@ assert = require 'assert'
 homeDir = fileUtils.homeDir
 process.env["MADEYE_HOME"] = fileUtils.homeDir
 
+resetHome = ->
+  if fs.existsSync homeDir
+    wrench.rmdirSyncRecursive homeDir
+  fileUtils.mkDir homeDir
+
 describe 'ProjectFiles', ->
   projectFiles = null
   before ->
     projectFiles = new ProjectFiles '.'
     
-  beforeEach ->
-    if fs.existsSync homeDir
-      wrench.rmdirSyncRecursive homeDir
-    fileUtils.mkDir homeDir
-
   describe 'readFile', ->
+    beforeEach ->
+      resetHome()
+      if fs.existsSync homeDir
+        wrench.rmdirSyncRecursive homeDir
+      fileUtils.mkDir homeDir
+
     it 'should return a body when a file exists', (done) ->
       fileName = 'file.txt'
       fileBody = 'this is quite a body'
@@ -40,18 +46,51 @@ describe 'ProjectFiles', ->
         assert.equal body, null
         done()
 
-    it 'should return the correct error when a file is a directory'
+    it 'should return the correct error when a file is a directory', (done) ->
+      fileName = 'someDir'
+      filePath = _path.join homeDir, fileName
+      fileUtils.mkDir filePath
+      projectFiles.readFile filePath, false, (err, body) ->
+        assert.ok err
+        assert.equal err.type, errorType.NOT_NORMAL_FILE
+        assert.equal body, null
+        done()
+
     it 'should read from absolute paths when absolute=true'
     it 'should allow absolute argument to be skipped'
 
   describe 'writeFile', ->
-    it 'should write the contents to the path'
+    beforeEach ->
+      resetHome()
+
+    it 'should write the contents to the path', (done) ->
+      fileName = 'file.txt'
+      fileBody = 'this is quite a body'
+      filePath = _path.join homeDir, fileName
+      projectFiles.writeFile filePath, fileBody, false, (err) ->
+        assert.equal err, null
+        contents = fs.readFileSync(filePath, "utf-8")
+        assert.equal contents, fileBody
+        done()
     it 'should overwrite existing files at that path'
     it 'should write to absolute paths when absolute=true'
 
   describe 'exists', ->
-    it 'should return true when a file exists'
-    it 'should return false when a file does not exist'
+    filePath = null
+
+    before ->
+      resetHome()
+      fileName = 'file.txt'
+      fileBody = 'this is quite a body'
+      filePath = _path.join homeDir, fileName
+      fs.writeFileSync filePath, fileBody
+
+    it 'should return true when a file exists fweep', ->
+      assert.equal projectFiles.exists(filePath), true
+
+    it 'should return false when a file does not exist', ->
+      noFilePath = _path.join homeDir, 'nofile'
+      assert.equal projectFiles.exists(noFilePath), false
 
   describe 'readFileTree', ->
     it 'should return error if no directory exists'

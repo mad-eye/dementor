@@ -31,19 +31,20 @@ class ProjectFiles
 
   #Callback = (err, body) -> ...
   readFile: (filePath, absolute=false, callback) ->
-    console.log "Trying to read file", filePath
     if typeof absolute == 'function'
       callback = absolute
       absolute = false
     unless @exists filePath, absolute
-      console.log filePath, "doesn't exist, returning error"
+      console.warn filePath, "doesn't exist, returning error"
       callback errors.new 'NO_FILE'
       return
     filePath = _path.join @directory, filePath unless absolute
-    #TODO: Change this to async and use callback
+    unless fs.statSync(filePath).isFile()
+      console.warn filePath, "isn't a normal file, returning error"
+      callback errors.new 'NOT_NORMAL_FILE'
+      return
     contents = fs.readFileSync(filePath, "utf-8")
-    callback?(null, contents)
-    return contents
+    callback(null, contents)
 
   #Callback = (err) -> ...
   writeFile: (filePath, contents, absolute=false, callback) ->

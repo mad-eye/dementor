@@ -1,8 +1,10 @@
 errorType =
   NO_FILE : 'NO_FILE'
+  NOT_NORMAL_FILE : 'NOT_NORMAL_FILE'
 
 errorMessage =
   NO_FILE : 'File not found'
+  NOT_NORMAL_FILE : 'Filepath does not lead to a normal file.'
 
 errors =
   new : (type) ->
