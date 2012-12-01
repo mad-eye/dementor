@@ -60,6 +60,11 @@ class ProjectFiles
     filePath = _path.join @directory, filePath unless absolute
     return fs.existsSync filePath
 
+  readFileTree: (callback) ->
+    results = readdirSyncRecursive @directory
+    console.log "Read file tree and found", results
+    callback null, results
+
   #callback = (err, event) ->
   watchFileTree: (callback) ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
@@ -72,11 +77,6 @@ class ProjectFiles
         callback "edit", [{path: path, data: data}]
     @watcher.on "fileDeleted", (path)->
       callback "delete", [{path: path}]
-
-  readFileTree: (callback) ->
-    results = readdirSyncRecursive @directory
-    console.log "Read file tree and found", results
-    callback null, results
 
 
 

@@ -60,19 +60,30 @@ describe 'ProjectFiles', ->
     it 'should allow absolute argument to be skipped'
 
   describe 'writeFile', ->
+    fileName = fileBody = filePath = null
     beforeEach ->
       resetHome()
-
-    it 'should write the contents to the path', (done) ->
       fileName = 'file.txt'
       fileBody = 'this is quite a body'
       filePath = _path.join homeDir, fileName
+
+    it 'should write the contents to the path', (done) ->
       projectFiles.writeFile filePath, fileBody, false, (err) ->
         assert.equal err, null
         contents = fs.readFileSync(filePath, "utf-8")
         assert.equal contents, fileBody
         done()
-    it 'should overwrite existing files at that path'
+
+    it 'should overwrite existing files at that path', (done) ->
+      projectFiles.writeFile filePath, fileBody, false, (err) ->
+        assert.equal err, null
+        fileBody = 'this is a different, but equally good, body'
+        projectFiles.writeFile filePath, fileBody, false, (err) ->
+          assert.equal err, null
+          contents = fs.readFileSync(filePath, "utf-8")
+          assert.equal contents, fileBody
+          done()
+
     it 'should write to absolute paths when absolute=true'
 
   describe 'exists', ->
