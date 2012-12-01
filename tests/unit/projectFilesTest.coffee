@@ -1,5 +1,10 @@
+fs = require 'fs'
+_path = require 'path'
+wrench = require 'wrench'
 assert = require 'assert'
-fileUtils = require '../util/fileUtils'
+{fileUtils} = require '../util/fileUtils'
+{ProjectFiles} = require '../../src/projectFiles'
+{errorType} = require '../../src/errors'
 
 
 homeDir = fileUtils.homeDir
@@ -13,7 +18,7 @@ describe 'ProjectFiles', ->
   beforeEach ->
     if fs.existsSync homeDir
       wrench.rmdirSyncRecursive homeDir
-    mkDir homeDir
+    fileUtils.mkDir homeDir
 
   describe 'readFile', ->
     it 'should return a body when a file exists', (done) ->
@@ -25,10 +30,16 @@ describe 'ProjectFiles', ->
         assert.equal err, null
         assert.equal body, fileBody
         done()
-
-
       
-    it 'should return the correct error when a file does not exist'
+    it 'should return the correct error when a file does not exist', (done) ->
+      fileName = 'nofile.txt'
+      filePath = _path.join homeDir, fileName
+      projectFiles.readFile filePath, false, (err, body) ->
+        assert.ok err
+        assert.equal err.type, errorType.NO_FILE
+        assert.equal body, null
+        done()
+
     it 'should return the correct error when a file is a directory'
     it 'should read from absolute paths when absolute=true'
     it 'should allow absolute argument to be skipped'

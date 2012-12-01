@@ -12,13 +12,13 @@ fileUtils =
       wrench.mkdirSyncRecursive dir
 
   createProject : (name, fileMap) ->
-    mkDir ".test_area"
+    @mkDir ".test_area"
     projectDir = _path.join(".test_area", name)
     if fs.existsSync projectDir
       wrench.rmdirSyncRecursive(projectDir)
     fs.mkdirSync projectDir
-    fileMap = defaultFileMap unless fileMap
-    createFileTree(projectDir, fileMap)
+    fileMap ?= @defaultFileMap
+    @createFileTree(projectDir, fileMap)
     return projectDir
 
   defaultFileMap :
@@ -36,7 +36,7 @@ fileUtils =
       if typeof value == "string"
         fs.writeFileSync(_path.join(root, key), value)
       else
-        writeFiles(_path.join(root, key), value)
+        @writeFiles(_path.join(root, key), value)
 
   constructFileTree : (fileMap, root, fileTree) ->
     fileTree ?= new FileTree(null, root)
