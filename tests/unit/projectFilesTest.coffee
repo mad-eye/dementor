@@ -52,7 +52,7 @@ describe 'ProjectFiles', ->
       fileUtils.mkDir filePath
       projectFiles.readFile filePath, false, (err, body) ->
         assert.ok err
-        assert.equal err.type, errorType.NOT_NORMAL_FILE
+        assert.equal err.type, errorType.IS_DIR
         assert.equal body, null
         done()
 
@@ -104,7 +104,15 @@ describe 'ProjectFiles', ->
       assert.equal projectFiles.exists(noFilePath), false
 
   describe 'readFileTree', ->
-    it 'should return error if no directory exists'
+    it 'should return error if no directory exists', (done) ->
+      rootDir = _path.join homeDir, 'notADir'
+      projectFiles = new ProjectFiles rootDir
+      projectFiles.readFileTree (err, results) ->
+        assert.ok err
+        assert.equal err.type, errorType.NO_FILE
+        assert.equal results, null
+        done()
+
     it 'should correctly serialize empty directory'
     it 'should correctly serialize directory with one file'
     it 'should correctly serialize directory with two file'

@@ -1,10 +1,10 @@
 errorType =
   NO_FILE : 'NO_FILE'
-  NOT_NORMAL_FILE : 'NOT_NORMAL_FILE'
+  IS_DIR : 'IS_DIR'
 
 errorMessage =
   NO_FILE : 'File not found'
-  NOT_NORMAL_FILE : 'Filepath does not lead to a normal file.'
+  IS_DIR : 'Illegal operation on a directory.'
 
 errors =
   new : (type) ->

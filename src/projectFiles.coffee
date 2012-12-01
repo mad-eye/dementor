@@ -28,42 +28,52 @@ fileEventType =
 class ProjectFiles
   constructor: (@directory) ->
 
+  handleError: (error, callback) ->
+    newError = null
+    switch error.code
+      when 'ENOENT' then newError = errors.new 'NO_FILE'
+      when 'EISDIR' then newError = errors.new 'IS_DIR'
+      #Fill in other error cases here...
+    #console.error "Found error:", error
+    callback newError ? error
 
-  #Callback = (err, body) -> ...
+
+  #callback: (err, body) -> ...
   readFile: (filePath, absolute=false, callback) ->
     if typeof absolute == 'function'
       callback = absolute
       absolute = false
-    unless @exists filePath, absolute
-      console.warn filePath, "doesn't exist, returning error"
-      callback errors.new 'NO_FILE'
-      return
     filePath = _path.join @directory, filePath unless absolute
-    unless fs.statSync(filePath).isFile()
-      console.warn filePath, "isn't a normal file, returning error"
-      callback errors.new 'NOT_NORMAL_FILE'
-      return
-    contents = fs.readFileSync(filePath, "utf-8")
-    callback(null, contents)
+    try
+      contents = fs.readFileSync(filePath, "utf-8")
+      callback(null, contents)
+    catch error
+      @handleError error, callback
 
-  #Callback = (err) -> ...
+  #callback: (err) -> ...
   writeFile: (filePath, contents, absolute=false, callback) ->
     if typeof absolute == 'function'
       callback = absolute
       absolute = false
     filePath = _path.join @directory, filePath unless absolute
-    #TODO: Change this to async and use callback
-    fs.writeFileSync filePath, contents
-    callback?()
+    try
+      fs.writeFileSync filePath, contents
+      callback?()
+    catch error
+      @handleError error, callback
 
   exists: (filePath, absolute=false) ->
     filePath = _path.join @directory, filePath unless absolute
     return fs.existsSync filePath
 
+  #callback: (err, results) -> ...
   readFileTree: (callback) ->
-    results = readdirSyncRecursive @directory
-    console.log "Read file tree and found", results
-    callback null, results
+    try
+      results = readdirSyncRecursive @directory
+      console.log "Read file tree and found", results
+      callback null, results
+    catch error
+      @handleError error, callback
 
   #callback = (err, event) ->
   watchFileTree: (callback) ->
