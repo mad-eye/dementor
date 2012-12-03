@@ -71,9 +71,9 @@ class ProjectFiles
     results = null
     try
       results = readdirSyncRecursive @directory
-      console.log "Read file tree and found", results
+      #console.log "Read file tree and found", results
     catch error
-      console.error "Found error:", error
+      console.warn "Found error:", error
       @handleError error, callback
       return
     callback null, results
@@ -113,7 +113,7 @@ readdirSyncRecursive = (baseDir) ->
 
   while nextDirs.length
     files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )
-  console.log 'returning files:', files
+  #console.log 'returning files:', files
   return files.sort (a,b)->
     a.path > b.path
 

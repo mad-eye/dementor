@@ -1,6 +1,6 @@
 {Dementor} = require('./dementor.coffee')
-{AzkabanConnection} = require('./azkabanConnection.coffee')
-{HttpConnection} = require('./httpConnection.coffee')
+{AzkabanConnection, MessageController} = require('./azkabanConnection.coffee')
+{HttpClient} = require('./httpClient.coffee')
 {FileTree, File, SocketClient} = require('madeye-common')
 {Settings} = require('./Settings')
 
@@ -24,17 +24,14 @@ run = ->
   else
     server = "#{Settings.httpHost}:#{Settings.httpPort}"
 
-  socketClient = new SocketClient
-  azkaban = new AzkabanConnection new HttpConnection, socketClient
-  dementor = new Dementor process.cwd()
 
-  azkaban.enable dementor, (err) ->
-    try
+  dementor = new Dementor process.cwd()
+  try
+    dementor.enable (err) ->
       throw new Error err if err
-      dementor.watchFileTree (err) ->
-        throw new Error err if err
-    catch error
-      handleError error
+  catch error
+    handleError error
+
 
 handleError = (err) ->
   console.error "Error received:", err

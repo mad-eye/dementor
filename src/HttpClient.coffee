@@ -14,7 +14,8 @@ makeQueryString = (params) ->
 
 
 #callback: (body) ->; takes an obj (parsed from JSON) body
-class HttpConnection
+#errors are passed as an {error:} object
+class HttpClient
   constructor: ->
     @hostname = Settings.httpHost
     @port = Settings.httpPort
@@ -47,4 +48,4 @@ class HttpConnection
         body = JSON.parse(body)
       callback(body)
 
-exports.HttpConnection = HttpConnection
+exports.HttpClient = HttpClient

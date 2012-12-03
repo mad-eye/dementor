@@ -8,11 +8,34 @@ class Dementor
     @projectId = @projects()[@directory]
     @fileTree = new FileTree
 
+  #callback: (err) ->
+  enable: (@runningCallback) ->
+    unless @projectId
+      @registerProject (err, projectId) ->
+
   disable: ->
     #cancel any file watching etc, flush config?
 
   handleError: (err) ->
     console.error "Error:", err
+    @runningCallback err
+
+  getHttpClient: ->
+    @httpClient ?= new HttpClient
+    return @httpClient
+
+  registerProject: (callback) ->
+    @getHttpClient()
+    console.log "fetching ID from server"
+    @httpClient.post {action:'init'}, (result) =>
+      console.log "received a result from init."
+      if result.error
+        console.error "Received error from server:" + result.error
+        @handleError result.error
+      else
+        console.log "Received result from server:", result
+        @registerProject(result.id)
+        callback?()
 
   homeDir: ->
     return process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]

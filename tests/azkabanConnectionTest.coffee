@@ -10,7 +10,7 @@ _path = require "path"
 {SocketClient} = require "madeye-common"
 {FileTree} = require "madeye-common"
 {messageMaker, messageAction} = require 'madeye-common'
-{HttpConnection} = require "../HttpConnection"
+{HttpClient} = require "../HttpClient"
 
 
 
@@ -29,7 +29,7 @@ describe "AzkabanConnection", ->
     dementor.projectId = uuid.v4()
     dementor.directoryJanitor = mockProjFiles
     socketClient = new SocketClient(socket)
-    connection = new AzkabanConnection(new HttpConnection(), socketClient)
+    connection = new AzkabanConnection(new HttpClient(), socketClient)
     socketClient.controller.dementor = dementor
     socket.completeConnection()
 

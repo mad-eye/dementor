@@ -2,18 +2,21 @@ wrench = require 'wrench'
 fs = require 'fs'
 _path = require 'path'
 
-
 #TODO: Move this to madeye-common
-fileUtils =
-  homeDir : _path.join ".test_area", "fake_home"
 
+TEST_AREA = ".test_area"
+fileUtils =
   mkDir : (dir) ->
     unless fs.existsSync dir
       wrench.mkdirSyncRecursive dir
 
+  testProjectDir: (projName) ->
+    return _path.join(TEST_AREA, projName)
+
+  homeDir : _path.join TEST_AREA, "fake_home"
+
   createProject : (name, fileMap) ->
-    @mkDir ".test_area"
-    projectDir = _path.join(".test_area", name)
+    projectDir = @testProjectDir name
     if fs.existsSync projectDir
       wrench.rmdirSyncRecursive(projectDir)
     fs.mkdirSync projectDir
