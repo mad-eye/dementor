@@ -25,46 +25,70 @@ fileEventType =
 #    oldPath:
 #    newPath:
 
+MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles
   constructor: (@directory) ->
 
-  handleError: (error, callback) ->
+  handleError: (error, options={}, callback) ->
     newError = null
     switch error.code
       when 'ENOENT' then newError = errors.new 'NO_FILE'
       when 'EISDIR' then newError = errors.new 'IS_DIR'
       #Fill in other error cases here...
     #console.error "Found error:", error
-    callback newError ? error
+    error = newError ? error
+    if options.sync then throw error else callback error
 
 
   #callback: (err, body) -> ...
-  readFile: (filePath, absolute=false, callback) ->
-    if typeof absolute == 'function'
-      callback = absolute
-      absolute = false
-    filePath = _path.join @directory, filePath unless absolute
+  #options: sync:, absolute:
+  readFile: (filePath, options={}, callback) ->
+    if typeof options == 'function'
+      callback = options
+      options = false
+    filePath = _path.join @directory, filePath unless options.absolute
     try
       contents = fs.readFileSync(filePath, "utf-8")
-      callback(null, contents)
+      if options.sync then return contents else callback?(null, contents)
     catch error
-      @handleError error, callback
+      @handleError error, options, callback
 
   #callback: (err) -> ...
-  writeFile: (filePath, contents, absolute=false, callback) ->
-    if typeof absolute == 'function'
-      callback = absolute
-      absolute = false
-    filePath = _path.join @directory, filePath unless absolute
+  #options: sync:, absolute:
+  writeFile: (filePath, contents, options={}, callback) ->
+    if typeof options == 'function'
+      callback = options
+      options = false
+    filePath = _path.join @directory, filePath unless options.absolute
     try
       fs.writeFileSync filePath, contents
-      callback?()
+      if options.sync then return else callback?()
     catch error
-      @handleError error, callback
+      @handleError error, options, callback
 
   exists: (filePath, absolute=false) ->
     filePath = _path.join @directory, filePath unless absolute
     return fs.existsSync filePath
+
+  homeDir: ->
+    return process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]
+    envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"
+    return process.env[envVarName]
+
+  projectsDbPath: ->
+    _path.join @homeDir(), MADEYE_PROJECTS_FILE
+
+  saveProjectIds: (projects) ->
+    fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
+
+  projectIds: ->
+    if (@exists @projectsDbPath(), true)
+      projects = JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
+      #console.log "Found projects", projects
+      return projects
+    else
+      #console.log "Found no projectfile."
+      {}
 
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
@@ -74,7 +98,7 @@ class ProjectFiles
       #console.log "Read file tree and found", results
     catch error
       console.warn "Found error:", error
-      @handleError error, callback
+      @handleError error, null, callback
       return
     callback null, results
 

@@ -10,6 +10,12 @@ fileUtils =
     unless fs.existsSync dir
       wrench.mkdirSyncRecursive dir
 
+  mkDirClean : (dir) ->
+    if fs.existsSync dir
+      wrench.rmdirSyncRecursive(dir)
+    fs.mkdirSync dir
+
+
   testProjectDir: (projName) ->
     return _path.join(TEST_AREA, projName)
 

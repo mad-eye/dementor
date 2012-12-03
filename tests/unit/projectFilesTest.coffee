@@ -2,6 +2,7 @@ fs = require 'fs'
 _path = require 'path'
 wrench = require 'wrench'
 assert = require 'assert'
+uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
 {errorType} = require '../../src/errors'
@@ -184,5 +185,36 @@ describe 'ProjectFiles', ->
           path: ".test_area/manyFiles/readme"}
         ]
         done()
+
+  describe "projectIds", ->
+    projects = projectFiles = null
+    before ->
+      projects =
+        "path/to/heaven" : uuid.v4()
+        "/path/to/hell/" : uuid.v4()
+      projectFiles = new ProjectFiles
+    it "should return {} if no config file", ->
+      readProjects = projectFiles.projectIds()
+      assert.deepEqual readProjects, {}
+
+    it "should return a JSON config if it exists", ->
+      fs.writeFileSync projectFiles.projectsDbPath(), JSON.stringify(projects)
+      assert.deepEqual projectFiles.projectIds(), projects
+
+    it "should save a config file", ->
+      projectFiles.saveProjectIds projects
+      assert.ok projectFiles.exists projectFiles.projectsDbPath()
+      readProjects = JSON.parse fs.readFileSync(projectFiles.projectsDbPath(), 'utf-8')
+      assert.deepEqual projects, readProjects
+      
+    it "should save over an existing config file", ->
+      projectFiles.saveProjectIds projects
+      newProjects =
+        "one/two/three" : uuid.v4()
+      projectFiles.saveProjectIds newProjects
+      assert.ok projectFiles.exists projectFiles.projectsDbPath()
+      readProjects = JSON.parse fs.readFileSync(projectFiles.projectsDbPath(), 'utf-8')
+      assert.deepEqual newProjects, readProjects
+
 
   #TODO: Write event handlers for watchFileTree
