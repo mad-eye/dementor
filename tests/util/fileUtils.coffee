@@ -74,4 +74,7 @@ fileUtils =
     console.log "Contructed fileTree:", fileTree unless root?
     return fileTree
 
+  clone : (obj) ->
+    JSON.parse JSON.stringify obj
+
 exports.fileUtils = fileUtils

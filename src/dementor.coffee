@@ -61,11 +61,11 @@ class Dementor
 
   handleFileEvent: (event, callback) ->
     return unless event
-    console.log "Calling handleFileEvent with event", event
+    #console.log "Calling handleFileEvent with event", event
     try
       switch event.type
-        when 'preexisted' then null
-        when 'add' then @onAddFileEvent(event, callback)
+        when fileEventType.PREEXISTED then "file already read by readFileTree."
+        when fileEventType.ADD then @onAddFileEvent(event, callback)
         else throw new Error "Unrecognized event action: #{event.action}"
     catch err
       @handleError err
@@ -76,6 +76,7 @@ class Dementor
     addFilesMessage = messageMaker.addFilesMessage(event.data.files)
     @socketClient.send addFilesMessage, (err, result) =>
       if err then @handleError err; return
-      @fileTree.setFiles result
+      @fileTree.setFiles result.data.files
+      console.log "Set fileTree files"
 
 exports.Dementor = Dementor

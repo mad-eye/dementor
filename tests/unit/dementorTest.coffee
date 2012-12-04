@@ -12,6 +12,8 @@ _path = require 'path'
 {messageMaker, messageAction} = require 'madeye-common'
 
 
+#TODO: Reduce redundancy with better before/etc hooks.
+
 homeDir = fileUtils.homeDir
 
 describe "Dementor", ->
@@ -79,6 +81,7 @@ describe "Dementor", ->
     dementor = null
     projectPath = null
     projectFiles = null
+    addFileMessage = null
     before (done) ->
       projectPath = fileUtils.createProject "tinsot", fileUtils.defaultFileMap
       projectFiles = new ProjectFiles projectPath
@@ -96,8 +99,9 @@ describe "Dementor", ->
               @handshakeReceived = true
             when messageAction.ADD_FILES
               assert.ok @handshakeReceived, "Must handshake before adding files."
+              addFileMessage = fileUtils.clone message
               file._id = uuid.v4() for file in message.data.files
-              replyMessage = messageMaker.replyMessage message, message.data.files
+              replyMessage = messageMaker.replyMessage message, files: message.data.files
               @receive replyMessage
             else assert.fail "Unexpected action received by socket: #{message.action}"
       socketClient = new SocketClient socket
@@ -107,8 +111,24 @@ describe "Dementor", ->
         assert.equal err, null
         done()
 
-    it "should send a project's file tree to azkaban via socket"
+    it "should send a project's file tree to azkaban via socket", ->
+      assert.ok addFileMessage
+      files = addFileMessage.data.files
+      for file in files
+        assert.ok file.isDir?
+        assert.ok file.path?
         
-    it "should construct fileTree on azakban's response"
+    it "should construct fileTree on azakban's response", ->
+      assert.ok dementor.fileTree
+      files = dementor.fileTree.files
+      assert.equal files.length, addFileMessage.data.files.length
+      for file in files
+        assert.ok file.isDir?
+        assert.ok file.path?
+        assert.ok file._id
+
     it "should start watching the project"
+
+  describe "receiving REQUEST_FILE message", ->
+    it "should reply with file body"
 

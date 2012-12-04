@@ -5,7 +5,7 @@ class MessageController
 
   #message from ChannelConnection should be a JSON object
   route: (message, callback) ->
-    console.log "messageController received message:", message
+    #console.log "messageController received message:", message
     if message.error
       callback message.error
       return
@@ -15,6 +15,7 @@ class MessageController
       when 'change' then @changeLocalFiles message, callback
       when 'add' then @addLocalFiles message, callback
       when 'remove' then @removeLocalFiles message, callback
+      when messageAction.REPLY then "Callback should have handled it"
       else callback? new Error("Unknown action: " + message.action)
 
   requestLocalFile: (message, callback) ->

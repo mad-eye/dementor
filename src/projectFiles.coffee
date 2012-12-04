@@ -7,6 +7,7 @@ fileEventType =
   REMOVE: 'remove'
   EDIT: 'edit'
   MOVE: 'move'
+  PREEXISTED: 'preexisted'
 
 #File Events:
 #  type: fileEventType
@@ -107,13 +108,13 @@ class ProjectFiles
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path) ->
       event =
-        type:'preexisted'
+        type: fileEventType.PREEXISTED
         data:
           files: [path]
       callback null, event
     @watcher.on "fileCreated", (path)->
       event =
-        type:'add'
+        type: fileEventType.ADD
         data:
           files: [path]
       callback null, event
