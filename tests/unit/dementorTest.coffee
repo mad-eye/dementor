@@ -65,7 +65,7 @@ describe "Dementor", ->
       dementor = new Dementor projectPath
       assert.equal dementor.projectId, null
 
-    it "should persist projectIdacross multliple dementor instances"
+    it "should persist projectIdacross multiple dementor instances"
 
   describe "enable", ->
     dementor = null

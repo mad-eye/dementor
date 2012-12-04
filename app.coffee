@@ -1,4 +1,4 @@
-{Dementor} = require('./dementor.coffee')
+{Dementor} = require('./src/dementor')
 {MessageController} = require('./src/messageController')
 {HttpClient} = require('./src/httpClient')
 {SocketClient} = require('madeye-common')
@@ -30,16 +30,15 @@ run = ->
   dementor = new Dementor process.cwd(), httpClient, socketClient
   try
     dementor.enable (err, flag) ->
-      if err
-        throw new Error err
-      else
-        console.log "Dementor received flag: #{flag}"
+      if err then handleError err; return
+      console.log "Dementor received flag: #{flag}"
   catch error
     handleError error
 
 
 handleError = (err) ->
   console.error "Error received:", err
+  #TODO: dementor.disable
   process.exit(err.code ? 1)
 
 exports.run = run

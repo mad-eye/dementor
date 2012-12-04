@@ -5,6 +5,7 @@
 {MessageController} = require './MessageController'
 {messageMaker, messageAction} = require 'madeye-common'
 
+#XXX: Check that project ids are written
 class Dementor
   constructor: (@directory, @httpClient, @socketClient) ->
     @projectFiles = new ProjectFiles(@directory)
@@ -26,6 +27,8 @@ class Dementor
     else
       @finishEnabling()
 
+  #TODO: disable:
+ 
   registerProject: (callback) ->
     console.log "fetching ID from server"
     @httpClient.post {action:'init'}, (result) =>
@@ -40,11 +43,9 @@ class Dementor
     @runningCallback null, 'ENABLED'
     console.log "Sending handshake."
     @handshake (err, replyMessage) =>
-      if err
-        @handleError err
-      else
-        @runningCallback null, 'HANDSHAKE_RECEIVED'
-        @watchProject()
+      @handleError err
+      @runningCallback null, 'HANDSHAKE_RECEIVED'
+      @watchProject()
 
   #callback : (err, replyMessage) -> ...
   handshake: (callback) ->
