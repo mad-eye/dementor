@@ -9,7 +9,7 @@ class Dementor
   constructor: (@directory, @httpClient, @socketClient) ->
     @projectFiles = new ProjectFiles(@directory)
     @projectId = @projectFiles.projectIds()[@directory]
-    @fileTree = new FileTree
+    @fileTree = new FileTree null, @directory
     @socketClient?.controller = new MessageController this
 
   handleError: (err) ->
@@ -33,7 +33,6 @@ class Dementor
         console.error "Received error from server:" + result.error
         callback result.error
       else
-        console.log "Received init result from server:", result
         @projectId = result.id
         callback()
 
@@ -41,7 +40,6 @@ class Dementor
     @runningCallback null, 'ENABLED'
     console.log "Sending handshake."
     @handshake (err, replyMessage) =>
-      console.log "Receiving handshake reply:", replyMessage
       if err
         @handleError err
       else
@@ -54,7 +52,6 @@ class Dementor
     @socketClient.send messageMaker.handshakeMessage(), callback
 
   watchProject: ->
-    console.log "Reading filetree"
     @projectFiles.readFileTree (err, results) =>
       @handleError err
       @handleFileEvent {
@@ -86,7 +83,6 @@ class Dementor
     @socketClient.send addFilesMessage, (err, result) =>
       @handleError err
       @fileTree.setFiles result.data.files
-      console.log "Set fileTree files"
       callback?()
 
 
@@ -98,6 +94,8 @@ class Dementor
 
   #callback : (err, body) ->
   getFileContents : (fileId, callback) ->
+    path = @fileTree.findById(fileId).path
+    @projectFiles.readFile path, callback
 
 
 exports.Dementor = Dementor

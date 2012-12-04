@@ -18,6 +18,8 @@ homeDir = fileUtils.homeDir
 
 mockSocket = new MockSocket
   onsend: (message) ->
+    if message.error
+      assert.fail "Received error message:", message
     switch message.action
       when messageAction.HANDSHAKE
         @handshakeReceived = true
@@ -28,9 +30,17 @@ mockSocket = new MockSocket
         @addFileMessage = fileUtils.clone message
         file._id = uuid.v4() for file in message.data.files
         replyMessage = messageMaker.replyMessage message, files: message.data.files
-        console.log "Replying to add files message."
         @receive replyMessage
+      when messageAction.REPLY
+        callback = @callbacks[message.replyTo]
+        callback?(message)
       else assert.fail "Unexpected action received by socket: #{message.action}"
+
+defaultHttpClient = new MockHttpClient (action, params) ->
+  if action == 'init'
+    return {id:uuid.v4()}
+  else
+    return {error: "Wrong action."}
 
 describe "Dementor", ->
   describe "constructor", ->
@@ -46,7 +56,6 @@ describe "Dementor", ->
       projects = {}
       projects[projectPath] = projectId
       projectFiles.saveProjectIds projects
-      console.log "Saved projects:", projectFiles.projectIds()
 
       dementor = new Dementor projectPath
       assert.equal dementor.projectId, projectId
@@ -68,13 +77,9 @@ describe "Dementor", ->
       socketClient = new SocketClient mockSocket
       dementor = new Dementor projectPath, null, socketClient
 
-    it "should register the project if not already registered fweep", (done) ->
+    it "should register the project if not already registered", (done) ->
       projectId = uuid.v4()
-      dementor.httpClient = new MockHttpClient (action, params) ->
-        if action == 'init'
-          return {id:projectId}
-        else
-          return {error: "Wrong action."}
+      dementor.httpClient = defaultHttpClient
 
       dementor.enable (err, flag) ->
         assert.equal err, null
@@ -112,17 +117,12 @@ describe "Dementor", ->
       projectPath = fileUtils.createProject "tinsot", fileUtils.defaultFileMap
       projectFiles = new ProjectFiles projectPath
 
-      httpClient = new MockHttpClient (action, params) ->
-        if action == 'init'
-          return {id:uuid.v4()}
-        else
-          return {error: "Wrong action."}
 
       #XXX: This is a little hacky.  Find a better solution.
       mockSocket.addFileMessage = null
       socketClient = new SocketClient mockSocket
       
-      dementor = new Dementor projectPath, httpClient, socketClient
+      dementor = new Dementor projectPath, defaultHttpClient, socketClient
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
@@ -148,5 +148,34 @@ describe "Dementor", ->
     it "should start watching the project"
 
   describe "receiving REQUEST_FILE message", ->
-    it "should reply with file body"
+    dementor = null
+    projectPath = projectFiles = null
+    filePath = fileBody = null
+    before (done) ->
+      projectPath = fileUtils.createProject "cleesh", fileUtils.defaultFileMap
+      filePath = "dir2/moderateFile"
+      fileBody = fileUtils.defaultFileMap.dir2.moderateFile
+      projectFiles = new ProjectFiles projectPath
+
+      #XXX: This is a little hacky.  Find a better solution.
+      mockSocket.addFileMessage = null
+      socketClient = new SocketClient mockSocket
+      
+      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      dementor.enable (err, flag) ->
+        assert.equal err, null
+        console.log "Running callback received flag: #{flag}"
+        if flag == 'READ_FILETREE'
+          done()
+
+    it "should reply with file body fweep", (done) ->
+      fileId = dementor.fileTree.findByPath(filePath)._id
+      message = messageMaker.requestFileMessage fileId
+      mockSocket.callbacks[message.id] = (msg) ->
+        assert.equal msg.projectId, dementor.projectId
+        assert.equal msg.data.fileId, fileId
+        assert.equal msg.data.body, fileBody
+        done()
+      mockSocket.receive message
+      
 
