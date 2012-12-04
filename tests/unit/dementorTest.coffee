@@ -16,6 +16,22 @@ _path = require 'path'
 
 homeDir = fileUtils.homeDir
 
+mockSocket = new MockSocket
+  onsend: (message) ->
+    switch message.action
+      when messageAction.HANDSHAKE
+        @handshakeReceived = true
+        replyMessage = messageMaker.replyMessage message
+        @receive replyMessage
+      when messageAction.ADD_FILES
+        assert.ok @handshakeReceived, "Must handshake before adding files."
+        @addFileMessage = fileUtils.clone message
+        file._id = uuid.v4() for file in message.data.files
+        replyMessage = messageMaker.replyMessage message, files: message.data.files
+        console.log "Replying to add files message."
+        @receive replyMessage
+      else assert.fail "Unexpected action received by socket: #{message.action}"
+
 describe "Dementor", ->
   describe "constructor", ->
     registeredDir = fileUtils.testProjectDir 'alreadyRegistered'
@@ -40,6 +56,8 @@ describe "Dementor", ->
       dementor = new Dementor projectPath
       assert.equal dementor.projectId, null
 
+    it "should persist projectIdacross multliple dementor instances"
+
   describe "enable", ->
     dementor = null
     projectPath = null
@@ -47,10 +65,10 @@ describe "Dementor", ->
     before ->
       projectFiles = new ProjectFiles
       projectPath = fileUtils.createProject "unenabled"
-      socketClient = new SocketClient new MockSocket
+      socketClient = new SocketClient mockSocket
       dementor = new Dementor projectPath, null, socketClient
 
-    it "should register the project if not already registered", (done) ->
+    it "should register the project if not already registered fweep", (done) ->
       projectId = uuid.v4()
       dementor.httpClient = new MockHttpClient (action, params) ->
         if action == 'init'
@@ -58,12 +76,14 @@ describe "Dementor", ->
         else
           return {error: "Wrong action."}
 
-      dementor.enable (err) ->
+      dementor.enable (err, flag) ->
         assert.equal err, null
-        assert.ok dementor.projectId
-        done()
+        console.log "Running callback received flag: #{flag}"
+        if flag == 'ENABLED'
+          assert.ok dementor.projectId
+          done()
 
-    it "should not register the project if already registered fweep", (done) ->
+    it "should not register the project if already registered", (done) ->
       projectId = uuid.v4()
       projects = {}
       projects[projectPath] = projectId
@@ -71,17 +91,23 @@ describe "Dementor", ->
       dementor.httpClient = new MockHttpClient (action, params) ->
         assert.fail "Should not call httpClient"
 
-      dementor.enable (err) ->
+      dementor.enable (err, flag) ->
         if err then console.warn "Received error: #{err}"
         assert.equal err, null, "Socket should not return an error"
-        assert.ok dementor.projectId
-        done()
+        console.log "Running callback received flag: #{flag}"
+        if flag == 'ENABLED'
+          assert.ok dementor.projectId
+          done()
 
+    it "should not allow two dementors to monitor the same directory"
+
+    it "should not allow a dementor to watch a subdir of an existing dementors territory"
+
+        
   describe "watchProject", ->
     dementor = null
     projectPath = null
     projectFiles = null
-    addFileMessage = null
     before (done) ->
       projectPath = fileUtils.createProject "tinsot", fileUtils.defaultFileMap
       projectFiles = new ProjectFiles projectPath
@@ -92,28 +118,20 @@ describe "Dementor", ->
         else
           return {error: "Wrong action."}
 
-      socket = new MockSocket
-        onsend: (message) ->
-          switch message.action
-            when messageAction.HANDSHAKE
-              @handshakeReceived = true
-            when messageAction.ADD_FILES
-              assert.ok @handshakeReceived, "Must handshake before adding files."
-              addFileMessage = fileUtils.clone message
-              file._id = uuid.v4() for file in message.data.files
-              replyMessage = messageMaker.replyMessage message, files: message.data.files
-              @receive replyMessage
-            else assert.fail "Unexpected action received by socket: #{message.action}"
-      socketClient = new SocketClient socket
+      #XXX: This is a little hacky.  Find a better solution.
+      mockSocket.addFileMessage = null
+      socketClient = new SocketClient mockSocket
       
       dementor = new Dementor projectPath, httpClient, socketClient
-      dementor.enable (err) ->
+      dementor.enable (err, flag) ->
         assert.equal err, null
-        done()
+        console.log "Running callback received flag: #{flag}"
+        if flag == 'READ_FILETREE'
+          done()
 
     it "should send a project's file tree to azkaban via socket", ->
-      assert.ok addFileMessage
-      files = addFileMessage.data.files
+      assert.ok mockSocket.addFileMessage
+      files = mockSocket.addFileMessage.data.files
       for file in files
         assert.ok file.isDir?
         assert.ok file.path?
@@ -121,7 +139,7 @@ describe "Dementor", ->
     it "should construct fileTree on azakban's response", ->
       assert.ok dementor.fileTree
       files = dementor.fileTree.files
-      assert.equal files.length, addFileMessage.data.files.length
+      assert.equal files.length, mockSocket.addFileMessage.data.files.length
       for file in files
         assert.ok file.isDir?
         assert.ok file.path?

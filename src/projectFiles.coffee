@@ -99,8 +99,7 @@ class ProjectFiles
       #console.log "Read file tree and found", results
     catch error
       console.warn "Found error:", error
-      @handleError error, null, callback
-      return
+      @handleError error, null, callback; return
     callback null, results
 
   #callback = (err, event) ->

@@ -128,7 +128,7 @@ describe 'ProjectFiles', ->
         assert.deepEqual results, []
         done()
 
-    it 'should correctly serialize directory with one file fweep', (done) ->
+    it 'should correctly serialize directory with one file', (done) ->
       projectDir = fileUtils.createProject "oneFile",
         readme: "nothing important here"
       projectFiles = new ProjectFiles projectDir
@@ -218,3 +218,19 @@ describe 'ProjectFiles', ->
 
 
   #TODO: Write event handlers for watchFileTree
+  describe "watchFileTree", ->
+    it "should notice when i change a file"
+
+    it "should notice when i delete a file"
+
+    it "should notice when i add a file"
+
+    it "should not noice imgages"
+
+    it "should ignore the .git directory"
+
+    it "should ignore the contents of the .gitignore or should it?"
+
+    it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
+
+

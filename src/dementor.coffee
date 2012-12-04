@@ -13,70 +13,91 @@ class Dementor
     @socketClient?.controller = new MessageController this
 
   handleError: (err) ->
+    return unless err?
     console.error "Error:", err
-    @runningCallback? err
+    @runningCallback err
 
   #callback: (err) ->
   enable: (@runningCallback) ->
     unless @projectId
-      @registerProject (err, projectId) =>
-        @socketClient.projectId = projectId
-        @watchProject @runningCallback
-        @runningCallback err
+      @registerProject (err) =>
+        @handleError err
+        @finishEnabling()
     else
-      @socketClient.projectId = @projectId
-      @watchProject @runningCallback
-      @runningCallback()
-      
+      @finishEnabling()
+
   registerProject: (callback) ->
     console.log "fetching ID from server"
     @httpClient.post {action:'init'}, (result) =>
-      console.log "received a result from init."
       if result.error
         console.error "Received error from server:" + result.error
-        @handleError result.error
+        callback result.error
       else
-        console.log "Received result from server:", result
+        console.log "Received init result from server:", result
         @projectId = result.id
-        callback?()
+        callback()
 
+  finishEnabling: ->
+    @runningCallback null, 'ENABLED'
+    console.log "Sending handshake."
+    @handshake (err, replyMessage) =>
+      console.log "Receiving handshake reply:", replyMessage
+      if err
+        @handleError err
+      else
+        @runningCallback null, 'HANDSHAKE_RECEIVED'
+        @watchProject()
+
+  #callback : (err, replyMessage) -> ...
   handshake: (callback) ->
     @socketClient.projectId = @projectId
     @socketClient.send messageMaker.handshakeMessage(), callback
 
-  #callback: (err) ->
-  watchProject: (callback) ->
-    @handshake @runningCallback
+  watchProject: ->
     console.log "Reading filetree"
     @projectFiles.readFileTree (err, results) =>
-      if err? then callback? err; return
+      @handleError err
       @handleFileEvent {
         type: fileEventType.ADD
         data:
           files: results
-      }, callback
-    @projectFiles.watchFileTree (err, event) =>
-      callback? err if err?
-      @handleFileEvent event
+      }, () =>
+        @runningCallback null, 'READ_FILETREE'
+      @projectFiles.watchFileTree (err, event) =>
+        @handleError err
+        @handleFileEvent event
 
+  #callback: () -> ... optional, for additional hooks.
   handleFileEvent: (event, callback) ->
     return unless event
     #console.log "Calling handleFileEvent with event", event
     try
       switch event.type
         when fileEventType.PREEXISTED then "file already read by readFileTree."
-        when fileEventType.ADD then @onAddFileEvent(event, callback)
+        when fileEventType.ADD then @onAddFileEvent event, callback
         else throw new Error "Unrecognized event action: #{event.action}"
     catch err
       @handleError err
 
-  #callback : (err) -> ...
+  #callback : () -> ...
   onAddFileEvent : (event, callback) ->
     console.log "Calling onFileEvent ADD"
     addFilesMessage = messageMaker.addFilesMessage(event.data.files)
     @socketClient.send addFilesMessage, (err, result) =>
-      if err then @handleError err; return
+      @handleError err
       @fileTree.setFiles result.data.files
       console.log "Set fileTree files"
+      callback?()
+
+
+  #####
+  # Incoming message methods
+  # errors should *NOT* be sent to @handleError, they
+  # should be returned to be encoded as a message to
+  # Azkaban
+
+  #callback : (err, body) ->
+  getFileContents : (fileId, callback) ->
+
 
 exports.Dementor = Dementor

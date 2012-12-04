@@ -7,12 +7,10 @@ querystring = require 'querystring'
 #callback: (body) ->; takes an obj (parsed from JSON) body
 #errors are passed as an {error:} object
 class HttpClient
-  constructor: ->
-    @hostname = Settings.httpHost
-    @port = Settings.httpPort
+  constructor: (@host) ->
 
   targetUrl: (action) ->
-    "http://#{@hostname}:#{@port}/#{action}"
+    "http://#{@host}/#{action}"
 
   #callback : (body) ->
   #errors are encoded as body={error:}

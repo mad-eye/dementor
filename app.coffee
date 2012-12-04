@@ -1,7 +1,7 @@
 {Dementor} = require('./dementor.coffee')
-{AzkabanConnection, MessageController} = require('./azkabanConnection.coffee')
-{HttpClient} = require('./httpClient.coffee')
-{FileTree, File, SocketClient} = require('madeye-common')
+{MessageController} = require('./src/messageController')
+{HttpClient} = require('./src/httpClient')
+{SocketClient} = require('madeye-common')
 {Settings} = require('./Settings')
 
 fileTree = undefined
@@ -24,11 +24,16 @@ run = ->
   else
     server = "#{Settings.httpHost}:#{Settings.httpPort}"
 
-
-  dementor = new Dementor process.cwd()
+  httpClient = new HttpClient server
+  socketClient = new SocketClient null, new MessageController
+  
+  dementor = new Dementor process.cwd(), httpClient, socketClient
   try
-    dementor.enable (err) ->
-      throw new Error err if err
+    dementor.enable (err, flag) ->
+      if err
+        throw new Error err
+      else
+        console.log "Dementor received flag: #{flag}"
   catch error
     handleError error
 
