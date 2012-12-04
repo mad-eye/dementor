@@ -1,16 +1,7 @@
-{Settings} = require './Settings'
+{Settings} = require '../Settings'
 _ = require 'underscore'
 request = require 'request'
-
-#TODO use this? http://nodejs.org/api/querystring.html
-makeQueryString = (params) ->
-  return "" unless params? and _.size(params)
-  str = ""
-  for k, v of params
-    str += "&" if str
-    str += k
-    str += "=#{v}" if v?
-  return "?" + str
+querystring = require 'querystring'
 
 
 #callback: (body) ->; takes an obj (parsed from JSON) body
@@ -23,7 +14,12 @@ class HttpClient
   targetUrl: (action) ->
     "http://#{@hostname}:#{@port}/#{action}"
 
-  post: (options, callback) ->
+  #callback : (body) ->
+  #errors are encoded as body={error:}
+  post: (options, params, callback) ->
+    if typeof params == 'function'
+      callback = params
+      params = {}
     options.uri =  @targetUrl (options['action'] ? '')
     delete options['action']
     request.post options, (err, res, body) ->
@@ -35,10 +31,15 @@ class HttpClient
         body = JSON.parse(body)
       callback(body)
 
+  #callback : (body) ->
+  #errors are encoded as body={error:}
   get: (options, params, callback) ->
+    if typeof params == 'function'
+      callback = params
+      params = {}
     options.uri =  @targetUrl (options['action'] ? '')
     delete options['action']
-    options.qs = makeQueryString params
+    options.qs = querystring.stringify params
     request.get options, (err, res, body) ->
       if err
         body = {error:err.message}

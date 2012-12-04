@@ -105,10 +105,18 @@ class ProjectFiles
   #callback = (err, event) ->
   watchFileTree: (callback) ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
-    @watcher.on "filePreexisted", (path)->
-      callback "preexisted", [{path: path}]
+    @watcher.on "filePreexisted", (path) ->
+      event =
+        type:'preexisted'
+        data:
+          files: [path]
+      callback null, event
     @watcher.on "fileCreated", (path)->
-      callback "add", [{path: path}]
+      event =
+        type:'add'
+        data:
+          files: [path]
+      callback null, event
     @watcher.on "fileModified", (path)->
       fs.readFile path, "utf-8", (err, data)->
         callback "edit", [{path: path, data: data}]
