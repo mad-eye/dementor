@@ -2,7 +2,7 @@
 {MessageController} = require('./src/messageController')
 {HttpClient} = require('./src/httpClient')
 {SocketClient} = require('madeye-common')
-{Settings} = require('./Settings')
+{Settings} = require('madeye-common')
 
 fileTree = undefined
 
