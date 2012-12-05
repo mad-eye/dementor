@@ -82,6 +82,7 @@ class Dementor
     console.log "Calling onFileEvent ADD"
     addFilesMessage = messageMaker.addFilesMessage(event.data.files)
     @socketClient.send addFilesMessage, (err, result) =>
+      console.log "Returning from addFiles with result:", result
       @handleError err
       @fileTree.setFiles result.data.files
       callback?()
@@ -95,7 +96,7 @@ class Dementor
 
   #callback : (err, body) ->
   getFileContents : (fileId, callback) ->
-    path = @fileTree.findById(fileId).path
+    path = @fileTree.findById(fileId)?.path
     @projectFiles.readFile path, callback
 
 

@@ -1,8 +1,10 @@
 errorType =
+  NULL : 'NULL'
   NO_FILE : 'NO_FILE'
   IS_DIR : 'IS_DIR'
 
 errorMessage =
+  NULL : 'Null identifier'
   NO_FILE : 'File not found'
   IS_DIR : 'Illegal operation on a directory.'
 

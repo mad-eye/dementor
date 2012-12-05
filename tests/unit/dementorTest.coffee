@@ -10,6 +10,7 @@ _path = require 'path'
 {MockSocket} = require 'madeye-common'
 {SocketClient} = require 'madeye-common'
 {messageMaker, messageAction} = require 'madeye-common'
+{errorType} = require '../../src/errors'
 
 
 #TODO: Reduce redundancy with better before/etc hooks.
@@ -168,14 +169,25 @@ describe "Dementor", ->
         if flag == 'READ_FILETREE'
           done()
 
-    it "should reply with file body fweep", (done) ->
+    it "should reply with file body", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
       message = messageMaker.requestFileMessage fileId
       mockSocket.callbacks[message.id] = (msg) ->
+        assert.equal msg.error, null
         assert.equal msg.projectId, dementor.projectId
         assert.equal msg.data.fileId, fileId
         assert.equal msg.data.body, fileBody
         done()
       mockSocket.receive message
+
+    #FIXME: Mock socket is not registering callbacks correctly.
+    it "should give correct error message if no file exists"#, (done) ->
+      #message = messageMaker.requestFileMessage uuid.v4()
+      #mockSocket.callbacks[message.id] = (msg) ->
+      #  console.log "Found message in fweep:", msg
+      #  assert.ok msg.error
+      #  assert.equal msg.error.type, errorType.NO_FILE
+      #  done()
+      #mockSocket.receive message
       
 

@@ -20,12 +20,15 @@ class MessageController
 
   requestLocalFile: (message, callback) ->
     console.log "Request local file:", message
+    #TODO: Replace with errors.MISSING_FIELD error
     unless message.fileId then callback new Error "Message does not contain fileId"; return
     @dementor.getFileContents message.fileId, (err, body) ->
+      if err then console.warn "Found getFileContents error:", err
       if err then callback err; return
       replyMessage = messageMaker.replyMessage message,
         fileId: message.fileId
         body: body
+      console.log "Returning file body with message:", replyMessage
       callback null, replyMessage
 
   addLocalFiles: (message, callback) ->
