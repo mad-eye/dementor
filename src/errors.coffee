@@ -1,10 +1,10 @@
 errorType =
-  NULL : 'NULL'
+  MISSING_PARAM : 'MISSING_PARAM'
   NO_FILE : 'NO_FILE'
   IS_DIR : 'IS_DIR'
 
 errorMessage =
-  NULL : 'Null identifier'
+  MISSING_PARAM : 'Required parameter is missing.'
   NO_FILE : 'File not found'
   IS_DIR : 'Illegal operation on a directory.'
 

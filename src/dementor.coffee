@@ -82,7 +82,6 @@ class Dementor
     console.log "Calling onFileEvent ADD"
     addFilesMessage = messageMaker.addFilesMessage(event.data.files)
     @socketClient.send addFilesMessage, (err, result) =>
-      console.log "Returning from addFiles with result:", result
       @handleError err
       @fileTree.setFiles result.data.files
       callback?()

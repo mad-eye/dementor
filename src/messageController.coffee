@@ -19,9 +19,8 @@ class MessageController
       else callback? new Error("Unknown action: " + message.action)
 
   requestLocalFile: (message, callback) ->
-    console.log "Request local file:", message
-    #TODO: Replace with errors.MISSING_FIELD error
-    unless message.fileId then callback new Error "Message does not contain fileId"; return
+    #console.log "Request local file:", message
+    unless message.fileId then callback errors.new 'MISSING_PARAM'
     @dementor.getFileContents message.fileId, (err, body) ->
       if err then console.warn "Found getFileContents error:", err
       if err then callback err; return

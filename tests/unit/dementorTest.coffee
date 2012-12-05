@@ -19,23 +19,27 @@ homeDir = fileUtils.homeDir
 
 mockSocket = new MockSocket
   onsend: (message) ->
-    if message.error
+    if message.action == messageAction.REPLY
+      #need to do this first, to prevent triggering an error
+      #if we are testing a reply that's an error
+      console.log "Getting reply to #{message.replyTo}"
+      callback = @callbacks[message.replyTo]
+      callback?(message)
+    else if message.error
       assert.fail "Received error message:", message
-    switch message.action
-      when messageAction.HANDSHAKE
-        @handshakeReceived = true
-        replyMessage = messageMaker.replyMessage message
-        @receive replyMessage
-      when messageAction.ADD_FILES
-        assert.ok @handshakeReceived, "Must handshake before adding files."
-        @addFileMessage = fileUtils.clone message
-        file._id = uuid.v4() for file in message.data.files
-        replyMessage = messageMaker.replyMessage message, files: message.data.files
-        @receive replyMessage
-      when messageAction.REPLY
-        callback = @callbacks[message.replyTo]
-        callback?(message)
-      else assert.fail "Unexpected action received by socket: #{message.action}"
+    else
+      switch message.action
+        when messageAction.HANDSHAKE
+          @handshakeReceived = true
+          replyMessage = messageMaker.replyMessage message
+          @receive replyMessage
+        when messageAction.ADD_FILES
+          assert.ok @handshakeReceived, "Must handshake before adding files."
+          @addFileMessage = fileUtils.clone message
+          file._id = uuid.v4() for file in message.data.files
+          replyMessage = messageMaker.replyMessage message, files: message.data.files
+          @receive replyMessage
+        else assert.fail "Unexpected action received by socket: #{message.action}"
 
 defaultHttpClient = new MockHttpClient (action, params) ->
   if action == 'init'
@@ -181,13 +185,12 @@ describe "Dementor", ->
       mockSocket.receive message
 
     #FIXME: Mock socket is not registering callbacks correctly.
-    it "should give correct error message if no file exists"#, (done) ->
-      #message = messageMaker.requestFileMessage uuid.v4()
-      #mockSocket.callbacks[message.id] = (msg) ->
-      #  console.log "Found message in fweep:", msg
-      #  assert.ok msg.error
-      #  assert.equal msg.error.type, errorType.NO_FILE
-      #  done()
-      #mockSocket.receive message
+    it "should give correct error message if no file exists", (done) ->
+      message = messageMaker.requestFileMessage uuid.v4()
+      mockSocket.callbacks[message.id] = (msg) ->
+        assert.ok msg.error
+        assert.equal msg.error.type, errorType.NO_FILE
+        done()
+      mockSocket.receive message
       
 
