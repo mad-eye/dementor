@@ -37,7 +37,7 @@ class MessageController
       if err then callback err; return
       #Confirm success.
       replyMessage = messageMaker.replyMessage message
-      console.log "Returning file body with message:", replyMessage
+      console.log "Returning saveFile confirmation with message:", replyMessage
       callback null, replyMessage
 
   addLocalFiles: (message, callback) ->
