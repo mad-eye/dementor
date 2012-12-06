@@ -121,10 +121,12 @@ class ProjectFiles
           files: [path]
       callback null, event
     @watcher.on "fileModified", (path)->
-      fs.readFile path, "utf-8", (err, data)->
-        callback "edit", [{path: path, data: data}]
+      console.log "fileModified: #{path}"
+      #fs.readFile path, "utf-8", (err, data)->
+        #callback "edit", [{path: path, data: data}]
     @watcher.on "fileDeleted", (path)->
-      callback "delete", [{path: path}]
+      console.log "fileDeleted: #{path}"
+      #callback "delete", [{path: path}]
 
 
 
