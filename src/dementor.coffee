@@ -2,7 +2,7 @@
 {FileTree} = require 'madeye-common'
 {HttpClient} = require './httpClient'
 {SocketClient} = require 'madeye-common'
-{MessageController} = require './MessageController'
+{MessageController} = require './messageController'
 {messageMaker, messageAction} = require 'madeye-common'
 
 #XXX: Check that project ids are written
