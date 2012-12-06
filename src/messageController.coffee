@@ -12,22 +12,31 @@ class MessageController
     #TODO: Replace these with appropriate messageAction constants.
     switch message.action
       when messageAction.REQUEST_FILE then @requestLocalFile message, callback
-      when 'change' then @changeLocalFiles message, callback
-      when 'add' then @addLocalFiles message, callback
-      when 'remove' then @removeLocalFiles message, callback
+      when messageAction.SAVE_FILE then @saveLocalFile message, callback
       when messageAction.REPLY then "Callback should have handled it"
       else callback? new Error("Unknown action: " + message.action)
 
   requestLocalFile: (message, callback) ->
-    console.log "Request local file:", message
-    #TODO: Replace with errors.MISSING_FIELD error
-    unless message.fileId then callback new Error "Message does not contain fileId"; return
+    #console.log "Request local file:", message
+    unless message.fileId then callback errors.new 'MISSING_PARAM'; return
     @dementor.getFileContents message.fileId, (err, body) ->
       if err then console.warn "Found getFileContents error:", err
       if err then callback err; return
       replyMessage = messageMaker.replyMessage message,
         fileId: message.fileId
         body: body
+      console.log "Returning file body with message:", replyMessage
+      callback null, replyMessage
+
+  saveLocalFile: (message, callback) ->
+    console.log "Saving local file:", message
+    unless message.data.fileId || message.data.contents
+      callback errors.new 'MISSING_PARAM'; return
+    @dementor.saveFileContents message.data.fileId, message.data.contents, (err) ->
+      if err then console.warn "Found saveFileContents error:", err
+      if err then callback err; return
+      #Confirm success.
+      replyMessage = messageMaker.replyMessage message
       console.log "Returning file body with message:", replyMessage
       callback null, replyMessage
 

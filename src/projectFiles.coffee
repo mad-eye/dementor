@@ -46,11 +46,11 @@ class ProjectFiles
   readFile: (filePath, options={}, callback) ->
     if typeof options == 'function'
       callback = options
-      options = false
+      options = {}
     unless filePath then callback errors.new 'NO_FILE'; return
     filePath = _path.join @directory, filePath unless options.absolute
     try
-      console.log "Reading filepath", filePath
+      #console.log "Reading filepath", filePath
       contents = fs.readFileSync(filePath, "utf-8")
       if options.sync then return contents else callback?(null, contents)
     catch error
@@ -61,7 +61,8 @@ class ProjectFiles
   writeFile: (filePath, contents, options={}, callback) ->
     if typeof options == 'function'
       callback = options
-      options = false
+      options = {}
+    unless filePath then callback errors.new 'NO_FILE'; return
     filePath = _path.join @directory, filePath unless options.absolute
     try
       fs.writeFileSync filePath, contents
