@@ -13,7 +13,7 @@ fileUtils =
   mkDirClean : (dir) ->
     if fs.existsSync dir
       wrench.rmdirSyncRecursive(dir)
-    fs.mkdirSync dir
+    wrench.mkdirSyncRecursive dir
 
 
   testProjectDir: (projName) ->
