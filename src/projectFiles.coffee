@@ -46,7 +46,7 @@ class ProjectFiles
   readFile: (filePath, options={}, callback) ->
     if typeof options == 'function'
       callback = options
-      options = false
+      options = {}
     unless filePath then callback errors.new 'NO_FILE'; return
     filePath = _path.join @directory, filePath unless options.absolute
     try
@@ -61,7 +61,8 @@ class ProjectFiles
   writeFile: (filePath, contents, options={}, callback) ->
     if typeof options == 'function'
       callback = options
-      options = false
+      options = {}
+    unless filePath then callback errors.new 'NO_FILE'; return
     filePath = _path.join @directory, filePath unless options.absolute
     try
       fs.writeFileSync filePath, contents

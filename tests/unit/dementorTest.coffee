@@ -181,10 +181,10 @@ describe "Dementor", ->
         assert.equal msg.projectId, dementor.projectId
         assert.equal msg.data.fileId, fileId
         assert.equal msg.data.body, fileBody
+        assert.equal msg.replyTo, message.id
         done()
       mockSocket.receive message
 
-    #FIXME: Mock socket is not registering callbacks correctly.
     it "should give correct error message if no file exists", (done) ->
       message = messageMaker.requestFileMessage uuid.v4()
       mockSocket.callbacks[message.id] = (msg) ->
@@ -193,4 +193,49 @@ describe "Dementor", ->
         done()
       mockSocket.receive message
       
+  describe "receiving SAVE_FILE message", ->
+    dementor = null
+    projectPath = projectFiles = null
+    filePath = null
+    fileBody = "Two great swans eat the frogs."
+    before (done) ->
+      projectPath = fileUtils.createProject "cleesh", fileUtils.defaultFileMap
+      filePath = "dir2/moderateFile"
+      projectFiles = new ProjectFiles projectPath
 
+      socketClient = new SocketClient mockSocket
+      
+      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      dementor.enable (err, flag) ->
+        assert.equal err, null
+        console.log "Running callback received flag: #{flag}"
+        if flag == 'READ_FILETREE'
+          done()
+
+
+    it "should reply no error fweep", (done) ->
+      fileId = dementor.fileTree.findByPath(filePath)._id
+      message = messageMaker.saveFileMessage fileId, fileBody
+      mockSocket.callbacks[message.id] = (msg) ->
+        assert.equal msg.error, null, "Should not have an error."
+        assert.equal msg.projectId, dementor.projectId
+        assert.equal msg.replyTo, message.id
+        done()
+      mockSocket.receive message
+
+    it "should save file contents to projectFiles", (done) ->
+      fileId = dementor.fileTree.findByPath(filePath)._id
+      message = messageMaker.saveFileMessage fileId, fileBody
+      mockSocket.callbacks[message.id] = (msg) ->
+        readContents = projectFiles.readFile(filePath, sync:true)
+        assert.equal readContents, fileBody
+        done()
+      mockSocket.receive message
+
+    it "should give correct error message if no file exists", (done) ->
+      message = messageMaker.saveFileMessage uuid.v4(), fileBody
+      mockSocket.callbacks[message.id] = (msg) ->
+        assert.ok msg.error
+        assert.equal msg.error.type, errorType.NO_FILE
+        done()
+      mockSocket.receive message

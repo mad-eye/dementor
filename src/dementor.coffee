@@ -98,5 +98,10 @@ class Dementor
     path = @fileTree.findById(fileId)?.path
     @projectFiles.readFile path, callback
 
+  #callback : (err) -> ...
+  saveFileContents : (fileId, contents, callback) ->
+    path = @fileTree.findById(fileId)?.path
+    @projectFiles.writeFile path, contents, callback
+
 
 exports.Dementor = Dementor
