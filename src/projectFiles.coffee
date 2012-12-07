@@ -1,6 +1,7 @@
 fs = require "fs"
 _path = require "path"
 {errors} = require './errors'
+_ = require 'underscore'
 
 fileEventType =
   ADD : 'add'
@@ -94,12 +95,22 @@ class ProjectFiles
       #console.log "Found no projectfile."
       {}
 
+  filter: (path) ->
+    return false unless path?
+    return false if trim(path) == ''
+    return false if path[path.length-1] == '~'
+    components = path.split '/'
+    return false if '.git' in components
+    return false if 'node_modules' in components
+    return true
+
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
     results = null
     try
       results = readdirSyncRecursive @directory
-      #console.log "Read file tree and found", results
+      results = _.filter results, (result) =>
+        @filter result.path
     catch error
       console.warn "Found error:", error
       @handleError error, null, callback; return
@@ -121,19 +132,21 @@ class ProjectFiles
           files: [path]
       callback null, event
     @watcher.on "fileModified", (path)->
-      console.log "fileModified: #{path}"
+      #console.log "fileModified: #{path}"
       #fs.readFile path, "utf-8", (err, data)->
         #callback "edit", [{path: path, data: data}]
     @watcher.on "fileDeleted", (path)->
-      console.log "fileDeleted: #{path}"
+      #console.log "fileDeleted: #{path}"
       #callback "delete", [{path: path}]
 
 
+trim = (str) ->
+  return str.replace /(^\s*)|(\s*$)/g
 
 # based on a similar fucntion found in wrench
 # https://github.com/ryanmcgrath/wrench-js
 # but with an added isDir field
-readdirSyncRecursive = (baseDir) ->
+readdirSyncRecursive = (baseDir, filter) ->
   files = []
   nextDirs = []
   newFiles = []
