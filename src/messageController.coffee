@@ -17,7 +17,6 @@ class MessageController
       else callback? new Error("Unknown action: " + message.action)
 
   requestLocalFile: (message, callback) ->
-    #console.log "Request local file:", message
     unless message.fileId then callback errors.new 'MISSING_PARAM'; return
     @dementor.getFileContents message.fileId, (err, body) ->
       if err then console.warn "Found getFileContents error:", err
@@ -25,11 +24,9 @@ class MessageController
       replyMessage = messageMaker.replyMessage message,
         fileId: message.fileId
         body: body
-      console.log "Returning file body with message:", replyMessage
       callback null, replyMessage
 
   saveLocalFile: (message, callback) ->
-    console.log "Saving local file:", message
     unless message.data.fileId || message.data.contents
       callback errors.new 'MISSING_PARAM'; return
     @dementor.saveFileContents message.data.fileId, message.data.contents, (err) ->
@@ -37,7 +34,6 @@ class MessageController
       if err then callback err; return
       #Confirm success.
       replyMessage = messageMaker.replyMessage message
-      console.log "Returning saveFile confirmation with message:", replyMessage
       callback null, replyMessage
 
   addLocalFiles: (message, callback) ->

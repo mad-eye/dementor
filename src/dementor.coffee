@@ -30,7 +30,6 @@ class Dementor
   #TODO: disable:
  
   registerProject: (callback) ->
-    console.log "fetching ID from server"
     @httpClient.post {action:'init'}, (result) =>
       if result.error
         console.error "Received error from server:" + result.error
@@ -41,7 +40,6 @@ class Dementor
 
   finishEnabling: ->
     @runningCallback null, 'ENABLED'
-    console.log "Sending handshake."
     @handshake (err, replyMessage) =>
       @handleError err
       @runningCallback null, 'HANDSHAKE_RECEIVED'
@@ -79,7 +77,7 @@ class Dementor
 
   #callback : () -> ...
   onAddFileEvent : (event, callback) ->
-    console.log "Calling onFileEvent ADD"
+    #console.log "Calling onFileEvent ADD"
     addFilesMessage = messageMaker.addFilesMessage(event.data.files)
     @socketClient.send addFilesMessage, (err, result) =>
       @handleError err

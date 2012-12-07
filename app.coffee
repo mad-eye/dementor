@@ -3,6 +3,7 @@
 {HttpClient} = require('./src/httpClient')
 {SocketClient} = require('madeye-common')
 {Settings} = require('madeye-common')
+util = require 'util'
 
 fileTree = undefined
 
@@ -29,12 +30,16 @@ run = ->
   
   dementor = new Dementor process.cwd(), httpClient, socketClient
   try
+    util.print "Enabling MadEye... "
     dementor.enable (err, flag) ->
       if err then handleError err; return
-      console.log "Dementor received flag: #{flag}"
+      util.puts "view your project at #{makeUrl dementor.projectId}" if flag == 'ENABLED'
+      console.log "[Dementor received flag: #{flag}]"
   catch error
     handleError error
 
+makeUrl = (projectId) ->
+  "http://#{Settings.apogeeHost}:#{Settings.apogeePort}/edit/#{projectId}"
 
 handleError = (err) ->
   console.error "Error received:", err
