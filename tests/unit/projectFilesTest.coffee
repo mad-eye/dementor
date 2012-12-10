@@ -134,10 +134,10 @@ describe 'ProjectFiles', ->
       projectFiles = new ProjectFiles projectDir
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.ok results, "readFileTree should return true results."
         assert.deepEqual results, [
           isDir: false
-          path: ".test_area/oneFile/readme"
+          path: "readme"
         ]
         done()
 
@@ -148,12 +148,12 @@ describe 'ProjectFiles', ->
       projectFiles = new ProjectFiles projectDir
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.ok results, "readFileTree should return true results."
         assert.deepEqual results, [
           {isDir: false
-          path: ".test_area/twoFile/app.js"},
+          path: "app.js"},
           {isDir: false
-          path: ".test_area/twoFile/readme"}
+          path: "readme"}
         ]
         done()
       
@@ -169,22 +169,42 @@ describe 'ProjectFiles', ->
       projectFiles = new ProjectFiles projectDir
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.ok results, "readFileTree should return true results."
         assert.deepEqual results, [
           {isDir: false
-          path: ".test_area/manyFiles/app.js"},
+          path: "app.js"},
           {isDir: true
-          path: ".test_area/manyFiles/dir1"},
+          path: "dir1"},
           {isDir: true
-          path: ".test_area/manyFiles/dir1/dir2"},
+          path: "dir1/dir2"},
           {isDir: true
-          path: ".test_area/manyFiles/dir1/dir2/dir3"},
+          path: "dir1/dir2/dir3"},
           {isDir: false
-          path: ".test_area/manyFiles/dir1/dir2/ninja_turtles"},
+          path: "dir1/dir2/ninja_turtles"},
           {isDir: false
-          path: ".test_area/manyFiles/readme"}
+          path: "readme"}
         ]
         done()
+
+    it 'should give relative, not absolute, paths', (done) ->
+      projectDir = fileUtils.createProject "relPaths",
+        readme: "nothing important here"
+        dir1:
+          afile: "totally cool"
+      projectFiles = new ProjectFiles projectDir
+      projectFiles.readFileTree (err, results) ->
+        assert.equal err, null, "Should not have returned an error."
+        assert.ok results, "readFileTree should return true results."
+        assert.deepEqual results, [
+          {isDir: true
+          path: "dir1"},
+          {isDir: false
+          path: "dir1/afile"},
+          {isDir: false
+          path: "readme"}
+        ]
+        done()
+
 
   describe "projectIds", ->
     projects = projectFiles = null

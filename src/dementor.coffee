@@ -5,7 +5,6 @@
 {MessageController} = require './messageController'
 {messageMaker, messageAction} = require 'madeye-common'
 
-#XXX: Check that project ids are written
 class Dementor
   constructor: (@directory, @httpClient, @socketClient) ->
     @projectFiles = new ProjectFiles(@directory)
@@ -18,7 +17,7 @@ class Dementor
     console.error "Error:", err
     @runningCallback err
 
-  #callback: (err) ->
+  #callback: (err, flag) ->
   enable: (@runningCallback) ->
     unless @projectId
       @registerProject (err) =>

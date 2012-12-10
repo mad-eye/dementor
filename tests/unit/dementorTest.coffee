@@ -213,7 +213,7 @@ describe "Dementor", ->
           done()
 
 
-    it "should reply no error fweep", (done) ->
+    it "should reply no error", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
       message = messageMaker.saveFileMessage fileId, fileBody
       mockSocket.callbacks[message.id] = (msg) ->

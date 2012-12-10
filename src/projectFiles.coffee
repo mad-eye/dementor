@@ -30,6 +30,7 @@ fileEventType =
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles
   constructor: (@directory) ->
+    console.log "Constructing projectFiles with directory #{@directory}"
 
   handleError: (error, options={}, callback) ->
     newError = null
@@ -97,7 +98,6 @@ class ProjectFiles
 
   filter: (path) ->
     return false unless path?
-    return false if trim(path) == ''
     return false if path[path.length-1] == '~'
     components = path.split '/'
     return false if '.git' in components
@@ -139,30 +139,27 @@ class ProjectFiles
       #console.log "fileDeleted: #{path}"
       #callback "delete", [{path: path}]
 
-
-trim = (str) ->
-  return str.replace /(^\s*)|(\s*$)/g
-
 # based on a similar fucntion found in wrench
 # https://github.com/ryanmcgrath/wrench-js
 # but with an added isDir field
-readdirSyncRecursive = (baseDir, filter) ->
+readdirSyncRecursive = (rootDir, relativeDir) ->
   files = []
   nextDirs = []
   newFiles = []
+  currentDir = _path.join rootDir, relativeDir
   isDir = (fname) ->
-    fs.statSync( _path.join(baseDir, fname) ).isDirectory()
+    fs.statSync( _path.join(currentDir, fname) ).isDirectory()
   prependBaseDir = (fname) ->
-    _path.join baseDir, fname
+    _path.join relativeDir, fname
 
-  curFiles = fs.readdirSync(baseDir)
+  curFiles = fs.readdirSync(currentDir)
   nextDirs.push(file) for file in curFiles when isDir(file)
   newFiles.push {isDir: file in nextDirs , path: prependBaseDir(file)} for file in curFiles
 
   files = files.concat newFiles if newFiles
 
   while nextDirs.length
-    files = files.concat(readdirSyncRecursive( _path.join(baseDir, nextDirs.shift()) ) )
+    files = files.concat(readdirSyncRecursive( rootDir, _path.join(relativeDir, nextDirs.shift()) ) )
   #console.log 'returning files:', files
   return files.sort (a,b)->
     a.path > b.path
