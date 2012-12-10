@@ -15,15 +15,14 @@ run = ->
   #TODO gracefully handle ctrl-c
   #TODO turn this into class that takes argv and add some tests
 
+  defaultServer = "#{Settings.httpHost}:#{Settings.httpPort}"
+
   program
     .version('0.1.0')
-    .option('--server', 'point to a non-standard server')
+    .option('--server <server>', 'point to a non-standard server', String, defaultServer)
     .parse(process.argv)
 
-  if program.server
-    server = program.server
-  else
-    server = "#{Settings.httpHost}:#{Settings.httpPort}"
+  server = program.server
 
   httpClient = new HttpClient server
   socketClient = new SocketClient null, new MessageController
