@@ -30,7 +30,6 @@ fileEventType =
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles
   constructor: (@directory) ->
-    console.log "Constructing projectFiles with directory #{@directory}"
 
   handleError: (error, options={}, callback) ->
     newError = null
