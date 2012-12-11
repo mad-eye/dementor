@@ -100,7 +100,7 @@
       "from": "git+ssh://git@github.com/jagill/madeye-common.git",
       "dependencies": {
         "connect": {
-          "version": "2.7.0",
+          "version": "2.7.1",
           "dependencies": {
             "qs": {
               "version": "0.5.1"
