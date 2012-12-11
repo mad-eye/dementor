@@ -80,7 +80,7 @@ class Dementor
     addFilesMessage = messageMaker.addFilesMessage(event.data.files)
     @socketClient.send addFilesMessage, (err, result) =>
       @handleError err
-      @fileTree.setFiles result.data.files
+      @fileTree.addFiles result.data.files
       callback?()
 
 
