@@ -8,6 +8,7 @@
 class Dementor
   constructor: (@directory, @httpClient, @socketClient) ->
     @projectFiles = new ProjectFiles(@directory)
+    @projectName = @directory.split('/').pop()
     @projectId = @projectFiles.projectIds()[@directory]
     @fileTree = new FileTree null, @directory
     @socketClient?.controller = new MessageController this
@@ -29,7 +30,7 @@ class Dementor
   #TODO: disable:
  
   registerProject: (callback) ->
-    @httpClient.post {action:'init'}, (result) =>
+    @httpClient.post {action:"init/#{@projectName}"}, (result) =>
       if result.error
         console.error "Received error from server:" + result.error
         callback result.error
