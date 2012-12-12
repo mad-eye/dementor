@@ -42,8 +42,9 @@ mockSocket = new MockSocket
         else assert.fail "Unexpected action received by socket: #{message.action}"
 
 defaultHttpClient = new MockHttpClient (action, params) ->
-  if action == 'init'
-    return {id:uuid.v4()}
+  match = /init\/(\w*)/.exec action
+  if match
+    return {id:uuid.v4(), name:match[1] }
   else
     return {error: "Wrong action."}
 
