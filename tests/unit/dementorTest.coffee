@@ -10,7 +10,7 @@ _path = require 'path'
 {MockSocket} = require 'madeye-common'
 {SocketClient} = require 'madeye-common'
 {messageMaker, messageAction} = require 'madeye-common'
-{errorType} = require '../../src/errors'
+{errorType} = require 'madeye-common'
 
 
 #TODO: Reduce redundancy with better before/etc hooks.

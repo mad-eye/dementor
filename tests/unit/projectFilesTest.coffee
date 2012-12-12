@@ -5,7 +5,7 @@ assert = require 'assert'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
-{errorType} = require '../../src/errors'
+{errorType} = require 'madeye-common'
 
 
 homeDir = fileUtils.homeDir

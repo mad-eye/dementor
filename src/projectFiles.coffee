@@ -1,6 +1,6 @@
 fs = require "fs"
 _path = require "path"
-{errors} = require './errors'
+{errors} = require 'madeye-common'
 _ = require 'underscore'
 
 fileEventType =
