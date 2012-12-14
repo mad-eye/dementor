@@ -92,7 +92,6 @@
     },
     "madeye-common": {
       "version": "0.0.1",
-      "from": "git+ssh://git@github.com/mad-eye/madeye-common.git",
       "dependencies": {
         "connect": {
           "version": "2.7.1",
@@ -174,7 +173,7 @@
       "version": "0.2.0beta3",
       "dependencies": {
         "socket.io": {
-          "version": "0.9.11",
+          "version": "0.9.13",
           "dependencies": {
             "socket.io-client": {
               "version": "0.9.11",
@@ -211,6 +210,9 @@
             },
             "policyfile": {
               "version": "0.0.4"
+            },
+            "base64id": {
+              "version": "0.1.0"
             },
             "redis": {
               "version": "0.7.3"
