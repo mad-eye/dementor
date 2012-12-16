@@ -1,4 +1,5 @@
 {messageAction, messageMaker} = require 'madeye-common'
+{errors, errorType} = require 'madeye-common'
 
 class MessageController
   constructor: (@dementor) ->
@@ -14,7 +15,7 @@ class MessageController
       when messageAction.REQUEST_FILE then @requestLocalFile message, callback
       when messageAction.SAVE_FILE then @saveLocalFile message, callback
       when messageAction.REPLY then "Callback should have handled it"
-      else callback? new Error("Unknown action: " + message.action)
+      else callback? errors.new errorType.UNKNOWN_ACTION, {action: message.action}
 
   requestLocalFile: (message, callback) ->
     unless message.fileId then callback errors.new 'MISSING_PARAM'; return
