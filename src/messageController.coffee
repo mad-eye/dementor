@@ -39,14 +39,14 @@ class MessageController
 
   addLocalFiles: (message, callback) ->
     console.log "Adding local files:", message
-    thow new Error "Unimplemented"
+    throw new Error "Unimplemented"
 
   removeLocalFiles: (message, callback) ->
     console.log "Removing local files:", message
-    thow new Error "Unimplemented"
+    throw new Error "Unimplemented"
 
   changeLocalFiles: (message, callback) ->
     console.log "change local files:", message
-    thow new Error "Unimplemented"
+    throw new Error "Unimplemented"
 
 exports.MessageController = MessageController
