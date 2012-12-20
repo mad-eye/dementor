@@ -3,6 +3,7 @@ _ = require 'underscore'
 request = require 'request'
 querystring = require 'querystring'
 
+#TODO: Wrap http errors in MadEye errors
 
 #callback: (body) ->; takes an obj (parsed from JSON) body
 #errors are passed as an {error:} object
@@ -12,33 +13,28 @@ class HttpClient
   targetUrl: (action) ->
     "http://#{@host}/#{action}"
 
-  #callback : (body) ->
-  #errors are encoded as body={error:}
   post: (options, params, callback) ->
-    if typeof params == 'function'
-      callback = params
-      params = {}
-    options.uri =  @targetUrl (options['action'] ? '')
-    delete options['action']
-    request.post options, (err, res, body) ->
-      if err
-        body = {error:err.message}
-      else
-        if res.statusCode != 200
-          console.warn "Unexpected status code:" + res.statusCode
-        body = JSON.parse(body)
-      callback(body)
+    options.method = 'POST'
+    @request options, params, callback
+
+  put: (options, params, callback) ->
+    options.method = 'PUT'
+    @request options, params, callback
+
+  get: (options, params, callback) ->
+    options.method = 'GET'
+    @request options, params, callback
 
   #callback : (body) ->
   #errors are encoded as body={error:}
-  get: (options, params, callback) ->
+  request: (options, params, callback) ->
     if typeof params == 'function'
       callback = params
       params = {}
     options.uri =  @targetUrl (options['action'] ? '')
+    options.qs = querystring.stringify params if options.method == 'GET'
     delete options['action']
-    options.qs = querystring.stringify params
-    request.get options, (err, res, body) ->
+    request options, (err, res, body) ->
       if err
         body = {error:err.message}
       else

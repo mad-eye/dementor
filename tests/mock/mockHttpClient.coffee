@@ -1,6 +1,6 @@
 
 class MockHttpClient
-  #router is a (action, params) ->; it provides the server response body
+  #router is a (options, params) ->; it provides the server response body
   constructor: (@router) ->
 
   #callback : (body) ->
@@ -9,8 +9,8 @@ class MockHttpClient
     if typeof params == 'function'
       callback = params
       params = {}
-    action = options['action']
-    result = @router action, params
+    options.method = 'GET'
+    result = @router options, params
     callback result
 
   #callback : (body) ->
@@ -19,8 +19,19 @@ class MockHttpClient
     if typeof params == 'function'
       callback = params
       params = {}
-    action = options['action']
-    result = @router action, params
+    options.method = 'POST'
+    result = @router options, params
     callback result
+
+  #callback : (body) ->
+  #errors are encoded as body={error:}
+  put: (options, params, callback) =>
+    if typeof params == 'function'
+      callback = params
+      params = {}
+    options.method = 'PUT'
+    result = @router options, params
+    callback result
+
 
 exports.MockHttpClient = MockHttpClient

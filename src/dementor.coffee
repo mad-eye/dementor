@@ -30,12 +30,15 @@ class Dementor
   #TODO: disable:
  
   registerProject: (callback) ->
-    @httpClient.post {action:"init/#{@projectName}"}, (result) =>
+    @httpClient.post {action:"project/#{@projectName}"}, (result) =>
       if result.error
         console.error "Received error from server:" + result.error
         callback result.error
       else
         @projectId = result.id
+        projectIds = @projectFiles.projectIds()
+        projectIds[@directory] = @projectId
+        @projectFiles.saveProjectIds projectIds
         callback()
 
   finishEnabling: ->

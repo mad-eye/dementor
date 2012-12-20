@@ -41,11 +41,20 @@ mockSocket = new MockSocket
           @receive replyMessage
         else assert.fail "Unexpected action received by socket: #{message.action}"
 
-defaultHttpClient = new MockHttpClient (action, params) ->
-  match = /init\/(\w*)/.exec action
+defaultHttpClient = new MockHttpClient (options, params) ->
+  match = /project\/(\w*)/.exec options.action
   if match
-    return {id:uuid.v4(), name:match[1] }
+    if options.method == 'POST'
+      return {id:uuid.v4(), name:match[1] }
+    else if options.method == 'PUT'
+      files = options.json
+      file._id = uuid.v4() for file in files
+      return {id:match[1], files:files}
+    else
+      console.log "Wrong method: #{options.method}"
+      return {error: "Wrong method"}
   else
+    console.log "Wrong action: #{options.action}"
     return {error: "Wrong action."}
 
 describe "Dementor", ->
