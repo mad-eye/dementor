@@ -82,22 +82,20 @@ describe "Dementor", ->
     dementor = null
     projectPath = null
     projectFiles = null
-    before ->
+    beforeEach ->
       projectFiles = new ProjectFiles
-      projectPath = fileUtils.createProject "enableTest", fileUtils.defaultFileMap
+      projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileUtils.defaultFileMap
 
       socketClient = new SocketClient mockSocket
-      dementor = new Dementor projectPath, null, socketClient
+      dementor = new Dementor projectPath, defaultHttpClient, socketClient
 
     it "should register the project if not already registered", (done) ->
-      projectId = uuid.v4()
-      dementor.httpClient = defaultHttpClient
-
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
         if flag == 'ENABLED'
           assert.ok dementor.projectId
+          assert.equal projectFiles.projectIds()[projectPath], dementor.projectId
           done()
 
     it "should update project files if already registered", (done) ->
@@ -111,6 +109,7 @@ describe "Dementor", ->
         assert.equal err, null, #"Http should not return an error"
         if flag == 'ENABLED'
           assert.ok dementor.projectId
+          assert.equal projectFiles.projectIds()[projectPath], dementor.projectId
           done()
 
     it "should not allow two dementors to monitor the same directory"
