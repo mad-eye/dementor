@@ -47,15 +47,11 @@ defaultHttpClient = new MockHttpClient (options, params) ->
     if options.method == 'POST'
       return {id:uuid.v4(), name:match[1] }
     else if options.method == 'PUT'
-      files = options.json
-      file._id = uuid.v4() for file in files
-      return {id:match[1], files:files}
+      return {id:match[1]}
     else
-      console.log "Wrong method: #{options.method}"
-      return {error: "Wrong method"}
+      return {error: "Wrong method: #{options.method}"}
   else
-    console.log "Wrong action: #{options.action}"
-    return {error: "Wrong action."}
+    return {error: "Wrong action: #{options.action}"}
 
 describe "Dementor", ->
   describe "constructor", ->
@@ -88,7 +84,8 @@ describe "Dementor", ->
     projectFiles = null
     before ->
       projectFiles = new ProjectFiles
-      projectPath = fileUtils.createProject "unenabled"
+      projectPath = fileUtils.createProject "enableTest", fileUtils.defaultFileMap
+
       socketClient = new SocketClient mockSocket
       dementor = new Dementor projectPath, null, socketClient
 
@@ -103,18 +100,15 @@ describe "Dementor", ->
           assert.ok dementor.projectId
           done()
 
-    it "should not register the project if already registered", (done) ->
+    it "should update project files if already registered", (done) ->
       projectId = uuid.v4()
       projects = {}
       projects[projectPath] = projectId
       projectFiles.saveProjectIds projects
-      dementor.httpClient = new MockHttpClient (action, params) ->
-        assert.fail "Should not call httpClient"
+      targetFileTree = fileUtils.constructFileTree fileUtils.defaultFileMap
 
       dementor.enable (err, flag) ->
-        if err then console.warn "Received error: #{err}"
-        assert.equal err, null, "Socket should not return an error"
-        console.log "Running callback received flag: #{flag}"
+        assert.equal err, null, #"Http should not return an error"
         if flag == 'ENABLED'
           assert.ok dementor.projectId
           done()

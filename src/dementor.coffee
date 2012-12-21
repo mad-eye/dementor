@@ -20,27 +20,21 @@ class Dementor
 
   #callback: (err, flag) ->
   enable: (@runningCallback) ->
-    unless @projectId
-      @registerProject (err) =>
-        @handleError err
+    if @projectId
+      @httpClient.put {action: "project/#{@projectId}"}, (result) =>
+        @handleError result.error
         @finishEnabling()
     else
-      @finishEnabling()
-
-  #TODO: disable:
- 
-  registerProject: (callback) ->
-    @httpClient.post {action:"project/#{@projectName}"}, (result) =>
-      if result.error
-        console.error "Received error from server:" + result.error
-        callback result.error
-      else
+      @httpClient.post {action:"project/#{@projectName}"}, (result) =>
+        @handleError result.error
         @projectId = result.id
         projectIds = @projectFiles.projectIds()
         projectIds[@directory] = @projectId
         @projectFiles.saveProjectIds projectIds
-        callback()
+        @finishEnabling()
 
+  #TODO: disable:
+ 
   finishEnabling: ->
     @runningCallback null, 'ENABLED'
     @handshake (err, replyMessage) =>

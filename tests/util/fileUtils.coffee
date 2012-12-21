@@ -1,27 +1,28 @@
 wrench = require 'wrench'
 fs = require 'fs'
 _path = require 'path'
+uuid = require 'node-uuid'
+{FileTree} = require 'madeye-common'
 
 #TODO: Move this to madeye-common
 
 TEST_AREA = ".test_area"
-fileUtils =
-  mkDir : (dir) ->
+class FileUtils
+  @mkDir : (dir) ->
     unless fs.existsSync dir
       wrench.mkdirSyncRecursive dir
 
-  mkDirClean : (dir) ->
+  @mkDirClean : (dir) ->
     if fs.existsSync dir
       wrench.rmdirSyncRecursive(dir)
     wrench.mkdirSyncRecursive dir
 
-
-  testProjectDir: (projName) ->
+  @testProjectDir: (projName) ->
     return _path.join(TEST_AREA, projName)
 
-  homeDir : _path.join TEST_AREA, "fake_home"
+  @homeDir : _path.join TEST_AREA, "fake_home"
 
-  createProject : (name, fileMap) ->
+  @createProject : (name, fileMap) ->
     projectDir = @testProjectDir name
     if fs.existsSync projectDir
       wrench.rmdirSyncRecursive(projectDir)
@@ -30,7 +31,7 @@ fileUtils =
     @createFileTree(projectDir, fileMap)
     return projectDir
 
-  createFileTree : (root, filetree) ->
+  @createFileTree : (root, filetree) ->
     unless fs.existsSync root
       fs.mkdirSync root
     for key, value of filetree
@@ -39,7 +40,7 @@ fileUtils =
       else
         @createFileTree(_path.join(root, key), value)
 
-  defaultFileMap :
+  @defaultFileMap :
     rootFile: "this is the rootfile"
     dir1: {}
     dir2:
@@ -47,7 +48,7 @@ fileUtils =
       dir3:
         leafFile: "this is a leaf file"
 
-  writeFiles : (root, fileMap) ->
+  @writeFiles : (root, fileMap) ->
     unless fs.existsSync root
       fs.mkdirSync root
     for key, value of fileMap
@@ -56,7 +57,7 @@ fileUtils =
       else
         @writeFiles(_path.join(root, key), value)
 
-  constructFileTree : (fileMap, root, fileTree) ->
+  @constructFileTree : (fileMap, root, fileTree) ->
     fileTree ?= new FileTree(null, root)
     makeRawFile = (path, value) ->
       console.log "Making raw file with path #{path} and value #{value}"
@@ -70,11 +71,11 @@ fileUtils =
     for key, value of fileMap
       fileTree.addFile makeRawFile _path.join(root, key), value
       unless typeof value == "string"
-        constructFileTree(value, _path.join(root, key), fileTree)
+        @constructFileTree(value, _path.join(root, key), fileTree)
     console.log "Contructed fileTree:", fileTree unless root?
     return fileTree
 
-  clone : (obj) ->
+  @clone : (obj) ->
     JSON.parse JSON.stringify obj
 
-exports.fileUtils = fileUtils
+exports.fileUtils = FileUtils
