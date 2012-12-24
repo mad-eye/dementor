@@ -35,11 +35,7 @@ class Dementor
         @finishEnabling()
 
   disable: (callback) ->
-    self = this #Need self because => also replaces the "this" in this.MULTI
-    flow.exec ->
-      self.socketClient?.destroy this.MULTI()
-      self.httpClient?.close this.MULTI()
-    , callback
+    @socketClient?.destroy callback
  
   finishEnabling: ->
     @runningCallback null, 'ENABLED'
