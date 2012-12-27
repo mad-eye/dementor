@@ -4,6 +4,7 @@
 {SocketClient} = require('madeye-common')
 {Settings} = require('madeye-common')
 util = require 'util'
+clc = require 'cli-color'
 
 dementor = null
 
@@ -29,11 +30,11 @@ run = ->
   
   dementor = new Dementor process.cwd(), httpClient, socketClient
   try
-    util.print "Enabling MadEye... "
+    util.puts "Enabling MadEye in " + clc.whiteBright.bold process.cwd()
     dementor.enable (err, flag) ->
       if err then handleError err; return
-      util.puts "view your project at #{makeUrl dementor.projectId}" if flag == 'ENABLED'
-      console.log "[Dementor received flag: #{flag}]"
+      util.puts "View your project at " + clc.whiteBright.bold makeUrl dementor.projectId if flag == 'ENABLED'
+      console.log clc.blackBright "[Dementor received flag: #{flag}]"
   catch error
     handleError error
 
