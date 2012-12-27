@@ -116,6 +116,19 @@ describe "Dementor", ->
 
     it "should not allow a dementor to watch a subdir of an existing dementors territory"
 
+
+  describe "disable", ->
+    dementor = null
+    before (done) ->
+      projectPath = fileUtils.createProject "disableTest-#{uuid.v4()}", fileUtils.defaultFileMap
+
+      socketClient = new SocketClient mockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      dementor.disable done
+    it "should close down successfull", ->
+      return #it would have failed by now!
+    it "should call socketClient.destroy"
+
         
   describe "watchProject", ->
     dementor = null

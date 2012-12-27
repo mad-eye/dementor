@@ -6,7 +6,7 @@
 util = require 'util'
 clc = require 'cli-color'
 
-fileTree = undefined
+dementor = null
 
 run = ->
   program = require 'commander'
@@ -43,7 +43,34 @@ makeUrl = (projectId) ->
 
 handleError = (err) ->
   console.error "Error received:", err
-  #TODO: dementor.disable
+  shutdownGracefully()
   process.exit(err.code ? 1)
 
+# Shutdown section
+SHUTTING_DOWN = false
+
+shutdownGracefully = ->
+  return if SHUTTING_DOWN
+  SHUTTING_DOWN = true
+  console.log "Shutting down MadEye."
+  dementor.disable ->
+    console.log "Closed out connections."
+    process.exit 0
+ 
+  setTimeout ->
+    console.error "Could not close connections in time, forcefully shutting down"
+    process.exit(1)
+  , 30*1000
+
+process.on 'SIGINT', ->
+  process.exit(1) if SHUTTING_DOWN
+  console.log 'Received SIGINT.'
+  shutdownGracefully()
+
+process.on 'SIGTERM', ->
+  process.exit(1) if SHUTTING_DOWN
+  console.log "Received kill signal (SIGTERM)"
+  shutdownGracefully()
+  
+  
 exports.run = run
