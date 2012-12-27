@@ -4,7 +4,6 @@
   "version": "0.0.4",
   "private": false,
   "dependencies": {
-    "browserchannel": "~0.4.2",
     "wrench": "~1.4.2",
     "coffee-script": "~1.4.0",
     "underscore": "~1.4.2",
@@ -13,6 +12,7 @@
     "watch-tree-maintained": "~0.1.2",
     "commander": "~1.1.0",
     "madeye-common": "git+ssh://git@github.com/mad-eye/madeye-common.git",
+    "flow": "~0.2.2",
     "cli-color": "~0.2.1"
   },
   "devDependencies": {

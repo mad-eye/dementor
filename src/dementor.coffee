@@ -1,3 +1,4 @@
+flow = require 'flow'
 {ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree} = require 'madeye-common'
 {HttpClient} = require './httpClient'
@@ -33,7 +34,8 @@ class Dementor
         @projectFiles.saveProjectIds projectIds
         @finishEnabling()
 
-  #TODO: disable:
+  disable: (callback) ->
+    @socketClient?.destroy callback
  
   finishEnabling: ->
     @runningCallback null, 'ENABLED'
@@ -46,6 +48,7 @@ class Dementor
   handshake: (callback) ->
     @socketClient.projectId = @projectId
     @socketClient.send messageMaker.handshakeMessage(), callback
+    #@socketClient.startHeartbeat()
 
   watchProject: ->
     @projectFiles.readFileTree (err, results) =>
