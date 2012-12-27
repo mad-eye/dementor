@@ -1,7 +1,7 @@
 {
   "name": "madeye",
   "bin": "bin/madeye",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": false,
   "dependencies": {
     "wrench": "~1.4.2",
@@ -11,7 +11,7 @@
     "request": "~2.12.0",
     "watch-tree-maintained": "~0.1.2",
     "commander": "~1.1.0",
-    "madeye-common": "git+ssh://git@github.com/mad-eye/madeye-common.git",
+    "madeye-common": "git://github.com/mad-eye/madeye-common.git",
     "flow": "~0.2.2",
     "cli-color": "~0.2.1"
   },
