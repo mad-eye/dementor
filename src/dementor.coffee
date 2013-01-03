@@ -21,23 +21,27 @@ class Dementor
 
   #callback: (err, flag) ->
   enable: (@runningCallback) ->
-    if @projectId
-      @httpClient.put {action: "project/#{@projectId}"}, (result) =>
-        @handleError result.error
-        @finishEnabling()
-    else
-      @httpClient.post {action:"project/#{@projectName}"}, (result) =>
-        @handleError result.error
-        @projectId = result.id
-        projectIds = @projectFiles.projectIds()
-        projectIds[@directory] = @projectId
-        @projectFiles.saveProjectIds projectIds
-        @finishEnabling()
+    @projectFiles.readFileTree (err, files) =>
+      @handleError err
+      @runningCallback null, 'READ_FILETREE'
+      if @projectId
+        @httpClient.put {action: "project/#{@projectId}", json: {files:files}}, (result) =>
+          @handleError result.error
+          @finishEnabling(result.files)
+      else
+        @httpClient.post {action:"project/#{@projectName}", json: {files:files}}, (result) =>
+          @handleError result.error
+          @projectId = result.id
+          projectIds = @projectFiles.projectIds()
+          projectIds[@directory] = @projectId
+          @projectFiles.saveProjectIds projectIds
+          @finishEnabling(result.files)
 
   disable: (callback) ->
     @socketClient?.destroy callback
  
-  finishEnabling: ->
+  finishEnabling: (files) ->
+    @fileTree.addFiles files
     @runningCallback null, 'ENABLED'
     @handshake (err, replyMessage) =>
       @handleError err
@@ -51,17 +55,9 @@ class Dementor
     #@socketClient.startHeartbeat()
 
   watchProject: ->
-    @projectFiles.readFileTree (err, results) =>
+    @projectFiles.watchFileTree (err, event) =>
       @handleError err
-      @handleFileEvent {
-        type: fileEventType.ADD
-        data:
-          files: results
-      }, () =>
-        @runningCallback null, 'READ_FILETREE'
-      @projectFiles.watchFileTree (err, event) =>
-        @handleError err
-        @handleFileEvent event
+      @handleFileEvent event
 
   #callback: () -> ... optional, for additional hooks.
   handleFileEvent: (event, callback) ->
