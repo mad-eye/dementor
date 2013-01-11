@@ -1,7 +1,7 @@
 {
   "name": "madeye",
   "bin": "bin/madeye",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": false,
   "dependencies": {
     "wrench": "~1.4.2",
