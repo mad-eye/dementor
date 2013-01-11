@@ -1,4 +1,2 @@
-#!/usr/bin/env node
-
-require("coffee-script");
-require("../app").run();
+#! /bin/sh
+MADEYE_BC_HOST=madeye.io MADEYE_BC_PORT=4321 MADEYE_HTTP_HOST=madeye.io MADEYE_HTTP_PORT=4004 MADEYE_APOGEE_HOST=madeye.io MADEYE_APOGEE_PORT=3000 $MADEYE_HOME/integration-tests/dementor/bin/madeye.js
