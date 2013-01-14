@@ -41,21 +41,16 @@ mockSocket = new MockSocket
           @receive replyMessage
         else assert.fail "Unexpected action received by socket: #{message.action}"
 
-processFiles = (files) ->
-  return null unless files?
-  file._id = uuid.v4() for file in files
-  return files
-
 defaultHttpClient = new MockHttpClient (options, params) ->
   match = /project\/(\w*)/.exec options.action
   if match
     if options.method == 'POST'
       files = options.json?['files']
-      files = processFiles files
+      file._id = uuid.v4() for file in files if files
       return {id:uuid.v4(), name:match[1], files:files }
     else if options.method == 'PUT'
       files = options.json?['files']
-      files = processFiles files
+      file._id = uuid.v4() for file in files if files
       return {id:match[1], files:files }
     else
       return {error: "Wrong method: #{options.method}"}
