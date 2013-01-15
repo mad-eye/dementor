@@ -30,11 +30,11 @@ run = ->
   
   dementor = new Dementor process.cwd(), httpClient, socketClient
   try
-    util.puts "Enabling MadEye in " + clc.whiteBright.bold process.cwd()
+    util.puts "Enabling MadEye in " + clc.bold process.cwd()
     dementor.enable (err, flag) ->
       if err then handleError err; return
-      util.puts "View your project at " + clc.whiteBright.bold makeUrl dementor.projectId if flag == 'ENABLED'
-      console.log clc.blackBright "[Dementor received flag: #{flag}]"
+      util.puts "View your project at " + clc.bold makeUrl dementor.projectId if flag == 'ENABLED'
+      console.log clc.blackBright "[Dementor received flag: #{flag}]" if process.env.MADEYE_DEBUG
   catch error
     handleError error
 
