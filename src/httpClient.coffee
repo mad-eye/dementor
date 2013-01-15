@@ -40,7 +40,7 @@ class HttpClient
       else
         if res.statusCode != 200
           console.warn "Unexpected status code:" + res.statusCode
-        body = JSON.parse(body)
+        body = JSON.parse(body) if typeof body == 'string'
       callback(body)
 
 exports.HttpClient = HttpClient

@@ -60,13 +60,11 @@ class FileUtils
   @constructFileTree : (fileMap, root, fileTree) ->
     fileTree ?= new FileTree(null, root)
     makeRawFile = (path, value) ->
-      console.log "Making raw file with path #{path} and value #{value}"
       rawFile = {
         _id : uuid.v4()
         path : path
         isDir : (typeof value != "string")
       }
-      console.log "Made rawfile:", rawFile
       return rawFile
     for key, value of fileMap
       fileTree.addFile makeRawFile _path.join(root, key), value

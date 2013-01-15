@@ -45,9 +45,13 @@ defaultHttpClient = new MockHttpClient (options, params) ->
   match = /project\/(\w*)/.exec options.action
   if match
     if options.method == 'POST'
-      return {id:uuid.v4(), name:match[1] }
+      files = options.json?['files']
+      file._id = uuid.v4() for file in files if files
+      return {id:uuid.v4(), name:match[1], files:files }
     else if options.method == 'PUT'
-      return {id:match[1]}
+      files = options.json?['files']
+      file._id = uuid.v4() for file in files if files
+      return {id:match[1], files:files }
     else
       return {error: "Wrong method: #{options.method}"}
   else
@@ -81,40 +85,69 @@ describe "Dementor", ->
   describe "enable", ->
     dementor = null
     projectPath = null
-    projectFiles = null
-    beforeEach ->
-      projectFiles = new ProjectFiles
-      projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileUtils.defaultFileMap
-
-      socketClient = new SocketClient mockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
-
-    it "should register the project if not already registered", (done) ->
-      dementor.enable (err, flag) ->
-        assert.equal err, null
-        console.log "Running callback received flag: #{flag}"
-        if flag == 'ENABLED'
-          assert.ok dementor.projectId
-          assert.equal projectFiles.projectIds()[projectPath], dementor.projectId
-          done()
-
-    it "should update project files if already registered", (done) ->
-      projectId = uuid.v4()
-      projects = {}
-      projects[projectPath] = projectId
-      projectFiles.saveProjectIds projects
-      targetFileTree = fileUtils.constructFileTree fileUtils.defaultFileMap
-
-      dementor.enable (err, flag) ->
-        assert.equal err, null, #"Http should not return an error"
-        if flag == 'ENABLED'
-          assert.ok dementor.projectId
-          assert.equal projectFiles.projectIds()[projectPath], dementor.projectId
-          done()
 
     it "should not allow two dementors to monitor the same directory"
 
     it "should not allow a dementor to watch a subdir of an existing dementors territory"
+
+    describe "when not registered", ->
+      targetFileTree = null
+      before (done) ->
+        fileMap = fileUtils.defaultFileMap
+        targetFileTree = fileUtils.constructFileTree fileMap
+        projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
+        socketClient = new SocketClient mockSocket
+        dementor = new Dementor projectPath, defaultHttpClient, socketClient
+        dementor.enable (err, flag) ->
+          assert.equal err, null
+          console.log "Running callback received flag: #{flag}"
+          if flag == 'ENABLED'
+            done()
+
+      it "should register the project if not already registered", ->
+        assert.ok dementor.projectId
+        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId
+
+      it "should populate file tree with files (and ids)", ->
+        assert.ok dementor.fileTree
+        files = dementor.fileTree.files
+        assert.equal files.length, targetFileTree.files.length
+        for file in files
+          assert.ok file.isDir?
+          assert.ok file.path?
+          assert.ok file._id
+
+    describe "when already registered", ->
+      targetFileTree = projectId = null
+      before (done) ->
+        fileMap = fileUtils.defaultFileMap
+        targetFileTree = fileUtils.constructFileTree fileMap
+        projectPath = fileUtils.createProject "alreadyEnableTest-#{uuid.v4()}", fileMap
+        projectId = uuid.v4()
+        projects = {}
+        projects[projectPath] = projectId
+        dementor.projectFiles.saveProjectIds projects
+
+        socketClient = new SocketClient mockSocket
+        dementor = new Dementor projectPath, defaultHttpClient, socketClient
+        dementor.enable (err, flag) ->
+          assert.equal err, null, #"Http should not return an error"
+          if flag == 'ENABLED'
+            done()
+
+      it "should update project files if already registered", ->
+        assert.ok dementor.projectId
+        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId
+        assert.equal dementor.projectId, projectId
+
+      it "should populate file tree with files (and ids)", ->
+        assert.ok dementor.fileTree
+        files = dementor.fileTree.files
+        assert.equal files.length, targetFileTree.files.length
+        for file in files
+          assert.ok file.isDir?
+          assert.ok file.path?
+          assert.ok file._id
 
 
   describe "disable", ->
@@ -128,45 +161,6 @@ describe "Dementor", ->
     it "should close down successfull", ->
       return #it would have failed by now!
     it "should call socketClient.destroy"
-
-        
-  describe "watchProject", ->
-    dementor = null
-    projectPath = null
-    projectFiles = null
-    before (done) ->
-      projectPath = fileUtils.createProject "tinsot", fileUtils.defaultFileMap
-      projectFiles = new ProjectFiles projectPath
-
-
-      #XXX: This is a little hacky.  Find a better solution.
-      mockSocket.addFileMessage = null
-      socketClient = new SocketClient mockSocket
-      
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
-      dementor.enable (err, flag) ->
-        assert.equal err, null
-        console.log "Running callback received flag: #{flag}"
-        if flag == 'READ_FILETREE'
-          done()
-
-    it "should send a project's file tree to azkaban via socket", ->
-      assert.ok mockSocket.addFileMessage
-      files = mockSocket.addFileMessage.data.files
-      for file in files
-        assert.ok file.isDir?
-        assert.ok file.path?
-        
-    it "should construct fileTree on azakban's response", ->
-      assert.ok dementor.fileTree
-      files = dementor.fileTree.files
-      assert.equal files.length, mockSocket.addFileMessage.data.files.length
-      for file in files
-        assert.ok file.isDir?
-        assert.ok file.path?
-        assert.ok file._id
-
-    it "should start watching the project"
 
   describe "receiving REQUEST_FILE message", ->
     dementor = null
@@ -186,7 +180,7 @@ describe "Dementor", ->
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
-        if flag == 'READ_FILETREE'
+        if flag == 'ENABLED'
           done()
 
     it "should reply with file body", (done) ->
