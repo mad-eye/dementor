@@ -43,34 +43,35 @@ makeUrl = (projectId) ->
 
 handleError = (err) ->
   console.error "Error received:", err
-  shutdownGracefully()
-  process.exit(err.code ? 1)
+  shutdown(err.code ? 1)
 
 # Shutdown section
 SHUTTING_DOWN = false
 
-shutdownGracefully = ->
+shutdown = (returnVal=0) ->
+  process.exit(returnVal || 1) if SHUTTING_DOWN # || not ?, because we don't want 0
+  shutdownGracefully(returnVal)
+
+shutdownGracefully = (returnVal=0) ->
   return if SHUTTING_DOWN
   SHUTTING_DOWN = true
-  console.log "Shutting down MadEye."
+  console.log "Shutting down MadEye.  Press ^C again to force shutdown."
   dementor.disable ->
     console.log "Closed out connections."
-    process.exit 0
+    process.exit returnVal
  
   setTimeout ->
-    console.error "Could not close connections in time, forcefully shutting down"
-    process.exit(1)
+    console.error "Could not close connections in time, shutting down harder."
+    process.exit(returnVal || 1)
   , 30*1000
 
 process.on 'SIGINT', ->
-  process.exit(1) if SHUTTING_DOWN
-  console.log 'Received SIGINT.'
-  shutdownGracefully()
+  console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
+  shutdown()
 
 process.on 'SIGTERM', ->
-  process.exit(1) if SHUTTING_DOWN
-  console.log "Received kill signal (SIGTERM)"
-  shutdownGracefully()
+  console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
+  shutdown()
   
   
 exports.run = run
