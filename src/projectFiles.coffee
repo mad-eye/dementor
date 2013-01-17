@@ -132,11 +132,21 @@ class ProjectFiles
       callback null, event
     @watcher.on "fileModified", (path)->
       #console.log "fileModified: #{path}"
-      #fs.readFile path, "utf-8", (err, data)->
-        #callback "edit", [{path: path, data: data}]
+      fs.readFile path, "utf-8", (err, contents)->
+        if err then callback err; return
+        event =
+          type: fileEventType.EDIT
+          data:
+            path: path
+            contents: contents
+        callback null, event
     @watcher.on "fileDeleted", (path)->
       #console.log "fileDeleted: #{path}"
-      #callback "delete", [{path: path}]
+      event =
+        type: fileEventType.REMOVE
+        data:
+          files: [path]
+      callback null, event
 
 # based on a similar fucntion found in wrench
 # https://github.com/ryanmcgrath/wrench-js

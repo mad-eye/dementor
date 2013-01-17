@@ -237,7 +237,6 @@ describe 'ProjectFiles', ->
       assert.deepEqual newProjects, readProjects
 
 
-  #TODO: Write event handlers for watchFileTree
   describe "watchFileTree", ->
     it "should notice when i change a file"
 
@@ -252,5 +251,6 @@ describe 'ProjectFiles', ->
     it "should ignore the contents of the .gitignore or should it?"
 
     it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
+    #This is caused by a bad link
 
 

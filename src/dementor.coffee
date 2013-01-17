@@ -67,6 +67,8 @@ class Dementor
       switch event.type
         when fileEventType.PREEXISTED then "file already read by readFileTree."
         when fileEventType.ADD then @onAddFileEvent event, callback
+        when fileEventType.REMOVE then @onRemoveFileEvent event, callback
+        when fileEventType.EDIT then @onEditFileEvent event, callback
         else throw new Error "Unrecognized event action: #{event.action}"
     catch err
       @handleError err
@@ -78,6 +80,23 @@ class Dementor
     @socketClient.send addFilesMessage, (err, result) =>
       @handleError err
       @fileTree.addFiles result.data.files
+      callback?()
+
+  #callback : () -> ...
+  onRemoveFileEvent : (event, callback) ->
+    removeFilesMessage = messageMaker.removeFilesMessage(event.data.files)
+    @socketClient.send removeFilesMessage, (err, result) =>
+      @handleError err
+      #TODO: Should check that result has the same files
+      @fileTree.removeFiles event.data.files
+      callback?()
+
+  #callback : () -> ...
+  onEditFileEvent : (event, callback) ->
+    file = @fileTree.findByPath event.data.path
+    saveFileMessage = messageMaker.saveFileMessage file.id, event.data.contents
+    @socketClient.send saveFileMessage, (err, result) =>
+      @handleError err
       callback?()
 
 
