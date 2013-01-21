@@ -32,9 +32,7 @@ class Dementor
         @httpClient.post {action:"project/#{@projectName}", json: {files:files}}, (result) =>
           @handleError result.error
           @projectId = result.id
-          projectIds = @projectFiles.projectIds()
-          projectIds[@directory] = @projectId
-          @projectFiles.saveProjectIds projectIds
+          @projectFiles.saveProjectId @projectId
           @finishEnabling(result.files)
 
   disable: (callback) ->
@@ -50,6 +48,7 @@ class Dementor
 
   #callback : (err, replyMessage) -> ...
   handshake: (callback) ->
+    #@socketClient.connect url, @projectId, callback
     @socketClient.projectId = @projectId
     @socketClient.send messageMaker.handshakeMessage(), callback
     #@socketClient.startHeartbeat()

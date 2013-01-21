@@ -83,6 +83,12 @@ class ProjectFiles
   projectsDbPath: ->
     _path.join @homeDir(), MADEYE_PROJECTS_FILE
 
+  saveProjectId: (projectId) ->
+    projectIds = @projectIds()
+    projectIds[@directory] = projectId
+    @saveProjectIds projectIds
+
+
   saveProjectIds: (projects) ->
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
 
