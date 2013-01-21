@@ -51,10 +51,10 @@ class ProjectFiles
     unless filePath then callback errors.new 'NO_FILE'; return
     filePath = _path.join @directory, filePath unless options.absolute
     try
-      #console.log "Reading filepath", filePath
       contents = fs.readFileSync(filePath, "utf-8")
-      if options.sync then return contents else callback?(null, contents)
+      if options.sync then return contents else callback null, contents
     catch error
+      console.error "Found error:", error
       @handleError error, options, callback
 
   #callback: (err) -> ...

@@ -42,9 +42,6 @@ makeMockSocket = ->
             @receive replyMessage
           else assert.fail "Unexpected action received by socket: #{message.action}"
 
-mockIo = connect: (url, options) ->
-  return makeMockSocket()
-
 defaultHttpClient = new MockHttpClient (options, params) ->
   match = /project\/(\w*)/.exec options.action
   if match
@@ -98,8 +95,7 @@ describe "Dementor", ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
-        socketClient = new SocketClient mockIo
-        dementor = new Dementor projectPath, defaultHttpClient, socketClient
+        dementor = new Dementor projectPath, defaultHttpClient, makeMockSocket()
         dementor.enable (err, flag) ->
           assert.equal err, null
           console.log "Running callback received flag: #{flag}"
@@ -130,8 +126,7 @@ describe "Dementor", ->
         projects[projectPath] = projectId
         dementor.projectFiles.saveProjectIds projects
 
-        socketClient = new SocketClient mockIo
-        dementor = new Dementor projectPath, defaultHttpClient, socketClient
+        dementor = new Dementor projectPath, defaultHttpClient, makeMockSocket()
         dementor.enable (err, flag) ->
           assert.equal err, null, #"Http should not return an error"
           if flag == 'ENABLED'
@@ -153,23 +148,27 @@ describe "Dementor", ->
 
 
   describe "disable", ->
-    dementor = null
-    socketClientDestroyed = false
+    dementor = mockSocket = null
+    socketClosed = false
     before (done) ->
       projectPath = fileUtils.createProject "disableTest-#{uuid.v4()}", fileUtils.defaultFileMap
 
-      socketClient = destroy: (callback) ->
-        socketClientDestroyed = true
-        callback?()
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
-      dementor.disable done
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor.enable (err, flag) ->
+        if flag == 'ENABLED'
+          dementor.disable done
+        if flag == 'DISCONNECT'
+          socketClosed = true
+
     it "should close down successfull", ->
       return #it would have failed by now!
-    it "should call socketClient.destroy", ->
-      assert.equal socketClientDestroyed, true
+    it "should call socket.disconnect", ->
+      assert.ok mockSocket.disconnected
+      assert.ok socketClosed
 
   describe "receiving REQUEST_FILE message", ->
-    dementor = null
+    dementor = mockSocket = null
     projectPath = projectFiles = null
     filePath = fileBody = null
     before (done) ->
@@ -178,39 +177,30 @@ describe "Dementor", ->
       fileBody = fileUtils.defaultFileMap.dir2.moderateFile
       projectFiles = new ProjectFiles projectPath
 
-      #XXX: This is a little hacky.  Find a better solution.
-      #mockSocket.addFileMessage = null
-      socketClient = new SocketClient mockIo
-      
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
         if flag == 'ENABLED'
           done()
 
-    it "should reply with file body", (done) ->
+    it "should reply with file body fweep", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
-      message = messageMaker.requestFileMessage fileId
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.equal msg.error, null
-        assert.equal msg.projectId, dementor.projectId
-        assert.equal msg.data.fileId, fileId
-        assert.equal msg.data.body, fileBody
-        assert.equal msg.replyTo, message.id
+      mockSocket.trigger messageAction.REQUEST_FILE, fileId, (err, body) ->
+        assert.equal err, null
+        assert.equal body, fileBody
         done()
-      mockSocket.receive message
 
     it "should give correct error message if no file exists", (done) ->
-      message = messageMaker.requestFileMessage uuid.v4()
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.ok msg.error
-        assert.equal msg.error.type, errorType.NO_FILE
+      mockSocket.trigger messageAction.REQUEST_FILE, uuid.v4(), (err, body) ->
+        assert.ok err
+        assert.equal err.type, errorType.NO_FILE
+        assert.equal body, null
         done()
-      mockSocket.receive message
       
   describe "receiving SAVE_FILE message", ->
-    dementor = null
+    dementor = mockSocket = null
     projectPath = projectFiles = null
     filePath = null
     fileBody = "Two great swans eat the frogs."
@@ -219,9 +209,8 @@ describe "Dementor", ->
       filePath = "dir2/moderateFile"
       projectFiles = new ProjectFiles projectPath
 
-      socketClient = new SocketClient mockSocket
-      
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
@@ -229,29 +218,16 @@ describe "Dementor", ->
           done()
 
 
-    it "should reply no error", (done) ->
-      fileId = dementor.fileTree.findByPath(filePath)._id
-      message = messageMaker.saveFileMessage fileId, fileBody
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.equal msg.error, null, "Should not have an error."
-        assert.equal msg.projectId, dementor.projectId
-        assert.equal msg.replyTo, message.id
-        done()
-      mockSocket.receive message
-
     it "should save file contents to projectFiles", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
-      message = messageMaker.saveFileMessage fileId, fileBody
-      mockSocket.callbacks[message.id] = (msg) ->
+      mockSocket.trigger messageAction.SAVE_FILE, fileId, fileBody, (err) ->
+        assert.equal err, null, "Should not have an error."
         readContents = projectFiles.readFile(filePath, sync:true)
         assert.equal readContents, fileBody
         done()
-      mockSocket.receive message
 
     it "should give correct error message if no file exists", (done) ->
-      message = messageMaker.saveFileMessage uuid.v4(), fileBody
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.ok msg.error
-        assert.equal msg.error.type, errorType.NO_FILE
+      mockSocket.trigger messageAction.SAVE_FILE, uuid.v4(), fileBody, (err) ->
+        assert.ok err
+        assert.equal err.type, errorType.NO_FILE
         done()
-      mockSocket.receive message

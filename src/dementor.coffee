@@ -1,18 +1,19 @@
 flow = require 'flow'
 {ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree} = require 'madeye-common'
+{Settings} = require 'madeye-common'
 {HttpClient} = require './httpClient'
 {SocketClient} = require 'madeye-common'
 {MessageController} = require './messageController'
 {messageMaker, messageAction} = require 'madeye-common'
 
 class Dementor
-  constructor: (@directory, @httpClient, @socketClient) ->
+  constructor: (@directory, @httpClient, @socket) ->
     @projectFiles = new ProjectFiles(@directory)
     @projectName = @directory.split('/').pop()
     @projectId = @projectFiles.projectIds()[@directory]
     @fileTree = new FileTree null, @directory
-    @socketClient?.controller = new MessageController this
+    @attach socket
 
   handleError: (err) ->
     return unless err?
@@ -36,22 +37,18 @@ class Dementor
           @finishEnabling(result.files)
 
   disable: (callback) ->
-    @socketClient?.destroy callback
+    @socket?.disconnect()
+    callback?()
  
   finishEnabling: (files) ->
     @fileTree.addFiles files
     @runningCallback null, 'ENABLED'
-    @handshake (err, replyMessage) =>
-      @handleError err
-      @runningCallback null, 'HANDSHAKE_RECEIVED'
+    @socket.connect =>
+      @runningCallback null, 'CONNECTED'
       @watchProject()
 
-  #callback : (err, replyMessage) -> ...
-  handshake: (callback) ->
-    #@socketClient.connect url, @projectId, callback
-    @socketClient.projectId = @projectId
-    @socketClient.send messageMaker.handshakeMessage(), callback
-    #@socketClient.startHeartbeat()
+  #####
+  # Events from ProjectFiles
 
   watchProject: ->
     @projectFiles.watchFileTree (err, event) =>
@@ -105,15 +102,36 @@ class Dementor
   # should be returned to be encoded as a message to
   # Azkaban
 
-  #callback : (err, body) ->
-  getFileContents : (fileId, callback) ->
-    path = @fileTree.findById(fileId)?.path
-    @projectFiles.readFile path, callback
+  handshake: (projectId) ->
+    @socket.emit messageAction.HANDSHAKE, projectId, ->
+      @runningCallback null, 'HANDSHAKE_RECEIVED'
+      
+  attach: (@socket) ->
+    return unless socket?
 
-  #callback : (err) -> ...
-  saveFileContents : (fileId, contents, callback) ->
-    path = @fileTree.findById(fileId)?.path
-    @projectFiles.writeFile path, contents, callback
+    socket.on 'connect', =>
+      @handshake @projectId
 
+    socket.on 'reconnect', =>
+      @handshake @projectId
+
+    socket.on 'connect_failed', =>
+      @runningCallback null, "CONNECTION_FAILED"
+
+    socket.on 'disconnect', =>
+      @runningCallback null, "DISCONNECT"
+
+    #callback: (err, body) =>, errors are encoded as {error:}
+    socket.on messageAction.REQUEST_FILE, (fileId, callback) =>
+      unless fileId then callback errors.new 'MISSING_PARAM'; return
+      path = @fileTree.findById(fileId)?.path
+      @projectFiles.readFile path, callback
+
+    #callback: (err) =>, errors are encoded as {error:}
+    socket.on messageAction.SAVE_FILE, (fileId, contents, callback) =>
+      unless fileId && contents
+        callback errors.new 'MISSING_PARAM'; return
+      path = @fileTree.findById(fileId)?.path
+      @projectFiles.writeFile path, contents, callback
 
 exports.Dementor = Dementor
