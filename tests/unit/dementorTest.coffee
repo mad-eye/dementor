@@ -8,7 +8,6 @@ _path = require 'path'
 {fileUtils} = require '../util/fileUtils'
 {MockHttpClient} = require '../mock/mockHttpClient'
 {MockSocket} = require 'madeye-common'
-{SocketClient} = require 'madeye-common'
 {messageMaker, messageAction} = require 'madeye-common'
 {errorType} = require 'madeye-common'
 

@@ -3,8 +3,6 @@ flow = require 'flow'
 {FileTree} = require 'madeye-common'
 {Settings} = require 'madeye-common'
 {HttpClient} = require './httpClient'
-{SocketClient} = require 'madeye-common'
-{MessageController} = require './messageController'
 {messageMaker, messageAction} = require 'madeye-common'
 
 class Dementor

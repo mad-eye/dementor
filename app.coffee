@@ -1,7 +1,5 @@
 {Dementor} = require('./src/dementor')
-{MessageController} = require('./src/messageController')
 {HttpClient} = require('./src/httpClient')
-{SocketClient} = require('madeye-common')
 {Settings} = require('madeye-common')
 util = require 'util'
 clc = require 'cli-color'
