@@ -1,10 +1,9 @@
 {Dementor} = require('./src/dementor')
-{MessageController} = require('./src/messageController')
 {HttpClient} = require('./src/httpClient')
-{SocketClient} = require('madeye-common')
 {Settings} = require('madeye-common')
 util = require 'util'
 clc = require 'cli-color'
+io = require 'socket.io-client'
 
 dementor = null
 
@@ -16,30 +15,29 @@ run = ->
   #TODO gracefully handle ctrl-c
   #TODO turn this into class that takes argv and add some tests
 
-  defaultServer = "#{Settings.httpHost}:#{Settings.httpPort}"
+  defaultHttpServer = "#{Settings.httpHost}:#{Settings.httpPort}"
 
   program
     .version('0.1.0')
-    .option('--server <server>', 'point to a non-standard server', String, defaultServer)
+    .option('--server <server>', 'point to a non-standard server', String, defaultHttpServer)
     .parse(process.argv)
 
   server = program.server
-
   httpClient = new HttpClient server
-  socketClient = new SocketClient null, new MessageController
+  socket = io.connect "http://#{server}",
+    'resource': 'socket.io' #This must match the server.  Server defaults to 'socket.io'
+    'auto connect': false
   
-  dementor = new Dementor process.cwd(), httpClient, socketClient
+  dementor = new Dementor process.cwd(), httpClient, socket
   try
     util.puts "Enabling MadEye in " + clc.bold process.cwd()
     dementor.enable (err, flag) ->
       if err then handleError err; return
-      util.puts "View your project at " + clc.bold makeUrl dementor.projectId if flag == 'ENABLED'
+      apogeeUrl = "http://#{Settings.apogeeHost}:#{Settings.apogeePort}/edit/#{dementor.projectId}"
+      util.puts "View your project at " + clc.bold apogeeUrl if flag == 'ENABLED'
       console.log clc.blackBright "[Dementor received flag: #{flag}]" if process.env.MADEYE_DEBUG
   catch error
     handleError error
-
-makeUrl = (projectId) ->
-  "http://#{Settings.apogeeHost}:#{Settings.apogeePort}/edit/#{projectId}"
 
 handleError = (err) ->
   console.error "Error received:", err
@@ -55,7 +53,7 @@ shutdown = (returnVal=0) ->
 shutdownGracefully = (returnVal=0) ->
   return if SHUTTING_DOWN
   SHUTTING_DOWN = true
-  console.log "Shutting down MadEye.  Press ^C again to force shutdown."
+  console.log "Shutting down MadEye.  Press ^C to force shutdown."
   dementor.disable ->
     console.log "Closed out connections."
     process.exit returnVal
@@ -63,7 +61,7 @@ shutdownGracefully = (returnVal=0) ->
   setTimeout ->
     console.error "Could not close connections in time, shutting down harder."
     process.exit(returnVal || 1)
-  , 30*1000
+  , 20*1000
 
 process.on 'SIGINT', ->
   console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG

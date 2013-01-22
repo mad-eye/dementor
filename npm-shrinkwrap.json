@@ -1,6 +1,6 @@
 {
   "name": "madeye",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "dependencies": {
     "wrench": {
       "version": "1.4.4"
@@ -67,75 +67,18 @@
     },
     "madeye-common": {
       "version": "0.0.1",
-      "from": "git://github.com/mad-eye/madeye-common.git",
       "dependencies": {
-        "browserchannel": {
-          "version": "0.4.2",
-          "dependencies": {
-            "hat": {
-              "version": "0.0.3"
-            },
-            "connect": {
-              "version": "1.9.2",
-              "dependencies": {
-                "qs": {
-                  "version": "0.5.3"
-                },
-                "mime": {
-                  "version": "1.2.7"
-                },
-                "formidable": {
-                  "version": "1.0.11"
-                }
-              }
-            },
-            "timerstub": {
-              "version": "1.0.0"
-            }
-          }
+        "coffee-script": {
+          "version": "1.4.0"
         },
-        "connect": {
-          "version": "2.7.1",
-          "dependencies": {
-            "qs": {
-              "version": "0.5.1"
-            },
-            "formidable": {
-              "version": "1.0.11"
-            },
-            "cookie-signature": {
-              "version": "0.0.1"
-            },
-            "crc": {
-              "version": "0.2.0"
-            },
-            "cookie": {
-              "version": "0.0.5"
-            },
-            "bytes": {
-              "version": "0.1.0"
-            },
-            "send": {
-              "version": "0.1.0",
-              "dependencies": {
-                "mime": {
-                  "version": "1.2.6"
-                },
-                "range-parser": {
-                  "version": "0.0.4"
-                }
-              }
-            },
-            "fresh": {
-              "version": "0.1.0"
-            },
-            "pause": {
-              "version": "0.0.1"
-            },
-            "debug": {
-              "version": "0.7.0"
-            }
-          }
+        "underscore": {
+          "version": "1.4.3"
+        },
+        "node-uuid": {
+          "version": "1.4.0"
+        },
+        "flow": {
+          "version": "0.2.2"
         }
       }
     },
@@ -156,6 +99,39 @@
             },
             "next-tick": {
               "version": "0.1.0"
+            }
+          }
+        }
+      }
+    },
+    "socket.io-client": {
+      "version": "0.9.11",
+      "dependencies": {
+        "uglify-js": {
+          "version": "1.2.5"
+        },
+        "ws": {
+          "version": "0.4.25",
+          "dependencies": {
+            "commander": {
+              "version": "0.6.1"
+            },
+            "tinycolor": {
+              "version": "0.0.1"
+            },
+            "options": {
+              "version": "0.0.3"
+            }
+          }
+        },
+        "xmlhttprequest": {
+          "version": "1.4.2"
+        },
+        "active-x-obfuscator": {
+          "version": "0.0.1",
+          "dependencies": {
+            "zeparser": {
+              "version": "0.0.5"
             }
           }
         }
@@ -189,75 +165,6 @@
         },
         "ms": {
           "version": "0.3.0"
-        }
-      }
-    },
-    "node-inspector": {
-      "version": "0.2.0beta3",
-      "dependencies": {
-        "socket.io": {
-          "version": "0.9.13",
-          "dependencies": {
-            "socket.io-client": {
-              "version": "0.9.11",
-              "dependencies": {
-                "uglify-js": {
-                  "version": "1.2.5"
-                },
-                "ws": {
-                  "version": "0.4.25",
-                  "dependencies": {
-                    "commander": {
-                      "version": "0.6.1"
-                    },
-                    "tinycolor": {
-                      "version": "0.0.1"
-                    },
-                    "options": {
-                      "version": "0.0.3"
-                    }
-                  }
-                },
-                "xmlhttprequest": {
-                  "version": "1.4.2"
-                },
-                "active-x-obfuscator": {
-                  "version": "0.0.1",
-                  "dependencies": {
-                    "zeparser": {
-                      "version": "0.0.5"
-                    }
-                  }
-                }
-              }
-            },
-            "policyfile": {
-              "version": "0.0.4"
-            },
-            "base64id": {
-              "version": "0.1.0"
-            },
-            "redis": {
-              "version": "0.7.3"
-            }
-          }
-        },
-        "connect": {
-          "version": "1.8.7",
-          "dependencies": {
-            "qs": {
-              "version": "0.5.3"
-            },
-            "mime": {
-              "version": "1.2.7"
-            },
-            "formidable": {
-              "version": "1.0.11"
-            }
-          }
-        },
-        "async": {
-          "version": "0.1.22"
         }
       }
     }

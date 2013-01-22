@@ -70,7 +70,6 @@ class FileUtils
       fileTree.addFile makeRawFile _path.join(root, key), value
       unless typeof value == "string"
         @constructFileTree(value, _path.join(root, key), fileTree)
-    console.log "Contructed fileTree:", fileTree unless root?
     return fileTree
 
   @clone : (obj) ->
