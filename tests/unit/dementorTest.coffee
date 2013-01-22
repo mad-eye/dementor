@@ -16,31 +16,6 @@ _path = require 'path'
 
 homeDir = fileUtils.homeDir
 
-makeMockSocket = ->
-  return new MockSocket
-    onsend: (message) ->
-      if message.action == messageAction.REPLY
-        #need to do this first, to prevent triggering an error
-        #if we are testing a reply that's an error
-        console.log "Getting reply to #{message.replyTo}"
-        callback = @callbacks[message.replyTo]
-        callback?(message)
-      else if message.error
-        assert.fail "Received error message:", message
-      else
-        switch message.action
-          when messageAction.HANDSHAKE
-            @handshakeReceived = true
-            replyMessage = messageMaker.replyMessage message
-            @receive replyMessage
-          when messageAction.ADD_FILES
-            assert.ok @handshakeReceived, "Must handshake before adding files."
-            @addFileMessage = fileUtils.clone message
-            file._id = uuid.v4() for file in message.data.files
-            replyMessage = messageMaker.replyMessage message, files: message.data.files
-            @receive replyMessage
-          else assert.fail "Unexpected action received by socket: #{message.action}"
-
 defaultHttpClient = new MockHttpClient (options, params) ->
   match = /project\/(\w*)/.exec options.action
   if match
@@ -94,7 +69,7 @@ describe "Dementor", ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
-        dementor = new Dementor projectPath, defaultHttpClient, makeMockSocket()
+        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
           assert.equal err, null
           console.log "Running callback received flag: #{flag}"
@@ -125,7 +100,7 @@ describe "Dementor", ->
         projects[projectPath] = projectId
         dementor.projectFiles.saveProjectIds projects
 
-        dementor = new Dementor projectPath, defaultHttpClient, makeMockSocket()
+        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
           assert.equal err, null, #"Http should not return an error"
           if flag == 'ENABLED'
