@@ -159,7 +159,7 @@ describe "Dementor", ->
         if flag == 'ENABLED'
           done()
 
-    it "should reply with file body fweep", (done) ->
+    it "should reply with file body", (done) ->
       data = fileId: dementor.fileTree.findByPath(filePath)._id
       mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
         assert.equal err, null
