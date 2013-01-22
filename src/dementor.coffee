@@ -44,7 +44,6 @@ class Dementor
     @runningCallback null, 'ENABLED'
     #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
     @socket.socket.connect =>
-      @runningCallback null, 'CONNECTED'
       @watchProject()
 
   #####
@@ -114,10 +113,12 @@ class Dementor
     return unless socket?
 
     socket.on 'connect', =>
+      @runningCallback null, "CONNECTED"
       @handshake @projectId
+      clearInterval @reconnectInterval
 
     socket.on 'reconnect', =>
-      @handshake @projectId
+      @runningCallback null, "RECONNECTED"
 
     socket.on 'connect_failed', (reason) =>
       console.warn "Connection failed:", reason
@@ -125,6 +126,9 @@ class Dementor
 
     socket.on 'disconnect', =>
       @runningCallback null, "DISCONNECT"
+      @reconnectInterval = setInterval (->
+        socket.socket.connect()
+      ), 10*1000
 
     socket.on 'error', (reason) =>
       @handleError reason
