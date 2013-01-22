@@ -51,10 +51,10 @@ class ProjectFiles
     unless filePath then callback errors.new 'NO_FILE'; return
     filePath = _path.join @directory, filePath unless options.absolute
     try
-      #console.log "Reading filepath", filePath
       contents = fs.readFileSync(filePath, "utf-8")
-      if options.sync then return contents else callback?(null, contents)
+      if options.sync then return contents else callback null, contents
     catch error
+      console.error "Found error:", error
       @handleError error, options, callback
 
   #callback: (err) -> ...
@@ -82,6 +82,12 @@ class ProjectFiles
 
   projectsDbPath: ->
     _path.join @homeDir(), MADEYE_PROJECTS_FILE
+
+  saveProjectId: (projectId) ->
+    projectIds = @projectIds()
+    projectIds[@directory] = projectId
+    @saveProjectIds projectIds
+
 
   saveProjectIds: (projects) ->
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)

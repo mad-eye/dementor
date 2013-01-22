@@ -8,7 +8,6 @@ _path = require 'path'
 {fileUtils} = require '../util/fileUtils'
 {MockHttpClient} = require '../mock/mockHttpClient'
 {MockSocket} = require 'madeye-common'
-{SocketClient} = require 'madeye-common'
 {messageMaker, messageAction} = require 'madeye-common'
 {errorType} = require 'madeye-common'
 
@@ -16,30 +15,6 @@ _path = require 'path'
 #TODO: Reduce redundancy with better before/etc hooks.
 
 homeDir = fileUtils.homeDir
-
-mockSocket = new MockSocket
-  onsend: (message) ->
-    if message.action == messageAction.REPLY
-      #need to do this first, to prevent triggering an error
-      #if we are testing a reply that's an error
-      console.log "Getting reply to #{message.replyTo}"
-      callback = @callbacks[message.replyTo]
-      callback?(message)
-    else if message.error
-      assert.fail "Received error message:", message
-    else
-      switch message.action
-        when messageAction.HANDSHAKE
-          @handshakeReceived = true
-          replyMessage = messageMaker.replyMessage message
-          @receive replyMessage
-        when messageAction.ADD_FILES
-          assert.ok @handshakeReceived, "Must handshake before adding files."
-          @addFileMessage = fileUtils.clone message
-          file._id = uuid.v4() for file in message.data.files
-          replyMessage = messageMaker.replyMessage message, files: message.data.files
-          @receive replyMessage
-        else assert.fail "Unexpected action received by socket: #{message.action}"
 
 defaultHttpClient = new MockHttpClient (options, params) ->
   match = /project\/(\w*)/.exec options.action
@@ -80,8 +55,6 @@ describe "Dementor", ->
       dementor = new Dementor projectPath
       assert.equal dementor.projectId, null
 
-    it "should persist projectIdacross multiple dementor instances"
-
   describe "enable", ->
     dementor = null
     projectPath = null
@@ -96,8 +69,7 @@ describe "Dementor", ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
-        socketClient = new SocketClient mockSocket
-        dementor = new Dementor projectPath, defaultHttpClient, socketClient
+        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
           assert.equal err, null
           console.log "Running callback received flag: #{flag}"
@@ -106,7 +78,7 @@ describe "Dementor", ->
 
       it "should register the project if not already registered", ->
         assert.ok dementor.projectId
-        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId
+        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
 
       it "should populate file tree with files (and ids)", ->
         assert.ok dementor.fileTree
@@ -128,8 +100,7 @@ describe "Dementor", ->
         projects[projectPath] = projectId
         dementor.projectFiles.saveProjectIds projects
 
-        socketClient = new SocketClient mockSocket
-        dementor = new Dementor projectPath, defaultHttpClient, socketClient
+        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
           assert.equal err, null, #"Http should not return an error"
           if flag == 'ENABLED'
@@ -137,8 +108,8 @@ describe "Dementor", ->
 
       it "should update project files if already registered", ->
         assert.ok dementor.projectId
-        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId
-        assert.equal dementor.projectId, projectId
+        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
+        assert.equal dementor.projectId, projectId, "Dementor's projectId differs from original."
 
       it "should populate file tree with files (and ids)", ->
         assert.ok dementor.fileTree
@@ -151,19 +122,27 @@ describe "Dementor", ->
 
 
   describe "disable", ->
-    dementor = null
+    dementor = mockSocket = null
+    socketClosed = false
     before (done) ->
       projectPath = fileUtils.createProject "disableTest-#{uuid.v4()}", fileUtils.defaultFileMap
 
-      socketClient = new SocketClient mockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
-      dementor.disable done
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor.enable (err, flag) ->
+        if flag == 'ENABLED'
+          dementor.disable done
+        if flag == 'DISCONNECT'
+          socketClosed = true
+
     it "should close down successfull", ->
       return #it would have failed by now!
-    it "should call socketClient.destroy"
+    it "should call socket.disconnect", ->
+      assert.ok mockSocket.disconnected
+      assert.ok socketClosed
 
   describe "receiving REQUEST_FILE message", ->
-    dementor = null
+    dementor = mockSocket = null
     projectPath = projectFiles = null
     filePath = fileBody = null
     before (done) ->
@@ -172,11 +151,8 @@ describe "Dementor", ->
       fileBody = fileUtils.defaultFileMap.dir2.moderateFile
       projectFiles = new ProjectFiles projectPath
 
-      #XXX: This is a little hacky.  Find a better solution.
-      mockSocket.addFileMessage = null
-      socketClient = new SocketClient mockSocket
-      
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
@@ -184,27 +160,30 @@ describe "Dementor", ->
           done()
 
     it "should reply with file body", (done) ->
-      fileId = dementor.fileTree.findByPath(filePath)._id
-      message = messageMaker.requestFileMessage fileId
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.equal msg.error, null
-        assert.equal msg.projectId, dementor.projectId
-        assert.equal msg.data.fileId, fileId
-        assert.equal msg.data.body, fileBody
-        assert.equal msg.replyTo, message.id
+      data = fileId: dementor.fileTree.findByPath(filePath)._id
+      mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
+        assert.equal err, null
+        assert.equal body, fileBody
         done()
-      mockSocket.receive message
 
     it "should give correct error message if no file exists", (done) ->
-      message = messageMaker.requestFileMessage uuid.v4()
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.ok msg.error
-        assert.equal msg.error.type, errorType.NO_FILE
+      data = fileId: uuid.v4()
+      mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
+        assert.ok err
+        assert.equal err.type, errorType.NO_FILE
+        assert.equal body, null
         done()
-      mockSocket.receive message
       
+    #Needed to check dementor-created errors
+    it 'should return the correct error if fileId parameter is missing', (done) ->
+      mockSocket.trigger messageAction.REQUEST_FILE, uuid.v4(), (err, body) ->
+        assert.ok err
+        assert.equal err.type, errorType.MISSING_PARAM
+        assert.equal body, null
+        done()
+
   describe "receiving SAVE_FILE message", ->
-    dementor = null
+    dementor = mockSocket = null
     projectPath = projectFiles = null
     filePath = null
     fileBody = "Two great swans eat the frogs."
@@ -213,9 +192,8 @@ describe "Dementor", ->
       filePath = "dir2/moderateFile"
       projectFiles = new ProjectFiles projectPath
 
-      socketClient = new SocketClient mockSocket
-      
-      dementor = new Dementor projectPath, defaultHttpClient, socketClient
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
         console.log "Running callback received flag: #{flag}"
@@ -223,29 +201,40 @@ describe "Dementor", ->
           done()
 
 
-    it "should reply no error", (done) ->
-      fileId = dementor.fileTree.findByPath(filePath)._id
-      message = messageMaker.saveFileMessage fileId, fileBody
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.equal msg.error, null, "Should not have an error."
-        assert.equal msg.projectId, dementor.projectId
-        assert.equal msg.replyTo, message.id
-        done()
-      mockSocket.receive message
-
     it "should save file contents to projectFiles", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
-      message = messageMaker.saveFileMessage fileId, fileBody
-      mockSocket.callbacks[message.id] = (msg) ->
+      data =
+        fileId: fileId
+        contents: fileBody
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+        assert.equal err, null, "Should not have an error."
         readContents = projectFiles.readFile(filePath, sync:true)
         assert.equal readContents, fileBody
         done()
-      mockSocket.receive message
 
     it "should give correct error message if no file exists", (done) ->
-      message = messageMaker.saveFileMessage uuid.v4(), fileBody
-      mockSocket.callbacks[message.id] = (msg) ->
-        assert.ok msg.error
-        assert.equal msg.error.type, errorType.NO_FILE
+      data =
+        fileId: uuid.v4()
+        contents: fileBody
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+        assert.ok err
+        assert.equal err.type, errorType.NO_FILE
         done()
-      mockSocket.receive message
+
+    #Needed to check dementor-created errors
+    it 'should return the correct error if fileId parameter is missing', (done) ->
+      data =
+        contents: fileBody
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+        assert.ok err
+        assert.equal err.type, errorType.MISSING_PARAM
+        done()
+
+    it 'should return the correct error if contents parameter is missing', (done) ->
+      data =
+        fileId: uuid.v4()
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+        assert.ok err
+        assert.equal err.type, errorType.MISSING_PARAM
+        done()
+
