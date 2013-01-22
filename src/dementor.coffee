@@ -7,7 +7,7 @@ flow = require 'flow'
 {errors, errorType} = require 'madeye-common'
 
 class Dementor
-  constructor: (@directory, @httpClient, @socket) ->
+  constructor: (@directory, @httpClient, socket) ->
     @projectFiles = new ProjectFiles(@directory)
     @projectName = @directory.split('/').pop()
     @projectId = @projectFiles.projectIds()[@directory]
@@ -42,12 +42,16 @@ class Dementor
   finishEnabling: (files) ->
     @fileTree.addFiles files
     @runningCallback null, 'ENABLED'
-    @socket.connect =>
+    #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
+    @socket.socket.connect =>
       @runningCallback null, 'CONNECTED'
       @watchProject()
 
   #####
   # Events from ProjectFiles
+
+  # XXX: When files are modified because of server messages, they will fire events.  We should ignore those.
+  # TODO: Change this to event-driven code.
 
   watchProject: ->
     @projectFiles.watchFileTree (err, event) =>
@@ -66,33 +70,34 @@ class Dementor
         when fileEventType.EDIT then @onEditFileEvent event, callback
         else throw new Error "Unrecognized event action: #{event.action}"
     catch err
+      console.error "Error in handleFileEvent"
       @handleError err
 
   #callback : () -> ...
   onAddFileEvent : (event, callback) ->
     #console.log "Calling onFileEvent ADD"
-    addFilesMessage = messageMaker.addFilesMessage(event.data.files)
-    @socketClient.send addFilesMessage, (err, result) =>
-      @handleError err
-      @fileTree.addFiles result.data.files
-      callback?()
+    #addFilesMessage = messageMaker.addFilesMessage(event.data.files)
+    #@socketClient.send addFilesMessage, (err, result) =>
+      #@handleError err
+      #@fileTree.addFiles result.data.files
+      #callback?()
 
   #callback : () -> ...
   onRemoveFileEvent : (event, callback) ->
-    removeFilesMessage = messageMaker.removeFilesMessage(event.data.files)
-    @socketClient.send removeFilesMessage, (err, result) =>
-      @handleError err
-      #TODO: Should check that result has the same files
-      @fileTree.removeFiles event.data.files
-      callback?()
+    #removeFilesMessage = messageMaker.removeFilesMessage(event.data.files)
+    #@socketClient.send removeFilesMessage, (err, result) =>
+      #@handleError err
+      ##TODO: Should check that result has the same files
+      #@fileTree.removeFiles event.data.files
+      #callback?()
 
   #callback : () -> ...
   onEditFileEvent : (event, callback) ->
-    file = @fileTree.findByPath event.data.path
-    saveFileMessage = messageMaker.saveFileMessage file.id, event.data.contents
-    @socketClient.send saveFileMessage, (err, result) =>
-      @handleError err
-      callback?()
+    #file = @fileTree.findByPath event.data.path
+    #saveFileMessage = messageMaker.saveFileMessage file.id, event.data.contents
+    #@socketClient.send saveFileMessage, (err, result) =>
+      #@handleError err
+      #callback?()
 
 
   #####
@@ -102,7 +107,7 @@ class Dementor
   # Azkaban
 
   handshake: (projectId) ->
-    @socket.emit messageAction.HANDSHAKE, projectId, ->
+    @socket.emit messageAction.HANDSHAKE, projectId, =>
       @runningCallback null, 'HANDSHAKE_RECEIVED'
       
   attach: (@socket) ->
@@ -114,11 +119,15 @@ class Dementor
     socket.on 'reconnect', =>
       @handshake @projectId
 
-    socket.on 'connect_failed', =>
+    socket.on 'connect_failed', (reason) =>
+      console.warn "Connection failed:", reason
       @runningCallback null, "CONNECTION_FAILED"
 
     socket.on 'disconnect', =>
       @runningCallback null, "DISCONNECT"
+
+    socket.on 'error', (reason) =>
+      @handleError reason
 
     #callback: (err, body) =>, errors are encoded as {error:}
     socket.on messageAction.REQUEST_FILE, (data, callback) =>
