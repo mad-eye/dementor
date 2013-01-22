@@ -4,6 +4,7 @@ flow = require 'flow'
 {Settings} = require 'madeye-common'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require 'madeye-common'
+{errors, errorType} = require 'madeye-common'
 
 class Dementor
   constructor: (@directory, @httpClient, @socket) ->
@@ -120,13 +121,16 @@ class Dementor
       @runningCallback null, "DISCONNECT"
 
     #callback: (err, body) =>, errors are encoded as {error:}
-    socket.on messageAction.REQUEST_FILE, (fileId, callback) =>
+    socket.on messageAction.REQUEST_FILE, (data, callback) =>
+      fileId = data.fileId
       unless fileId then callback errors.new 'MISSING_PARAM'; return
       path = @fileTree.findById(fileId)?.path
       @projectFiles.readFile path, callback
 
     #callback: (err) =>, errors are encoded as {error:}
-    socket.on messageAction.SAVE_FILE, (fileId, contents, callback) =>
+    socket.on messageAction.SAVE_FILE, (data, callback) =>
+      fileId = data.fileId
+      contents = data.contents
       unless fileId && contents
         callback errors.new 'MISSING_PARAM'; return
       path = @fileTree.findById(fileId)?.path

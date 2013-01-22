@@ -160,19 +160,28 @@ describe "Dementor", ->
           done()
 
     it "should reply with file body fweep", (done) ->
-      fileId = dementor.fileTree.findByPath(filePath)._id
-      mockSocket.trigger messageAction.REQUEST_FILE, fileId, (err, body) ->
+      data = fileId: dementor.fileTree.findByPath(filePath)._id
+      mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
         assert.equal err, null
         assert.equal body, fileBody
         done()
 
     it "should give correct error message if no file exists", (done) ->
-      mockSocket.trigger messageAction.REQUEST_FILE, uuid.v4(), (err, body) ->
+      data = fileId: uuid.v4()
+      mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
         assert.equal body, null
         done()
       
+    #Needed to check dementor-created errors
+    it 'should return the correct error if fileId parameter is missing', (done) ->
+      mockSocket.trigger messageAction.REQUEST_FILE, uuid.v4(), (err, body) ->
+        assert.ok err
+        assert.equal err.type, errorType.MISSING_PARAM
+        assert.equal body, null
+        done()
+
   describe "receiving SAVE_FILE message", ->
     dementor = mockSocket = null
     projectPath = projectFiles = null
@@ -194,14 +203,38 @@ describe "Dementor", ->
 
     it "should save file contents to projectFiles", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
-      mockSocket.trigger messageAction.SAVE_FILE, fileId, fileBody, (err) ->
+      data =
+        fileId: fileId
+        contents: fileBody
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
         assert.equal err, null, "Should not have an error."
         readContents = projectFiles.readFile(filePath, sync:true)
         assert.equal readContents, fileBody
         done()
 
     it "should give correct error message if no file exists", (done) ->
-      mockSocket.trigger messageAction.SAVE_FILE, uuid.v4(), fileBody, (err) ->
+      data =
+        fileId: uuid.v4()
+        contents: fileBody
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
         done()
+
+    #Needed to check dementor-created errors
+    it 'should return the correct error if fileId parameter is missing', (done) ->
+      data =
+        contents: fileBody
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+        assert.ok err
+        assert.equal err.type, errorType.MISSING_PARAM
+        done()
+
+    it 'should return the correct error if contents parameter is missing', (done) ->
+      data =
+        fileId: uuid.v4()
+      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+        assert.ok err
+        assert.equal err.type, errorType.MISSING_PARAM
+        done()
+
