@@ -6,30 +6,25 @@ class MockHttpClient
   #callback : (body) ->
   #errors are encoded as body={error:}
   get: (options, params, callback) =>
-    if typeof params == 'function'
-      callback = params
-      params = {}
     options.method = 'GET'
-    result = @router options, params
-    callback result
+    @request options, params, callback
 
   #callback : (body) ->
   #errors are encoded as body={error:}
   post: (options, params, callback) =>
-    if typeof params == 'function'
-      callback = params
-      params = {}
     options.method = 'POST'
-    result = @router options, params
-    callback result
+    @request options, params, callback
 
   #callback : (body) ->
   #errors are encoded as body={error:}
   put: (options, params, callback) =>
+    options.method = 'PUT'
+    @request options, params, callback
+
+  request: (options, params, callback) =>
     if typeof params == 'function'
       callback = params
       params = {}
-    options.method = 'PUT'
     result = @router options, params
     callback result
 
