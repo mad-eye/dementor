@@ -17,16 +17,21 @@ _path = require 'path'
 homeDir = fileUtils.homeDir
 
 defaultHttpClient = new MockHttpClient (options, params) ->
-  match = /project\/(\w*)/.exec options.action
+  match = /project(\/[\w-]+)?/.exec options.action
   if match
+    projectId = match[1]?.substring(1)
     if options.method == 'POST'
+      return {error: "ProjectID should not be specified"} if projectId?
+      projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
-      return {id:uuid.v4(), name:match[1], files:files }
+      return {project: {_id:uuid.v4(), name:projectName}, files:files }
     else if options.method == 'PUT'
+      return {error: "ProjectID should be specified"} unless projectId?
+      projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
-      return {id:match[1], files:files }
+      return {project: {_id:projectId, name:projectName}, files:files }
     else
       return {error: "Wrong method: #{options.method}"}
   else
@@ -72,7 +77,7 @@ describe "Dementor", ->
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
           assert.equal err, null
-          console.log "Running callback received flag: #{flag}"
+          #console.log "Running callback received flag: #{flag}"
           if flag == 'ENABLED'
             done()
 
@@ -96,9 +101,8 @@ describe "Dementor", ->
         targetFileTree = fileUtils.constructFileTree fileMap
         projectPath = fileUtils.createProject "alreadyEnableTest-#{uuid.v4()}", fileMap
         projectId = uuid.v4()
-        projects = {}
-        projects[projectPath] = projectId
-        dementor.projectFiles.saveProjectIds projects
+        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+        dementor.projectFiles.saveProjectId projectId
 
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
@@ -155,7 +159,7 @@ describe "Dementor", ->
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
-        console.log "Running callback received flag: #{flag}"
+        #console.log "Running callback received flag: #{flag}"
         if flag == 'ENABLED'
           done()
 
@@ -196,7 +200,7 @@ describe "Dementor", ->
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
-        console.log "Running callback received flag: #{flag}"
+        #console.log "Running callback received flag: #{flag}"
         if flag == 'READ_FILETREE'
           done()
 
