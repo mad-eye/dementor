@@ -17,10 +17,8 @@ _path = require 'path'
 homeDir = fileUtils.homeDir
 
 defaultHttpClient = new MockHttpClient (options, params) ->
-  console.log "Options:", options
   match = /project(\/[\w-]+)?/.exec options.action
   if match
-    console.log "match:", match
     projectId = match[1]?.substring(1)
     if options.method == 'POST'
       return {error: "ProjectID should not be specified"} if projectId?
@@ -79,7 +77,7 @@ describe "Dementor", ->
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.enable (err, flag) ->
           assert.equal err, null
-          console.log "Running callback received flag: #{flag}"
+          #console.log "Running callback received flag: #{flag}"
           if flag == 'ENABLED'
             done()
 
@@ -96,7 +94,7 @@ describe "Dementor", ->
           assert.ok file.path?
           assert.ok file._id
 
-    describe "when already registered fweep", ->
+    describe "when already registered", ->
       targetFileTree = projectId = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
@@ -161,7 +159,7 @@ describe "Dementor", ->
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
-        console.log "Running callback received flag: #{flag}"
+        #console.log "Running callback received flag: #{flag}"
         if flag == 'ENABLED'
           done()
 
@@ -202,7 +200,7 @@ describe "Dementor", ->
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.enable (err, flag) ->
         assert.equal err, null
-        console.log "Running callback received flag: #{flag}"
+        #console.log "Running callback received flag: #{flag}"
         if flag == 'READ_FILETREE'
           done()
 
