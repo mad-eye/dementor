@@ -35,7 +35,7 @@ class Dementor
         @handleError result.error
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
-        @finishEnabling result.project.files
+        @finishEnabling result.files
 
   disable: (callback) ->
     @socket?.disconnect()

@@ -27,13 +27,13 @@ defaultHttpClient = new MockHttpClient (options, params) ->
       projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
-      return {project: {_id:uuid.v4(), name:projectName, files:files }}
+      return {project: {_id:uuid.v4(), name:projectName}, files:files }
     else if options.method == 'PUT'
       return {error: "ProjectID should be specified"} unless projectId?
       projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
-      return {project: {_id:projectId, name:projectName, files:files }}
+      return {project: {_id:projectId, name:projectName}, files:files }
     else
       return {error: "Wrong method: #{options.method}"}
   else
