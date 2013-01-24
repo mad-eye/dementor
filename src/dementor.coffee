@@ -24,16 +24,18 @@ class Dementor
     @projectFiles.readFileTree (err, files) =>
       @handleError err
       @runningCallback null, 'READ_FILETREE'
+      action = method = null
       if @projectId
-        @httpClient.put {action: "project/#{@projectId}", json: {files:files}}, (result) =>
-          @handleError result.error
-          @finishEnabling(result.files)
+        action = "project/#{@projectId}"
+        method = 'PUT'
       else
-        @httpClient.post {action:"project/#{@projectName}", json: {files:files}}, (result) =>
-          @handleError result.error
-          @projectId = result.id
-          @projectFiles.saveProjectId @projectId
-          @finishEnabling(result.files)
+        action = "project"
+        method = 'POST'
+      @httpClient.request {method: method, action:action, json: {projectName:@projectName, files:files}}, (result) =>
+        @handleError result.error
+        @projectId = result.project._id
+        @projectFiles.saveProjectId @projectId
+        @finishEnabling result.files
 
   disable: (callback) ->
     @socket?.disconnect()
