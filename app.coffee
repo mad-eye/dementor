@@ -17,8 +17,10 @@ run = ->
 
   defaultHttpServer = "#{Settings.httpHost}:#{Settings.httpPort}"
 
+  pkg = require './package.json'
+
   program
-    .version('0.1.0')
+    .version(pkg.version)
     .option('--server <server>', 'point to a non-standard server', String, defaultHttpServer)
     .parse(process.argv)
 
