@@ -1,6 +1,6 @@
 {
   "name": "madeye",
-  "version": "0.0.8",
+  "version": "0.0.10",
   "dependencies": {
     "wrench": {
       "version": "1.4.4"
@@ -67,18 +67,75 @@
     },
     "madeye-common": {
       "version": "0.0.1",
+      "from": "git://github.com/mad-eye/madeye-common.git",
       "dependencies": {
-        "coffee-script": {
-          "version": "1.4.0"
+        "browserchannel": {
+          "version": "0.4.2",
+          "dependencies": {
+            "hat": {
+              "version": "0.0.3"
+            },
+            "connect": {
+              "version": "1.9.2",
+              "dependencies": {
+                "qs": {
+                  "version": "0.5.3"
+                },
+                "mime": {
+                  "version": "1.2.9"
+                },
+                "formidable": {
+                  "version": "1.0.11"
+                }
+              }
+            },
+            "timerstub": {
+              "version": "1.0.0"
+            }
+          }
         },
-        "underscore": {
-          "version": "1.4.3"
-        },
-        "node-uuid": {
-          "version": "1.4.0"
-        },
-        "flow": {
-          "version": "0.2.2"
+        "connect": {
+          "version": "2.7.2",
+          "dependencies": {
+            "qs": {
+              "version": "0.5.1"
+            },
+            "formidable": {
+              "version": "1.0.11"
+            },
+            "cookie-signature": {
+              "version": "0.0.1"
+            },
+            "buffer-crc32": {
+              "version": "0.1.1"
+            },
+            "cookie": {
+              "version": "0.0.5"
+            },
+            "bytes": {
+              "version": "0.1.0"
+            },
+            "send": {
+              "version": "0.1.0",
+              "dependencies": {
+                "mime": {
+                  "version": "1.2.6"
+                },
+                "range-parser": {
+                  "version": "0.0.4"
+                }
+              }
+            },
+            "fresh": {
+              "version": "0.1.0"
+            },
+            "pause": {
+              "version": "0.0.1"
+            },
+            "debug": {
+              "version": "0.7.0"
+            }
+          }
         }
       }
     },
