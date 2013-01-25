@@ -242,3 +242,37 @@ describe "Dementor", ->
         assert.equal err.type, errorType.MISSING_PARAM
         done()
 
+  describe 'watchFileTree', ->
+    dementor = mockSocket = null
+    projectPath = projectFiles = null
+    filePath = null
+    fileBody = "Two great swans eat the frogs."
+    before (done) ->
+      projectPath = fileUtils.createProject "flaxo", fileUtils.defaultFileMap
+      filePath = "testFile.txt"
+      projectFiles = new ProjectFiles projectPath
+
+      mockSocket = new MockSocket
+      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor.enable (err, flag) ->
+        assert.equal err, null
+        #console.log "Running callback received flag: #{flag}"
+        if flag == 'WATCHING_FILETREE'
+          done()
+
+    it 'should send ADD_FILES message when projectFiles emits one fweep', (done) ->
+      mockSocket.onEmit = (action, data, cb) ->
+        unless action == messageAction.ADD_FILES
+          console.log "Got action", action
+          return
+        assert.ok data.projectId
+        assert.equal data.projectId, dementor.projectId
+        assert.equal data.files.length, 1
+        file = data.files[0]
+        assert.equal file.path, filePath
+        assert.equal file.isDir, false
+        done()
+
+      dementor.projectFiles.emit messageAction.ADD_FILES, files:[{path:filePath, isDir:false}]
+
+

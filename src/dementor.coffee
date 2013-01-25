@@ -35,70 +35,36 @@ class Dementor
         @handleError result.error
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
-        @finishEnabling result.files
+        @fileTree.addFiles files
+        @runningCallback null, 'ENABLED'
+        #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
+        @socket.socket.connect =>
+          @watchProject()
 
   disable: (callback) ->
     @socket?.disconnect()
     callback?()
  
-  finishEnabling: (files) ->
-    @fileTree.addFiles files
-    @runningCallback null, 'ENABLED'
-    #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
-    @socket.socket.connect =>
-      @watchProject()
-
   #####
   # Events from ProjectFiles
 
   # XXX: When files are modified because of server messages, they will fire events.  We should ignore those.
-  # TODO: Change this to event-driven code.
 
   watchProject: ->
-    @projectFiles.watchFileTree (err, event) =>
-      @handleError err
-      @handleFileEvent event
+    @projectFiles.on messageAction.ADD_FILES, (data) =>
+      data.projectId = @projectId
+      @socket.emit messageAction.ADD_FILES, data, (err, files) =>
+        @handleError err
+        @fileTree.addFiles files
 
-  #callback: () -> ... optional, for additional hooks.
-  handleFileEvent: (event, callback) ->
-    return unless event
-    #console.log "Calling handleFileEvent with event", event
-    try
-      switch event.type
-        when fileEventType.PREEXISTED then "file already read by readFileTree."
-        when fileEventType.ADD then @onAddFileEvent event, callback
-        when fileEventType.REMOVE then @onRemoveFileEvent event, callback
-        when fileEventType.EDIT then @onEditFileEvent event, callback
-        else throw new Error "Unrecognized event action: #{event.action}"
-    catch err
-      console.error "Error in handleFileEvent"
-      @handleError err
+    @projectFiles.on messageAction.SAVE_FILE, (data) ->
+      #TODO: Send save file message
 
-  #callback : () -> ...
-  onAddFileEvent : (event, callback) ->
-    #console.log "Calling onFileEvent ADD"
-    #addFilesMessage = messageMaker.addFilesMessage(event.data.files)
-    #@socketClient.send addFilesMessage, (err, result) =>
-      #@handleError err
-      #@fileTree.addFiles result.data.files
-      #callback?()
+    @projectFiles.on messageAction.REMOVE_FILES, (data) ->
+      #TODO: send remove files message.
 
-  #callback : () -> ...
-  onRemoveFileEvent : (event, callback) ->
-    #removeFilesMessage = messageMaker.removeFilesMessage(event.data.files)
-    #@socketClient.send removeFilesMessage, (err, result) =>
-      #@handleError err
-      ##TODO: Should check that result has the same files
-      #@fileTree.removeFiles event.data.files
-      #callback?()
-
-  #callback : () -> ...
-  onEditFileEvent : (event, callback) ->
-    #file = @fileTree.findByPath event.data.path
-    #saveFileMessage = messageMaker.saveFileMessage file.id, event.data.contents
-    #@socketClient.send saveFileMessage, (err, result) =>
-      #@handleError err
-      #callback?()
+    @projectFiles.watchFileTree()
+    @runningCallback null, 'WATCHING_FILETREE'
 
 
   #####
