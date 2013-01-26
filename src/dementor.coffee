@@ -72,18 +72,15 @@ class Dementor
   # errors should *NOT* be sent to @handleError, they
   # should be returned to be encoded as a message to
   # Azkaban
-
-  handshake: (projectId) ->
-    @socket.emit messageAction.HANDSHAKE, projectId, =>
-      @runningCallback null, 'HANDSHAKE_RECEIVED'
       
   attach: (@socket) ->
     return unless socket?
 
     socket.on 'connect', =>
       @runningCallback null, "CONNECTED"
-      @handshake @projectId
       clearInterval @reconnectInterval
+      @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
+        @runningCallback null, 'HANDSHAKE_RECEIVED'
 
     socket.on 'reconnect', =>
       @runningCallback null, "RECONNECTED"

@@ -120,11 +120,10 @@ class ProjectFiles extends events.EventEmitter
   watchFileTree: ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path) ->
-      console.log "Found preexisting file:", path
+      #console.log "Found preexisting file:", path
       #Currently send this information with the init request.
 
     @watcher.on "fileCreated", (path) =>
-      console.log "Found file added:", path
       isDir = fs.statSync( path ).isDirectory()
       pathRe = new RegExp "^#{@directory}/"
       relativePath = path.replace(pathRe, "")
