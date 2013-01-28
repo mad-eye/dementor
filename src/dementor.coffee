@@ -35,7 +35,7 @@ class Dementor
         @handleError result.error
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
-        @fileTree.addFiles files
+        @fileTree.addFiles result.files
         @runningCallback null, 'ENABLED'
         #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
         @socket.socket.connect =>
@@ -79,6 +79,7 @@ class Dementor
     socket.on 'connect', =>
       @runningCallback null, "CONNECTED"
       clearInterval @reconnectInterval
+      @reconnectInterval = null
       @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
         @runningCallback null, 'HANDSHAKE_RECEIVED'
 
