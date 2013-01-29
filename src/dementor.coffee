@@ -57,11 +57,18 @@ class Dementor
         @handleError err
         @fileTree.addFiles files
 
-    @projectFiles.on messageAction.SAVE_FILE, (data) ->
-      #TODO: Send save file message
+    @projectFiles.on messageAction.SAVE_FILE, (data) =>
+      data.projectId = @projectId
+      data.file = @fileTree.findByPath(data.path)
+      @socket.emit messageAction.SAVE_FILE, data, (err) =>
+        @handleError err
 
-    @projectFiles.on messageAction.REMOVE_FILES, (data) ->
-      #TODO: send remove files message.
+    @projectFiles.on messageAction.REMOVE_FILES, (data) =>
+      data.projectId = @projectId
+      file = @fileTree.findByPath(data.paths[0])
+      data.files = [file]
+      @socket.emit messageAction.REMOVE_FILES, data, (err) =>
+        @handleError err
 
     @projectFiles.watchFileTree()
     @runningCallback null, 'WATCHING_FILETREE'
@@ -69,9 +76,10 @@ class Dementor
 
   #####
   # Incoming message methods
-  # errors should *NOT* be sent to @handleError, they
+  # errors from events from messageActions should *NOT* be
+  # sent to @handleError, they
   # should be returned to be encoded as a message to
-  # Azkaban
+  # Azkaban.
       
   attach: (@socket) ->
     return unless socket?

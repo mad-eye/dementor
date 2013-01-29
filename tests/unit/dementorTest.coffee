@@ -250,7 +250,6 @@ describe "Dementor", ->
     before (done) ->
       projectPath = fileUtils.createProject "flaxo", fileUtils.defaultFileMap
       filePath = "testFile.txt"
-      projectFiles = new ProjectFiles projectPath
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
@@ -260,7 +259,7 @@ describe "Dementor", ->
         if flag == 'WATCHING_FILETREE'
           done()
 
-    it 'should send ADD_FILES message when projectFiles emits one fweep', (done) ->
+    it 'should send ADD_FILES message when projectFiles emits one', (done) ->
       mockSocket.onEmit = (action, data, cb) ->
         unless action == messageAction.ADD_FILES
           console.log "Got action", action
@@ -274,5 +273,38 @@ describe "Dementor", ->
         done()
 
       dementor.projectFiles.emit messageAction.ADD_FILES, files:[{path:filePath, isDir:false}]
+
+    it 'should send SAVE_FILE message when projectFiles emits one', (done) ->
+      path = "a/path"
+      contents = "Too readily we admit that the cost of inaction is failure."
+      file = _id:uuid.v4(), path:path, isDir:false
+      dementor.fileTree.addFile file
+      mockSocket.onEmit = (action, data, cb) ->
+        unless action == messageAction.SAVE_FILE
+          console.log "Got action", action
+          return
+        assert.ok data.projectId
+        assert.equal data.projectId, dementor.projectId
+        assert.deepEqual data.file, file
+        assert.equal data.contents, contents
+        done()
+
+      dementor.projectFiles.emit messageAction.SAVE_FILE, path:path, contents:contents
+
+    it 'should send REMOVE_FILES message when projectFiles emits one', (done) ->
+      path = "another/path"
+      file = _id:uuid.v4(), path:path, isDir:false
+      dementor.fileTree.addFile file
+      mockSocket.onEmit = (action, data, cb) ->
+        unless action == messageAction.REMOVE_FILES
+          console.log "Got action", action
+          return
+        assert.ok data.projectId
+        assert.equal data.projectId, dementor.projectId
+        assert.equal data.files.length, 1
+        assert.deepEqual data.files[0], file
+        done()
+
+      dementor.projectFiles.emit messageAction.REMOVE_FILES, paths:[path]
 
 

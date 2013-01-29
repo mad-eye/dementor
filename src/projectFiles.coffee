@@ -11,12 +11,10 @@ events = require 'events'
 #  [For ADD]
 #    files: [file,...]
 #  [For REMOVE]
-#    files: [file,...]
+#    files: [path,...]
 #  [For EDIT]
-#    fileId:
-#    oldBody:
-#    newBody:
-#    changes:
+#    path:
+#    contents:
 #  [For MOVE]
 #    fileId:
 #    oldPath:
@@ -25,6 +23,10 @@ events = require 'events'
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
+
+  cleanPath: (path) ->
+    pathRe = new RegExp "^#{@directory}/"
+    path.replace(pathRe, "")
 
   handleError: (error, options={}, callback) ->
     newError = null
@@ -125,17 +127,18 @@ class ProjectFiles extends events.EventEmitter
 
     @watcher.on "fileCreated", (path) =>
       isDir = fs.statSync( path ).isDirectory()
-      pathRe = new RegExp "^#{@directory}/"
-      relativePath = path.replace(pathRe, "")
+      relativePath = @cleanPath path
       @emit messageAction.ADD_FILES, files: [{path:relativePath, isDir:isDir}]
 
     @watcher.on "fileModified", (path) =>
+      relativePath = @cleanPath path
       fs.readFile path, "utf-8", (err, contents) =>
         if err then @emit 'error', err; return
-        @emit messageAction.SAVE_FILE, {path: path, contents: contents}
+        @emit messageAction.SAVE_FILE, {path: relativePath, contents: contents}
 
     @watcher.on "fileDeleted", (path) =>
-      @emit messageAction.REMOVE_FILES, files: [path]
+      relativePath = @cleanPath path
+      @emit messageAction.REMOVE_FILES, paths: [relativePath]
 
 # based on a similar fucntion found in wrench
 # https://github.com/ryanmcgrath/wrench-js
