@@ -1,4 +1,3 @@
-{Settings} = require 'madeye-common'
 _ = require 'underscore'
 request = require 'request'
 querystring = require 'querystring'

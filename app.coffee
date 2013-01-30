@@ -15,19 +15,16 @@ run = ->
   #TODO gracefully handle ctrl-c
   #TODO turn this into class that takes argv and add some tests
 
-  defaultHttpServer = "#{Settings.httpHost}:#{Settings.httpPort}"
-
   pkg = require './package.json'
 
   program
     .version(pkg.version)
-    .option('--server <server>', 'point to a non-standard server', String, defaultHttpServer)
     .parse(process.argv)
 
   server = program.server
-  httpClient = new HttpClient server
-  socket = io.connect "http://#{server}",
-    'resource': 'socket.io' #This must match the server.  Server defaults to 'socket.io'
+  httpClient = new HttpClient Settings.azkabanHost
+  socket = io.connect Settings.azkabanUrl,
+    'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
   dementor = new Dementor process.cwd(), httpClient, socket
@@ -35,7 +32,7 @@ run = ->
     util.puts "Enabling MadEye in " + clc.bold process.cwd()
     dementor.enable (err, flag) ->
       if err then handleError err; return
-      apogeeUrl = "http://#{Settings.apogeeHost}:#{Settings.apogeePort}/edit/#{dementor.projectId}"
+      apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
       util.puts "View your project at " + clc.bold apogeeUrl if flag == 'ENABLED'
       console.log clc.blackBright "[Dementor received flag: #{flag}]" if process.env.MADEYE_DEBUG
   catch error

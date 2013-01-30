@@ -1,7 +1,6 @@
 flow = require 'flow'
 {ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree} = require 'madeye-common'
-{Settings} = require 'madeye-common'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require 'madeye-common'
 {errors, errorType} = require 'madeye-common'
