@@ -1,7 +1,6 @@
 flow = require 'flow'
 {ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree} = require 'madeye-common'
-{Settings} = require 'madeye-common'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require 'madeye-common'
 {errors, errorType} = require 'madeye-common'
@@ -35,89 +34,61 @@ class Dementor
         @handleError result.error
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
-        @finishEnabling result.files
+        @fileTree.addFiles result.files
+        @runningCallback null, 'ENABLED'
+        #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
+        @socket.socket.connect =>
+          @watchProject()
 
   disable: (callback) ->
     @socket?.disconnect()
     callback?()
  
-  finishEnabling: (files) ->
-    @fileTree.addFiles files
-    @runningCallback null, 'ENABLED'
-    #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
-    @socket.socket.connect =>
-      @watchProject()
-
   #####
   # Events from ProjectFiles
 
   # XXX: When files are modified because of server messages, they will fire events.  We should ignore those.
-  # TODO: Change this to event-driven code.
 
   watchProject: ->
-    @projectFiles.watchFileTree (err, event) =>
-      @handleError err
-      @handleFileEvent event
+    @projectFiles.on messageAction.ADD_FILES, (data) =>
+      data.projectId = @projectId
+      @socket.emit messageAction.ADD_FILES, data, (err, files) =>
+        @handleError err
+        @fileTree.addFiles files
 
-  #callback: () -> ... optional, for additional hooks.
-  handleFileEvent: (event, callback) ->
-    return unless event
-    #console.log "Calling handleFileEvent with event", event
-    try
-      switch event.type
-        when fileEventType.PREEXISTED then "file already read by readFileTree."
-        when fileEventType.ADD then @onAddFileEvent event, callback
-        when fileEventType.REMOVE then @onRemoveFileEvent event, callback
-        when fileEventType.EDIT then @onEditFileEvent event, callback
-        else throw new Error "Unrecognized event action: #{event.action}"
-    catch err
-      console.error "Error in handleFileEvent"
-      @handleError err
+    @projectFiles.on messageAction.SAVE_FILE, (data) =>
+      data.projectId = @projectId
+      data.file = @fileTree.findByPath(data.path)
+      @socket.emit messageAction.SAVE_FILE, data, (err) =>
+        @handleError err
 
-  #callback : () -> ...
-  onAddFileEvent : (event, callback) ->
-    #console.log "Calling onFileEvent ADD"
-    #addFilesMessage = messageMaker.addFilesMessage(event.data.files)
-    #@socketClient.send addFilesMessage, (err, result) =>
-      #@handleError err
-      #@fileTree.addFiles result.data.files
-      #callback?()
+    @projectFiles.on messageAction.REMOVE_FILES, (data) =>
+      data.projectId = @projectId
+      file = @fileTree.findByPath(data.paths[0])
+      data.files = [file]
+      @socket.emit messageAction.REMOVE_FILES, data, (err) =>
+        @handleError err
 
-  #callback : () -> ...
-  onRemoveFileEvent : (event, callback) ->
-    #removeFilesMessage = messageMaker.removeFilesMessage(event.data.files)
-    #@socketClient.send removeFilesMessage, (err, result) =>
-      #@handleError err
-      ##TODO: Should check that result has the same files
-      #@fileTree.removeFiles event.data.files
-      #callback?()
-
-  #callback : () -> ...
-  onEditFileEvent : (event, callback) ->
-    #file = @fileTree.findByPath event.data.path
-    #saveFileMessage = messageMaker.saveFileMessage file.id, event.data.contents
-    #@socketClient.send saveFileMessage, (err, result) =>
-      #@handleError err
-      #callback?()
+    @projectFiles.watchFileTree()
+    @runningCallback null, 'WATCHING_FILETREE'
 
 
   #####
   # Incoming message methods
-  # errors should *NOT* be sent to @handleError, they
+  # errors from events from messageActions should *NOT* be
+  # sent to @handleError, they
   # should be returned to be encoded as a message to
-  # Azkaban
-
-  handshake: (projectId) ->
-    @socket.emit messageAction.HANDSHAKE, projectId, =>
-      @runningCallback null, 'HANDSHAKE_RECEIVED'
+  # Azkaban.
       
   attach: (@socket) ->
     return unless socket?
 
     socket.on 'connect', =>
       @runningCallback null, "CONNECTED"
-      @handshake @projectId
       clearInterval @reconnectInterval
+      @reconnectInterval = null
+      @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
+        @runningCallback null, 'HANDSHAKE_RECEIVED'
 
     socket.on 'reconnect', =>
       @runningCallback null, "RECONNECTED"

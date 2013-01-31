@@ -5,7 +5,7 @@ assert = require 'assert'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
-{errorType} = require 'madeye-common'
+{errorType, messageAction} = require 'madeye-common'
 
 
 homeDir = fileUtils.homeDir
@@ -27,9 +27,6 @@ describe 'ProjectFiles', ->
   describe 'readFile', ->
     beforeEach ->
       resetHome()
-      if fs.existsSync homeDir
-        wrench.rmdirSyncRecursive homeDir
-      fileUtils.mkDir homeDir
 
     it 'should return a body when a file exists', (done) ->
       fileName = 'file.txt'
@@ -238,11 +235,41 @@ describe 'ProjectFiles', ->
 
 
   describe "watchFileTree", ->
-    it "should notice when i change a file"
+    before ->
+      resetHome()
+
+    it "should be an EventEmitter", (done) ->
+      projectFiles = new ProjectFiles homeDir
+      projectFiles.on 'myEvent', (data) ->
+        console.log "Found myEvent with data", data
+        assert.equal data.foo, 'bar'
+        done()
+
+      projectFiles.emit 'myEvent', foo:'bar'
+
+    it "should notice when i add a file fweep"#, (done) ->
+    ###
+    #This intermittently fails.  Race condition?  Setup condition?
+      projectFiles = new ProjectFiles homeDir
+      fileName = 'file.txt'
+      filePath = _path.join homeDir, fileName
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        file = data.files[0]
+        assert.equal file.path, fileName
+        assert.equal file.isDir, false
+        done()
+      projectFiles.watchFileTree()
+      setTimeout (->
+        fs.writeFileSync _path.join(homeDir,fileName), 'touched'
+      ), 500
+      ###
+
+    it "should notice when I add a directory"
+      
 
     it "should notice when i delete a file"
 
-    it "should notice when i add a file"
+    it "should notice when i change a file"
 
     it "should not noice imgages"
 

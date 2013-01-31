@@ -2,13 +2,8 @@ fs = require "fs"
 _path = require "path"
 {errors} = require 'madeye-common'
 _ = require 'underscore'
-
-fileEventType =
-  ADD : 'add'
-  REMOVE: 'remove'
-  EDIT: 'edit'
-  MOVE: 'move'
-  PREEXISTED: 'preexisted'
+events = require 'events'
+{messageAction} = require 'madeye-common'
 
 #File Events:
 #  type: fileEventType
@@ -16,20 +11,22 @@ fileEventType =
 #  [For ADD]
 #    files: [file,...]
 #  [For REMOVE]
-#    files: [file,...]
+#    files: [path,...]
 #  [For EDIT]
-#    fileId:
-#    oldBody:
-#    newBody:
-#    changes:
+#    path:
+#    contents:
 #  [For MOVE]
 #    fileId:
 #    oldPath:
 #    newPath:
 
 MADEYE_PROJECTS_FILE = ".madeye_projects"
-class ProjectFiles
+class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
+
+  cleanPath: (path) ->
+    pathRe = new RegExp "^#{@directory}/"
+    path.replace(pathRe, "")
 
   handleError: (error, options={}, callback) ->
     newError = null
@@ -121,38 +118,27 @@ class ProjectFiles
       @handleError error, null, callback; return
     callback null, results
 
-  #callback = (err, event) ->
-  watchFileTree: (callback) ->
+  #Sets up event listeners, and emits messages
+  watchFileTree: ->
     @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path) ->
-      event =
-        type: fileEventType.PREEXISTED
-        data:
-          files: [path]
-      callback null, event
-    @watcher.on "fileCreated", (path)->
-      event =
-        type: fileEventType.ADD
-        data:
-          files: [path]
-      callback null, event
-    @watcher.on "fileModified", (path)->
-      #console.log "fileModified: #{path}"
-      fs.readFile path, "utf-8", (err, contents)->
-        if err then callback err; return
-        event =
-          type: fileEventType.EDIT
-          data:
-            path: path
-            contents: contents
-        callback null, event
-    @watcher.on "fileDeleted", (path)->
-      #console.log "fileDeleted: #{path}"
-      event =
-        type: fileEventType.REMOVE
-        data:
-          files: [path]
-      callback null, event
+      #console.log "Found preexisting file:", path
+      #Currently send this information with the init request.
+
+    @watcher.on "fileCreated", (path) =>
+      isDir = fs.statSync( path ).isDirectory()
+      relativePath = @cleanPath path
+      @emit messageAction.ADD_FILES, files: [{path:relativePath, isDir:isDir}]
+
+    @watcher.on "fileModified", (path) =>
+      relativePath = @cleanPath path
+      fs.readFile path, "utf-8", (err, contents) =>
+        if err then @emit 'error', err; return
+        @emit messageAction.SAVE_FILE, {path: relativePath, contents: contents}
+
+    @watcher.on "fileDeleted", (path) =>
+      relativePath = @cleanPath path
+      @emit messageAction.REMOVE_FILES, paths: [relativePath]
 
 # based on a similar fucntion found in wrench
 # https://github.com/ryanmcgrath/wrench-js
@@ -181,4 +167,3 @@ readdirSyncRecursive = (rootDir, relativeDir) ->
 
 
 exports.ProjectFiles = ProjectFiles
-exports.fileEventType = fileEventType
