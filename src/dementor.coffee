@@ -1,4 +1,3 @@
-flow = require 'flow'
 {ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree} = require 'madeye-common'
 {HttpClient} = require './httpClient'
