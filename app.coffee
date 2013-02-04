@@ -11,8 +11,6 @@ run = ->
   program = require 'commander'
 
   #TODO should be able to grab last arugment and use it as filename/dir
-  #TODO deal with broken connections on server and client
-  #TODO gracefully handle ctrl-c
   #TODO turn this into class that takes argv and add some tests
 
   pkg = require './package.json'
@@ -21,22 +19,25 @@ run = ->
     .version(pkg.version)
     .parse(process.argv)
 
-  server = program.server
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
   dementor = new Dementor process.cwd(), httpClient, socket
-  try
-    util.puts "Enabling MadEye in " + clc.bold process.cwd()
-    dementor.enable (err, flag) ->
-      if err then handleError err; return
-      apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
-      util.puts "View your project at " + clc.bold apogeeUrl if flag == 'ENABLED'
-      console.log clc.blackBright "[Dementor received flag: #{flag}]" if process.env.MADEYE_DEBUG
-  catch error
-    handleError error
+  util.puts "Enabling MadEye in " + clc.bold process.cwd()
+
+  dementor.on 'error', (err) ->
+    handleError err
+
+  dementor.once 'enabled', ->
+    apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
+    util.puts "View your project at " + clc.bold apogeeUrl
+
+  dementor.enable()
+
+
+      #console.log clc.blackBright "[Dementor received flag: #{flag}]" if process.env.MADEYE_DEBUG
 
 handleError = (err) ->
   console.error "Error received:", err

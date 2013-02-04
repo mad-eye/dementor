@@ -3,8 +3,9 @@
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require 'madeye-common'
 {errors, errorType} = require 'madeye-common'
+events = require 'events'
 
-class Dementor
+class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket) ->
     @projectFiles = new ProjectFiles(@directory)
     @projectName = @directory.split('/').pop()
@@ -15,13 +16,12 @@ class Dementor
   handleError: (err) ->
     return unless err?
     console.error "Error:", err
-    @runningCallback err
+    @emit 'error', err
 
-  #callback: (err, flag) ->
-  enable: (@runningCallback) ->
+  enable: ->
     @projectFiles.readFileTree (err, files) =>
       @handleError err
-      @runningCallback null, 'READ_FILETREE'
+      @emit 'READ_FILETREE'
       action = method = null
       if @projectId
         action = "project/#{@projectId}"
@@ -34,7 +34,7 @@ class Dementor
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
         @fileTree.addFiles result.files
-        @runningCallback null, 'ENABLED'
+        @emit 'enabled'
         #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
         @socket.socket.connect =>
           @watchProject()
@@ -69,7 +69,7 @@ class Dementor
         @handleError err
 
     @projectFiles.watchFileTree()
-    @runningCallback null, 'WATCHING_FILETREE'
+    @emit 'WATCHING_FILETREE'
 
 
   #####
@@ -83,21 +83,21 @@ class Dementor
     return unless socket?
 
     socket.on 'connect', =>
-      @runningCallback null, "CONNECTED"
+      @emit "CONNECTED"
       clearInterval @reconnectInterval
       @reconnectInterval = null
       @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
-        @runningCallback null, 'HANDSHAKE_RECEIVED'
+        @emit 'HANDSHAKE_RECEIVED'
 
     socket.on 'reconnect', =>
-      @runningCallback null, "RECONNECTED"
+      @emit "RECONNECTED"
 
     socket.on 'connect_failed', (reason) =>
       console.warn "Connection failed:", reason
-      @runningCallback null, "CONNECTION_FAILED"
+      @emit "CONNECTION_FAILED"
 
     socket.on 'disconnect', =>
-      @runningCallback null, "DISCONNECT"
+      @emit "DISCONNECT"
       @reconnectInterval = setInterval (->
         socket.socket.connect()
       ), 10*1000

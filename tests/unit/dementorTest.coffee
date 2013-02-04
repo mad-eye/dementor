@@ -75,11 +75,9 @@ describe "Dementor", ->
         targetFileTree = fileUtils.constructFileTree fileMap
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
-        dementor.enable (err, flag) ->
-          assert.equal err, null
-          #console.log "Running callback received flag: #{flag}"
-          if flag == 'ENABLED'
-            done()
+        dementor.on 'enabled', ->
+          done()
+        dementor.enable()
 
       it "should register the project if not already registered", ->
         assert.ok dementor.projectId
@@ -105,10 +103,9 @@ describe "Dementor", ->
         dementor.projectFiles.saveProjectId projectId
 
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
-        dementor.enable (err, flag) ->
-          assert.equal err, null, #"Http should not return an error"
-          if flag == 'ENABLED'
-            done()
+        dementor.on 'enabled', ->
+          done()
+        dementor.enable()
 
       it "should update project files if already registered", ->
         assert.ok dementor.projectId
@@ -133,17 +130,17 @@ describe "Dementor", ->
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.enable (err, flag) ->
-        if flag == 'ENABLED'
-          dementor.disable done
-        if flag == 'DISCONNECT'
-          socketClosed = true
+      dementor.on 'enabled', ->
+        dementor.disable done
+      dementor.on 'DISCONNECT', ->
+        socketClosed = true
+      dementor.enable()
 
-    it "should close down successfull", ->
+    it "should close down successfully", ->
       return #it would have failed by now!
     it "should call socket.disconnect", ->
-      assert.ok mockSocket.disconnected
-      assert.ok socketClosed
+      assert.ok mockSocket.disconnected, 'Socket should be disconnected'
+      assert.ok socketClosed, 'Dementor should emit disconnect event.'
 
   describe "receiving REQUEST_FILE message", ->
     dementor = mockSocket = null
@@ -157,11 +154,9 @@ describe "Dementor", ->
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.enable (err, flag) ->
-        assert.equal err, null
-        #console.log "Running callback received flag: #{flag}"
-        if flag == 'ENABLED'
-          done()
+      dementor.on 'enabled', ->
+        done()
+      dementor.enable()
 
     it "should reply with file body", (done) ->
       data = fileId: dementor.fileTree.findByPath(filePath)._id
@@ -198,12 +193,9 @@ describe "Dementor", ->
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.enable (err, flag) ->
-        assert.equal err, null
-        #console.log "Running callback received flag: #{flag}"
-        if flag == 'READ_FILETREE'
-          done()
-
+      dementor.on 'READ_FILETREE', ->
+        done()
+      dementor.enable()
 
     it "should save file contents to projectFiles", (done) ->
       fileId = dementor.fileTree.findByPath(filePath)._id
@@ -253,11 +245,9 @@ describe "Dementor", ->
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.enable (err, flag) ->
-        assert.equal err, null
-        #console.log "Running callback received flag: #{flag}"
-        if flag == 'WATCHING_FILETREE'
-          done()
+      dementor.on 'WATCHING_FILETREE', ->
+        done()
+      dementor.enable()
 
     it 'should send ADD_FILES message when projectFiles emits one', (done) ->
       mockSocket.onEmit = (action, data, cb) ->
