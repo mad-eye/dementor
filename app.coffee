@@ -32,7 +32,9 @@ run = ->
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
+    hangoutUrl = "https://hangoutsapi.talkgadget.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}" 
     util.puts "View your project at " + clc.bold apogeeUrl
+    util.puts "Hangout at " + clc.bold hangoutUrl
 
   dementor.enable()
 
