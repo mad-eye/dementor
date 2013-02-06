@@ -36,7 +36,7 @@ run = ->
     prodHangoutUrl =                   "https://plus.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}"
     util.puts "View your project at " + clc.bold apogeeUrl
 #    util.puts "Hangout Test at " + clc.bold testHangoutUrl
-    util.puts "Hangout Prod at " + clc.bold prodHangoutUrl
+    util.puts "Hangout at " + clc.bold prodHangoutUrl
 
   dementor.enable()
 
