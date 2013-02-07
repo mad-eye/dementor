@@ -32,11 +32,10 @@ run = ->
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
-    testHangoutUrl = "https://hangoutsapi.talkgadget.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}" 
-    prodHangoutUrl =                   "https://plus.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}"
+    testHangoutUrl = "https://hangoutsapi.talkgadget.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}"
+    prodHangoutUrl = "https://plus.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}"
     util.puts "View your project at " + clc.bold apogeeUrl
-#    util.puts "Hangout Test at " + clc.bold testHangoutUrl
-    util.puts "Hangout at " + clc.bold prodHangoutUrl
+    util.puts "Use Google Hangout at " + clc.bold prodHangoutUrl
 
   dementor.enable()
 
@@ -68,11 +67,11 @@ shutdownGracefully = (returnVal=0) ->
   , 20*1000
 
 process.on 'SIGINT', ->
-  console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
+  #console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
   shutdown()
 
 process.on 'SIGTERM', ->
-  console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
+  #console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
   shutdown()
   
   

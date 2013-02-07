@@ -21,7 +21,7 @@ class Dementor extends events.EventEmitter
   enable: ->
     @projectFiles.readFileTree (err, files) =>
       @handleError err
-      @emit 'READ_FILETREE'
+      @addMetric 'READ_FILETREE'
       action = method = null
       if @projectId
         action = "project/#{@projectId}"
@@ -34,7 +34,7 @@ class Dementor extends events.EventEmitter
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
         @fileTree.addFiles result.files
-        @emit 'enabled'
+        @addMetric 'enabled'
         #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
         @socket.socket.connect =>
           @watchProject()
@@ -42,6 +42,13 @@ class Dementor extends events.EventEmitter
   disable: (callback) ->
     @socket?.disconnect()
     callback?()
+
+  addMetric: (type, metric={}) ->
+    metric.type = type
+    metric.timestampe = new Date()
+    metric.projectId = @projectId
+    @socket.emit messageAction.METRIC, metric
+    @emit type
  
   #####
   # Events from ProjectFiles
@@ -69,7 +76,7 @@ class Dementor extends events.EventEmitter
         @handleError err
 
     @projectFiles.watchFileTree()
-    @emit 'WATCHING_FILETREE'
+    @addMetric 'WATCHING_FILETREE'
 
 
   #####
@@ -83,21 +90,21 @@ class Dementor extends events.EventEmitter
     return unless socket?
 
     socket.on 'connect', =>
-      @emit "CONNECTED"
+      @addMetric "CONNECTED"
       clearInterval @reconnectInterval
       @reconnectInterval = null
       @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
-        @emit 'HANDSHAKE_RECEIVED'
+        @addMetric 'HANDSHAKE_RECEIVED'
 
     socket.on 'reconnect', =>
-      @emit "RECONNECTED"
+      @addMetric "RECONNECTED"
 
     socket.on 'connect_failed', (reason) =>
       console.warn "Connection failed:", reason
-      @emit "CONNECTION_FAILED"
+      @addMetric "CONNECTION_FAILED"
 
     socket.on 'disconnect', =>
-      @emit "DISCONNECT"
+      @addMetric "DISCONNECT"
       @reconnectInterval = setInterval (->
         socket.socket.connect()
       ), 10*1000
