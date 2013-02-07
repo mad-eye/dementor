@@ -15,7 +15,12 @@ class Dementor extends events.EventEmitter
 
   handleError: (err) ->
     return unless err?
-    console.error "Error:", err
+    metric =
+      type : 'error'
+      timestamp : new Date()
+      projectId : @projectId
+      level : 'error'
+    @socket.emit messageAction.METRIC, metric
     @emit 'error', err
 
   enable: ->
@@ -45,7 +50,7 @@ class Dementor extends events.EventEmitter
 
   addMetric: (type, metric={}) ->
     metric.type = type
-    metric.timestampe = new Date()
+    metric.timestamp = new Date()
     metric.projectId = @projectId
     @socket.emit messageAction.METRIC, metric
     @emit type

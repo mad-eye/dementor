@@ -1,6 +1,7 @@
 _ = require 'underscore'
 request = require 'request'
 querystring = require 'querystring'
+{errors, errorType} = require 'madeye-common'
 
 wrapError = (err) ->
   return err if err.madeye
