@@ -2,7 +2,9 @@ _ = require 'underscore'
 request = require 'request'
 querystring = require 'querystring'
 
-#TODO: Wrap http errors in MadEye errors
+wrapError = (err) ->
+  return err if err.madeye
+  errors.new errorType.NETWORK_ERROR, cause:err
 
 #callback: (body) ->; takes an obj (parsed from JSON) body
 #errors are passed as an {error:} object
@@ -35,10 +37,11 @@ class HttpClient
     delete options['action']
     request options, (err, res, body) ->
       if err
-        body = {error:err.message}
+        err = wrapError err
+        body = {error:err}
       else
-        if res.statusCode != 200
-          console.warn "Unexpected status code:" + res.statusCode
+        #if res.statusCode != 200
+          #console.warn "Unexpected status code:" + res.statusCode
         body = JSON.parse(body) if typeof body == 'string'
       callback(body)
 
