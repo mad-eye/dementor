@@ -297,4 +297,12 @@ describe "Dementor", ->
 
       dementor.projectFiles.emit messageAction.REMOVE_FILES, paths:[path]
 
+  describe 'projectName', ->
+    it 'should give foo from a/path/foo/', ->
+      dementor = new Dementor 'a/path/foo/'
+      assert.equal dementor.projectName, 'foo'
+
+    it 'should give foo from C:\\a\\path\\foo', ->
+      dementor = new Dementor 'C:\\a\\path\\foo'
+      assert.equal dementor.projectName, 'foo'
 

@@ -1,5 +1,5 @@
 {ProjectFiles, fileEventType} = require './projectFiles'
-{FileTree} = require 'madeye-common'
+{FileTree, File} = require 'madeye-common'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require 'madeye-common'
 {errors, errorType} = require 'madeye-common'
@@ -8,10 +8,15 @@ events = require 'events'
 class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket) ->
     @projectFiles = new ProjectFiles(@directory)
-    @projectName = @directory.split('/').pop()
+    @projectName = @findProjectName @directory
     @projectId = @projectFiles.projectIds()[@directory]
     @fileTree = new FileTree null, @directory
     @attach socket
+
+  findProjectName: (dir) ->
+    d = new File path:dir
+    return d.filename
+
 
   handleError: (err) ->
     return unless err?
