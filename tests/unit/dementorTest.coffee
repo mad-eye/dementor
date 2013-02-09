@@ -275,7 +275,8 @@ describe "Dementor", ->
           return
         assert.ok data.projectId
         assert.equal data.projectId, dementor.projectId
-        assert.deepEqual data.file, file
+        for k,v of file
+          assert.equal data.file[k], v
         assert.equal data.contents, contents
         done()
 
@@ -292,7 +293,8 @@ describe "Dementor", ->
         assert.ok data.projectId
         assert.equal data.projectId, dementor.projectId
         assert.equal data.files.length, 1
-        assert.deepEqual data.files[0], file
+        for k,v of file
+          assert.equal data.files[0][k], v
         done()
 
       dementor.projectFiles.emit messageAction.REMOVE_FILES, paths:[path]

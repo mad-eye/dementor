@@ -23,9 +23,10 @@ events = require 'events'
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
+    
 
   cleanPath: (path) ->
-    pathRe = new RegExp "^#{@directory}/"
+    pathRe = new RegExp "^#{@directory}#{_path.sep}"
     path.replace(pathRe, "")
 
   handleError: (error, options={}, callback) ->
@@ -101,7 +102,7 @@ class ProjectFiles extends events.EventEmitter
   filter: (path) ->
     return false unless path?
     return false if path[path.length-1] == '~'
-    components = path.split '/'
+    components = path.split _path.sep
     return false if '.git' in components
     return false if 'node_modules' in components
     return true
