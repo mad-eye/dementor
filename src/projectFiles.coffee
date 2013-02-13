@@ -105,6 +105,7 @@ class ProjectFiles extends events.EventEmitter
     components = path.split _path.sep
     return false if '.git' in components
     return false if 'node_modules' in components
+    return false if '.DS_Store' in components
     return true
 
   #callback: (err, results) -> ...
