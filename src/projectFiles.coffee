@@ -23,7 +23,7 @@ events = require 'events'
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
-    
+    @watchTree = require('watch-tree-maintained')
 
   cleanPath: (path) ->
     pathRe = new RegExp "^#{@directory}#{_path.sep}"
@@ -122,7 +122,7 @@ class ProjectFiles extends events.EventEmitter
 
   #Sets up event listeners, and emits messages
   watchFileTree: ->
-    @watcher = require('watch-tree-maintained').watchTree(@directory, {'sample-rate': 50})
+    @watcher = @watchTree.watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path) ->
       #console.log "Found preexisting file:", path
       #Currently send this information with the init request.
@@ -130,16 +130,19 @@ class ProjectFiles extends events.EventEmitter
     @watcher.on "fileCreated", (path) =>
       isDir = fs.statSync( path ).isDirectory()
       relativePath = @cleanPath path
+      return unless @filter relativePath
       @emit messageAction.ADD_FILES, files: [{path:relativePath, isDir:isDir}]
 
     @watcher.on "fileModified", (path) =>
       relativePath = @cleanPath path
+      return unless @filter relativePath
       fs.readFile path, "utf-8", (err, contents) =>
         if err then @emit 'error', err; return
         @emit messageAction.SAVE_FILE, {path: relativePath, contents: contents}
 
     @watcher.on "fileDeleted", (path) =>
       relativePath = @cleanPath path
+      return unless @filter relativePath
       @emit messageAction.REMOVE_FILES, paths: [relativePath]
 
 # based on a similar fucntion found in wrench

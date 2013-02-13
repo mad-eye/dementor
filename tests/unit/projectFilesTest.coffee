@@ -6,8 +6,10 @@ uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
 {errorType, messageAction} = require 'madeye-common'
+events = require 'events'
 
 
+baseDir = process.cwd()
 homeDir = fileUtils.homeDir
 process.env["MADEYE_HOME"] = fileUtils.homeDir
 
@@ -20,13 +22,13 @@ resetProject = (rootDir) ->
   fileUtils.mkDir rootDir
 
 describe 'ProjectFiles', ->
-  projectFiles = null
-  before ->
-    projectFiles = new ProjectFiles '.'
-    
   describe 'readFile', ->
-    beforeEach ->
-      resetHome()
+    projectFiles = null
+    before ->
+      projectFiles = new ProjectFiles '.'
+      
+      beforeEach ->
+        resetHome()
 
     it 'should return a body when a file exists', (done) ->
       fileName = 'file.txt'
@@ -61,6 +63,10 @@ describe 'ProjectFiles', ->
     it 'should allow absolute argument to be skipped'
 
   describe 'writeFile', ->
+    projectFiles = null
+    before ->
+      projectFiles = new ProjectFiles '.'
+      
     fileName = fileBody = filePath = null
     beforeEach ->
       resetHome()
@@ -89,8 +95,10 @@ describe 'ProjectFiles', ->
 
   describe 'exists', ->
     filePath = null
-
+    projectFiles = null
+      
     before ->
+      projectFiles = new ProjectFiles '.'
       resetHome()
       fileName = 'file.txt'
       fileBody = 'this is quite a body'
@@ -235,34 +243,43 @@ describe 'ProjectFiles', ->
 
 
   describe "watchFileTree", ->
-    before ->
+    projectFiles = watcher = null
+    beforeEach ->
       resetHome()
-
-    it "should be an EventEmitter", (done) ->
       projectFiles = new ProjectFiles homeDir
-      projectFiles.on 'myEvent', (data) ->
-        console.log "Found myEvent with data", data
-        assert.equal data.foo, 'bar'
-        done()
+      projectFiles.watchTree =
+        watchTree: (directory) ->
+          watcher = new events.EventEmitter
+          watcher.directory = directory
+          return watcher
 
-      projectFiles.emit 'myEvent', foo:'bar'
+    makeFile = (fileName) ->
+      filePath = _path.join baseDir, homeDir, fileName
+      fs.writeFileSync filePath, 'touched'
+      return filePath
 
-    it "should notice when i add a file fweep"#, (done) ->
-    ###
-    #This intermittently fails.  Race condition?  Setup condition?
-      projectFiles = new ProjectFiles homeDir
+    it "should notice when i add a file", (done) ->
       fileName = 'file.txt'
-      filePath = _path.join homeDir, fileName
+      filePath = makeFile fileName
       projectFiles.on messageAction.ADD_FILES, (data) ->
         file = data.files[0]
         assert.equal file.path, fileName
         assert.equal file.isDir, false
         done()
       projectFiles.watchFileTree()
-      setTimeout (->
-        fs.writeFileSync _path.join(homeDir,fileName), 'touched'
-      ), 500
-      ###
+      watcher.emit 'fileCreated', filePath
+
+    it "should ignore cruft files", (done) ->
+      fileName = 'file.txt~'
+      filePath = makeFile fileName
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        assert.fail "Should not notice file."
+      projectFiles.on 'stop', (data) ->
+        done()
+      projectFiles.watchFileTree()
+      watcher.emit 'fileCreated', filePath
+      process.nextTick ->
+        projectFiles.emit 'stop'
 
     it "should notice when I add a directory"
       
@@ -271,7 +288,7 @@ describe 'ProjectFiles', ->
 
     it "should notice when i change a file"
 
-    it "should not noice imgages"
+    it "should not notice images"
 
     it "should ignore the .git directory"
 
