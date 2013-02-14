@@ -4,6 +4,7 @@
 {messageMaker, messageAction} = require 'madeye-common'
 {errors, errorType} = require 'madeye-common'
 events = require 'events'
+clc = require 'cli-color'
 
 class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket) ->
@@ -136,6 +137,8 @@ class Dementor extends events.EventEmitter
       unless fileId && contents
         callback errors.new 'MISSING_PARAM'; return
       path = @fileTree.findById(fileId)?.path
-      @projectFiles.writeFile path, contents, callback
+      @projectFiles.writeFile path, contents, (err) ->
+        console.log "Saving file " + clc.bold path unless err
+        callback err
 
 exports.Dementor = Dementor
