@@ -17,7 +17,13 @@ run = ->
 
   program
     .version(pkg.version)
-    .parse(process.argv)
+    .on("--help", ->
+      console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
+      console.log "  Give the returned url to your friends, and you can edit the project"
+      console.log "  simultaneously.  Type ^C to close the session and disable the online project."
+    )
+
+  program.parse(process.argv)
 
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
