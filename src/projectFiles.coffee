@@ -162,12 +162,11 @@ readdirSyncRecursive = (rootDir, relativeDir) ->
       nextDirs.push(file) if isDir
       newFiles.push {isDir: isDir, path: prependBaseDir(file)}
     catch error
-      if error.code == 'ELOOP'
-        console.warn "Ignoring broken link at #{path}"
+      if error.code == 'ELOOP' or error.code == 'ENOENT'
+        console.warn "Ignoring broken link at", _path.join(currentDir, file)
         continue
       else
         @handleError error, sync:true
-
   files = files.concat newFiles if newFiles
 
   while nextDirs.length
