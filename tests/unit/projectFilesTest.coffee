@@ -11,7 +11,7 @@ events = require 'events'
 
 baseDir = process.cwd()
 homeDir = fileUtils.homeDir
-process.env["MADEYE_HOME"] = fileUtils.homeDir
+process.env["MADEYE_HOME"] = _path.join baseDir, homeDir
 
 resetHome = ->
   resetProject homeDir
@@ -92,25 +92,6 @@ describe 'ProjectFiles', ->
           done()
 
     it 'should write to absolute paths when absolute=true'
-
-  describe 'exists', ->
-    filePath = null
-    projectFiles = null
-      
-    before ->
-      projectFiles = new ProjectFiles '.'
-      resetHome()
-      fileName = 'file.txt'
-      fileBody = 'this is quite a body'
-      filePath = _path.join homeDir, fileName
-      fs.writeFileSync filePath, fileBody
-
-    it 'should return true when a file exists', ->
-      assert.equal projectFiles.exists(filePath), true
-
-    it 'should return false when a file does not exist', ->
-      noFilePath = _path.join homeDir, 'nofile'
-      assert.equal projectFiles.exists(noFilePath), false
 
   describe 'readFileTree', ->
     projectFiles = null
@@ -228,7 +209,7 @@ describe 'ProjectFiles', ->
 
     it "should save a config file", ->
       projectFiles.saveProjectIds projects
-      assert.ok projectFiles.exists projectFiles.projectsDbPath()
+      assert.ok fs.existsSync projectFiles.projectsDbPath()
       readProjects = JSON.parse fs.readFileSync(projectFiles.projectsDbPath(), 'utf-8')
       assert.deepEqual projects, readProjects
       
@@ -237,7 +218,7 @@ describe 'ProjectFiles', ->
       newProjects =
         "one/two/three" : uuid.v4()
       projectFiles.saveProjectIds newProjects
-      assert.ok projectFiles.exists projectFiles.projectsDbPath()
+      assert.ok fs.existsSync projectFiles.projectsDbPath()
       readProjects = JSON.parse fs.readFileSync(projectFiles.projectsDbPath(), 'utf-8')
       assert.deepEqual newProjects, readProjects
 
@@ -246,7 +227,7 @@ describe 'ProjectFiles', ->
     projectFiles = watcher = null
     beforeEach ->
       resetHome()
-      projectFiles = new ProjectFiles homeDir
+      projectFiles = new ProjectFiles _path.join baseDir, homeDir
       projectFiles.watchTree =
         watchTree: (directory) ->
           watcher = new events.EventEmitter
@@ -283,7 +264,6 @@ describe 'ProjectFiles', ->
 
     it "should notice when I add a directory"
       
-
     it "should notice when i delete a file"
 
     it "should notice when i change a file"
@@ -294,7 +274,20 @@ describe 'ProjectFiles', ->
 
     it "should ignore the contents of the .gitignore or should it?"
 
-    it "should not choke on errors like Error: ENOENT, no such file or directory '/Users/mike/dementor/test/.#dementorTest.coffee'"
-    #This is caused by a bad link
+    it "should ignore broken symlinks fweep", (done) ->
+      fileName = 'DNE'
+      filePath = _path.join baseDir, homeDir, fileName
+      linkName = 'brokenLink'
+      linkPath = _path.join baseDir, homeDir, linkName
+      fs.symlinkSync filePath, linkPath
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        assert.fail "Should not notice file."
+      projectFiles.on 'stop', (data) ->
+        done()
+      projectFiles.watchFileTree()
+      watcher.emit 'fileCreated', linkPath
+      process.nextTick ->
+        projectFiles.emit 'stop'
+
 
 

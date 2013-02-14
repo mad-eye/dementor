@@ -69,14 +69,10 @@ class ProjectFiles extends events.EventEmitter
     catch error
       @handleError error, options, callback
 
-  exists: (filePath, absolute=false) ->
-    filePath = _path.join @directory, filePath unless absolute
-    return fs.existsSync filePath
-
   homeDir: ->
-    return process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]
+    return _path.resolve process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]
     envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"
-    return process.env[envVarName]
+    return _path.resolve process.env[envVarName]
 
   projectsDbPath: ->
     _path.join @homeDir(), MADEYE_PROJECTS_FILE
@@ -91,13 +87,8 @@ class ProjectFiles extends events.EventEmitter
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
 
   projectIds: ->
-    if (@exists @projectsDbPath(), true)
-      projects = JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
-      #console.log "Found projects", projects
-      return projects
-    else
-      #console.log "Found no projectfile."
-      {}
+    return {} unless fs.existsSync @projectsDbPath()
+    JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
   filter: (path) ->
     return false unless path?
@@ -128,7 +119,15 @@ class ProjectFiles extends events.EventEmitter
       #Currently send this information with the init request.
 
     @watcher.on "fileCreated", (path) =>
-      isDir = fs.statSync( path ).isDirectory()
+      try
+        isDir = fs.statSync( path ).isDirectory()
+      catch error
+        console.error error
+        if error.code == 'ELOOP' or error.code == 'ENOENT'
+          console.warn "Ignoring broken link at #{path}"
+          return
+        else
+          @handleError error, sync:true
       relativePath = @cleanPath path
       return unless @filter relativePath
       @emit messageAction.ADD_FILES, files: [{path:relativePath, isDir:isDir}]
@@ -153,14 +152,21 @@ readdirSyncRecursive = (rootDir, relativeDir) ->
   nextDirs = []
   newFiles = []
   currentDir = _path.join rootDir, relativeDir
-  isDir = (fname) ->
-    fs.statSync( _path.join(currentDir, fname) ).isDirectory()
   prependBaseDir = (fname) ->
     _path.join relativeDir, fname
 
   curFiles = fs.readdirSync(currentDir)
-  nextDirs.push(file) for file in curFiles when isDir(file)
-  newFiles.push {isDir: file in nextDirs , path: prependBaseDir(file)} for file in curFiles
+  for file in curFiles
+    try
+      isDir = fs.statSync( _path.join(currentDir, file) ).isDirectory()
+      nextDirs.push(file) if isDir
+      newFiles.push {isDir: isDir, path: prependBaseDir(file)}
+    catch error
+      if error.code == 'ELOOP'
+        console.warn "Ignoring broken link at #{path}"
+        continue
+      else
+        @handleError error, sync:true
 
   files = files.concat newFiles if newFiles
 
