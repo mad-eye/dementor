@@ -13,6 +13,7 @@ class Dementor extends events.EventEmitter
     @projectId = @projectFiles.projectIds()[@directory]
     @fileTree = new FileTree null, @directory
     @attach socket
+    @version = require('../package.json').version
 
   findProjectName: (dir) ->
     d = new File path:dir
@@ -42,7 +43,12 @@ class Dementor extends events.EventEmitter
       else
         action = "project"
         method = 'POST'
-      @httpClient.request {method: method, action:action, json: {projectName:@projectName, files:files}}, (result) =>
+      json =
+        projectName: @projectName
+        files: files
+        version: @version
+
+      @httpClient.request {method: method, action:action, json: json}, (result) =>
         @handleError result.error
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId

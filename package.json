@@ -11,7 +11,7 @@
     "request": "~2.12.0",
     "watch-tree-maintained": "~0.1.2",
     "commander": "~1.1.0",
-    "madeye-common": "0.0.3",
+    "madeye-common": "0.0.4",
     "cli-color": "~0.2.1",
     "socket.io-client": "~0.9.11"
   },

@@ -24,16 +24,14 @@ class FileUtils
 
   @createProject : (name, fileMap) ->
     projectDir = @testProjectDir name
-    if fs.existsSync projectDir
-      wrench.rmdirSyncRecursive(projectDir)
-    fs.mkdirSync projectDir
+    @mkDirClean projectDir
     fileMap ?= @defaultFileMap
     @createFileTree(projectDir, fileMap)
     return projectDir
 
   @createFileTree : (root, filetree) ->
     unless fs.existsSync root
-      fs.mkdirSync root
+      wrench.mkdirSyncRecursive root
     for key, value of filetree
       if typeof value == "string"
         fs.writeFileSync(_path.join(root, key), value)
@@ -74,5 +72,13 @@ class FileUtils
 
   @clone : (obj) ->
     JSON.parse JSON.stringify obj
+
+  @initTestArea: () ->
+    @mkDirClean TEST_AREA
+
+  @destroyTestArea: () ->
+    if fs.existsSync TEST_AREA
+      wrench.rmdirSyncRecursive TEST_AREA
+
 
 exports.fileUtils = FileUtils

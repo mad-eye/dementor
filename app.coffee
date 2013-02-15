@@ -4,6 +4,7 @@
 util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
+{errorType} = require 'madeye-common'
 
 dementor = null
 
@@ -22,7 +23,6 @@ run = ->
       console.log "  Give the returned url to your friends, and you can edit the project"
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
-
   program.parse(process.argv)
 
   httpClient = new HttpClient Settings.azkabanHost
@@ -34,7 +34,8 @@ run = ->
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   dementor.on 'error', (err) ->
-    handleError err
+    console.error 'ERROR:', err.message
+    shutdown(err.code ? 1)
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -45,19 +46,13 @@ run = ->
 
   dementor.enable()
 
-
-      #console.log clc.blackBright "[Dementor received flag: #{flag}]" if process.env.MADEYE_DEBUG
-
-handleError = (err) ->
-  console.error "Error received:", err
-  shutdown(err.code ? 1)
-
 # Shutdown section
 SHUTTING_DOWN = false
 
 shutdown = (returnVal=0) ->
   process.exit(returnVal || 1) if SHUTTING_DOWN # || not ?, because we don't want 0
-  shutdownGracefully(returnVal)
+  process.nextTick ->
+    shutdownGracefully(returnVal)
 
 shutdownGracefully = (returnVal=0) ->
   return if SHUTTING_DOWN

@@ -9,7 +9,7 @@ _path = require 'path'
 {MockHttpClient} = require '../mock/mockHttpClient'
 {MockSocket} = require 'madeye-common'
 {messageMaker, messageAction} = require 'madeye-common'
-{errorType} = require 'madeye-common'
+{errors, errorType} = require 'madeye-common'
 
 
 #TODO: Reduce redundancy with better before/etc hooks.
@@ -22,12 +22,14 @@ defaultHttpClient = new MockHttpClient (options, params) ->
     projectId = match[1]?.substring(1)
     if options.method == 'POST'
       return {error: "ProjectID should not be specified"} if projectId?
+      return errors.new errorType.OUT_OF_DATE unless options.json?.version?
       projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
       return {project: {_id:uuid.v4(), name:projectName}, files:files }
     else if options.method == 'PUT'
       return {error: "ProjectID should be specified"} unless projectId?
+      return errors.new errorType.OUT_OF_DATE unless options.json?.version?
       projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
@@ -38,11 +40,18 @@ defaultHttpClient = new MockHttpClient (options, params) ->
     return {error: "Wrong action: #{options.action}"}
 
 describe "Dementor", ->
+  before ->
+    fileUtils.initTestArea()
+    fileUtils.mkDirClean homeDir
+
+  after ->
+    fileUtils.destroyTestArea()
+
   describe "constructor", ->
     registeredDir = fileUtils.testProjectDir 'alreadyRegistered'
     projectFiles = null
     before ->
-      fileUtils.mkDirClean homeDir
+      fileUtils.mkDirClean registeredDir
       projectFiles = new ProjectFiles
 
     it "should find previously registered projectId", ->
@@ -59,6 +68,11 @@ describe "Dementor", ->
       projectPath = fileUtils.createProject "nothinghere"
       dementor = new Dementor projectPath
       assert.equal dementor.projectId, null
+
+    it "should set dementor.version", ->
+      projectPath = fileUtils.createProject "version"
+      dementor = new Dementor projectPath
+      assert.equal dementor.version, (require '../../package.json').version
 
   describe "enable", ->
     dementor = null
@@ -112,7 +126,7 @@ describe "Dementor", ->
         assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
         assert.equal dementor.projectId, projectId, "Dementor's projectId differs from original."
 
-      it "should populate file tree with files (and ids)", ->
+      it "should populate file tree with files (and ids) fweep", ->
         assert.ok dementor.fileTree
         files = dementor.fileTree.files
         assert.equal files.length, targetFileTree.files.length

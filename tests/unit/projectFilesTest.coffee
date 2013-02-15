@@ -14,21 +14,23 @@ homeDir = fileUtils.homeDir
 process.env["MADEYE_HOME"] = _path.join baseDir, homeDir
 
 resetHome = ->
-  resetProject homeDir
-
-resetProject = (rootDir) ->
-  if fs.existsSync rootDir
-    wrench.rmdirSyncRecursive rootDir
-  fileUtils.mkDir rootDir
+  fileUtils.mkDirClean homeDir
 
 describe 'ProjectFiles', ->
+  before ->
+    fileUtils.initTestArea()
+    fileUtils.mkDirClean homeDir
+
+  after ->
+    fileUtils.destroyTestArea()
+
   describe 'readFile', ->
     projectFiles = null
     before ->
       projectFiles = new ProjectFiles '.'
       
-      beforeEach ->
-        resetHome()
+    beforeEach ->
+      resetHome()
 
     it 'should return a body when a file exists', (done) ->
       fileName = 'file.txt'
@@ -225,14 +227,17 @@ describe 'ProjectFiles', ->
 
   describe "watchFileTree", ->
     projectFiles = watcher = null
-    beforeEach ->
-      resetHome()
+    before ->
       projectFiles = new ProjectFiles _path.join baseDir, homeDir
       projectFiles.watchTree =
         watchTree: (directory) ->
           watcher = new events.EventEmitter
           watcher.directory = directory
           return watcher
+
+    beforeEach ->
+      resetHome()
+      projectFiles.removeAllListeners 'stop'
 
     makeFile = (fileName) ->
       filePath = _path.join baseDir, homeDir, fileName
@@ -259,8 +264,7 @@ describe 'ProjectFiles', ->
         done()
       projectFiles.watchFileTree()
       watcher.emit 'fileCreated', filePath
-      process.nextTick ->
-        projectFiles.emit 'stop'
+      projectFiles.emit 'stop'
 
     it "should notice when I add a directory"
       
@@ -274,7 +278,7 @@ describe 'ProjectFiles', ->
 
     it "should ignore the contents of the .gitignore or should it?"
 
-    it "should ignore broken symlinks fweep", (done) ->
+    it "should ignore broken symlinks", (done) ->
       fileName = 'DNE'
       filePath = _path.join baseDir, homeDir, fileName
       linkName = 'brokenLink'
@@ -286,8 +290,7 @@ describe 'ProjectFiles', ->
         done()
       projectFiles.watchFileTree()
       watcher.emit 'fileCreated', linkPath
-      process.nextTick ->
-        projectFiles.emit 'stop'
+      projectFiles.emit 'stop'
 
 
 
