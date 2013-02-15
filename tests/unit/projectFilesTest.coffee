@@ -9,9 +9,8 @@ uuid = require 'node-uuid'
 events = require 'events'
 
 
-baseDir = process.cwd()
 homeDir = fileUtils.homeDir
-process.env["MADEYE_HOME"] = _path.join baseDir, homeDir
+process.env["MADEYE_HOME"] = _path.resolve homeDir
 
 resetHome = ->
   fileUtils.mkDirClean homeDir
@@ -25,9 +24,10 @@ describe 'ProjectFiles', ->
     fileUtils.destroyTestArea()
 
   describe 'readFile', ->
-    projectFiles = null
+    projectFiles = projectDir = null
     before ->
-      projectFiles = new ProjectFiles '.'
+      projectDir = fileUtils.createProject 'readFile', fileUtils.defaultFileMap
+      projectFiles = new ProjectFiles projectDir
       
     beforeEach ->
       resetHome()
@@ -35,17 +35,15 @@ describe 'ProjectFiles', ->
     it 'should return a body when a file exists', (done) ->
       fileName = 'file.txt'
       fileBody = 'this is quite a body'
-      filePath = _path.join homeDir, fileName
-      fs.writeFileSync filePath, fileBody
-      projectFiles.readFile filePath, false, (err, body) ->
+      fs.writeFileSync (_path.join projectDir, fileName), fileBody
+      projectFiles.readFile fileName, false, (err, body) ->
         assert.equal err, null
         assert.equal body, fileBody
         done()
       
     it 'should return the correct error when a file does not exist', (done) ->
       fileName = 'nofile.txt'
-      filePath = _path.join homeDir, fileName
-      projectFiles.readFile filePath, false, (err, body) ->
+      projectFiles.readFile fileName, false, (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
         assert.equal body, null
@@ -53,9 +51,8 @@ describe 'ProjectFiles', ->
 
     it 'should return the correct error when a file is a directory', (done) ->
       fileName = 'someDir'
-      filePath = _path.join homeDir, fileName
-      fileUtils.mkDir filePath
-      projectFiles.readFile filePath, false, (err, body) ->
+      fileUtils.mkDir _path.join projectDir, fileName
+      projectFiles.readFile fileName, false, (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.IS_DIR
         assert.equal body, null
@@ -226,9 +223,10 @@ describe 'ProjectFiles', ->
 
 
   describe "watchFileTree", ->
-    projectFiles = watcher = null
+    projectFiles = projectDir = watcher = null
     before ->
-      projectFiles = new ProjectFiles _path.join baseDir, homeDir
+      projectDir = _path.resolve fileUtils.createProject 'watchFileTree', fileUtils.defaultFileMap
+      projectFiles = new ProjectFiles projectDir
       projectFiles.watchTree =
         watchTree: (directory) ->
           watcher = new events.EventEmitter
@@ -240,9 +238,9 @@ describe 'ProjectFiles', ->
       projectFiles.removeAllListeners 'stop'
 
     makeFile = (fileName) ->
-      filePath = _path.join baseDir, homeDir, fileName
+      filePath = _path.join projectDir, fileName
       fs.writeFileSync filePath, 'touched'
-      return filePath
+      return _path.resolve filePath
 
     it "should notice when i add a file", (done) ->
       fileName = 'file.txt'
@@ -280,9 +278,9 @@ describe 'ProjectFiles', ->
 
     it "should ignore broken symlinks", (done) ->
       fileName = 'DNE'
-      filePath = _path.join baseDir, homeDir, fileName
+      filePath = _path.join projectDir, fileName
       linkName = 'brokenLink'
-      linkPath = _path.join baseDir, homeDir, linkName
+      linkPath = _path.join projectDir, linkName
       fs.symlinkSync filePath, linkPath
       projectFiles.on messageAction.ADD_FILES, (data) ->
         assert.fail "Should not notice file."

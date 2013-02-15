@@ -24,10 +24,19 @@ MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
     @watchTree = require('watch-tree-maintained')
-
+ 
   cleanPath: (path) ->
     pathRe = new RegExp "^#{@directory}#{_path.sep}"
-    path.replace(pathRe, "")
+    path = path.replace(pathRe, "")
+    @standardizePath path
+
+  standardizePath: (path) ->
+    return path if _path.sep == '/'
+    return path.replace _path.sep, '/'
+
+  localizePath: (path) ->
+    return path if _path.sep == '/'
+    return path.replace '/', _path.sep
 
   handleError: (error, options={}, callback) ->
     newError = null
@@ -47,6 +56,7 @@ class ProjectFiles extends events.EventEmitter
       callback = options
       options = {}
     unless filePath then callback errors.new 'NO_FILE'; return
+    filePath = @localizePath filePath
     filePath = _path.join @directory, filePath unless options.absolute
     try
       contents = fs.readFileSync(filePath, "utf-8")
@@ -62,6 +72,7 @@ class ProjectFiles extends events.EventEmitter
       callback = options
       options = {}
     unless filePath then callback errors.new 'NO_FILE'; return
+    filePath = @localizePath filePath
     filePath = _path.join @directory, filePath unless options.absolute
     try
       fs.writeFileSync filePath, contents
@@ -159,7 +170,7 @@ readdirSyncRecursive = (rootDir, relativeDir) ->
   for file in curFiles
     try
       isDir = fs.statSync( _path.join(currentDir, file) ).isDirectory()
-      nextDirs.push(file) if isDir
+      nextDirs.push file if isDir
       newFiles.push {isDir: isDir, path: prependBaseDir(file)}
     catch error
       if error.code == 'ELOOP' or error.code == 'ENOENT'
@@ -171,7 +182,6 @@ readdirSyncRecursive = (rootDir, relativeDir) ->
 
   while nextDirs.length
     files = files.concat(readdirSyncRecursive( rootDir, _path.join(relativeDir, nextDirs.shift()) ) )
-  #console.log 'returning files:', files
   return files.sort (a,b)->
     a.path > b.path
 

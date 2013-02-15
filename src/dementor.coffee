@@ -5,20 +5,16 @@
 {errors, errorType} = require 'madeye-common'
 events = require 'events'
 clc = require 'cli-color'
+_path = require 'path'
 
 class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket) ->
     @projectFiles = new ProjectFiles(@directory)
-    @projectName = @findProjectName @directory
+    @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory]
-    @fileTree = new FileTree null, @directory
+    @fileTree = new FileTree null
     @attach socket
     @version = require('../package.json').version
-
-  findProjectName: (dir) ->
-    d = new File path:dir
-    return d.filename
-
 
   handleError: (err) ->
     return unless err?
@@ -33,7 +29,7 @@ class Dementor extends events.EventEmitter
   enable: ->
     @projectFiles.readFileTree (err, files) =>
       if files.length > 40000
-        throw "ERROR - MadEye currently only supports projects with less than 40,000 files" 
+        throw "ERROR - MadEye currently only supports projects with less than 40,000 files"
       @handleError err
       @addMetric 'READ_FILETREE'
       action = method = null

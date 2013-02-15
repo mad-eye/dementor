@@ -52,7 +52,7 @@ describe "Dementor", ->
     projectFiles = null
     before ->
       fileUtils.mkDirClean registeredDir
-      projectFiles = new ProjectFiles
+      projectFiles = new ProjectFiles "."
 
     it "should find previously registered projectId", ->
       projectId = uuid.v4()
@@ -126,7 +126,7 @@ describe "Dementor", ->
         assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
         assert.equal dementor.projectId, projectId, "Dementor's projectId differs from original."
 
-      it "should populate file tree with files (and ids) fweep", ->
+      it "should populate file tree with files (and ids)", ->
         assert.ok dementor.fileTree
         files = dementor.fileTree.files
         assert.equal files.length, targetFileTree.files.length
@@ -312,13 +312,4 @@ describe "Dementor", ->
         done()
 
       dementor.projectFiles.emit messageAction.REMOVE_FILES, paths:[path]
-
-  describe 'projectName', ->
-    it 'should give foo from a/path/foo/', ->
-      dementor = new Dementor 'a/path/foo/'
-      assert.equal dementor.projectName, 'foo'
-
-    it 'should give foo from C:\\a\\path\\foo', ->
-      dementor = new Dementor 'C:\\a\\path\\foo'
-      assert.equal dementor.projectName, 'foo'
 
