@@ -27,30 +27,34 @@ class ProjectFiles extends events.EventEmitter
     @watchTree = require('watch-tree-maintained')
 
   cleanPath: (path) ->
+    return unless path?
     pathRe = new RegExp "^#{@directory}#{_path.sep}"
     path = path.replace(pathRe, "")
     @standardizePath path
 
   standardizePath: (path) ->
+    return unless path?
     return path if _path.sep == '/'
     return path.replace _path.sep, '/'
 
   localizePath: (path) ->
+    return unless path?
     return path if _path.sep == '/'
     return path.replace '/', _path.sep
 
   handleError: (error, options={}, callback) ->
     newError = null
     switch error.code
-      when 'ENOENT' then newError = errors.new 'NO_FILE'
+      when 'ENOENT' then newError = errors.new 'NO_FILE',
+        path: @cleanPath error.path
       when 'EISDIR' then newError = errors.new 'IS_DIR'
       when 'EACCES'
         newError = errors.new 'PERMISSION_DENIED', path: @cleanPath error.path
         newError.message += newError.path
       #Fill in other error cases here...
-    console.error "Found error:", error
+    #console.error "Found error:", error
     error = newError ? error
-    console.log "Returning error:", error
+    #console.log "Returning error:", error
     if options.sync then throw error else callback? error
 
 

@@ -34,7 +34,9 @@ class FileUtils
       wrench.mkdirSyncRecursive root
     for key, value of filetree
       if typeof value == "string"
-        fs.writeFileSync(_path.join(root, key), value)
+        filepath = _path.join(root, key)
+        wrench.mkdirSyncRecursive _path.dirname filepath
+        fs.writeFileSync(filepath, value)
       else
         @createFileTree(_path.join(root, key), value)
 
