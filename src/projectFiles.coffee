@@ -2,6 +2,7 @@ fs = require "fs"
 _path = require "path"
 {errors} = require 'madeye-common'
 _ = require 'underscore'
+clc = require 'cli-color'
 events = require 'events'
 {messageAction} = require 'madeye-common'
 
@@ -24,7 +25,7 @@ MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
     @watchTree = require('watch-tree-maintained')
- 
+
   cleanPath: (path) ->
     pathRe = new RegExp "^#{@directory}#{_path.sep}"
     path = path.replace(pathRe, "")
@@ -43,10 +44,14 @@ class ProjectFiles extends events.EventEmitter
     switch error.code
       when 'ENOENT' then newError = errors.new 'NO_FILE'
       when 'EISDIR' then newError = errors.new 'IS_DIR'
+      when 'EACCES'
+        newError = errors.new 'PERMISSION_DENIED', path: @cleanPath error.path
+        newError.message += newError.path
       #Fill in other error cases here...
-    #console.error "Found error:", error
+    console.error "Found error:", error
     error = newError ? error
-    if options.sync then throw error else callback error
+    console.log "Returning error:", error
+    if options.sync then throw error else callback? error
 
 
   #callback: (err, body) -> ...
@@ -62,7 +67,6 @@ class ProjectFiles extends events.EventEmitter
       contents = fs.readFileSync(filePath, "utf-8")
       if options.sync then return contents else callback null, contents
     catch error
-      console.error "Found error:", error
       @handleError error, options, callback
 
   #callback: (err) -> ...
@@ -114,15 +118,15 @@ class ProjectFiles extends events.EventEmitter
   readFileTree: (callback) ->
     results = null
     try
-      results = readdirSyncRecursive @directory
+      results = @readdirSyncRecursive @directory
       results = _.filter results, (result) =>
         @filter result.path
     catch error
-      console.warn "Found error:", error
       @handleError error, null, callback; return
     callback null, results
 
   #Sets up event listeners, and emits messages
+  #TODO: Current dies on EACCES for directories with bad permissions
   watchFileTree: ->
     @watcher = @watchTree.watchTree(@directory, {'sample-rate': 50})
     @watcher.on "filePreexisted", (path) ->
@@ -130,15 +134,10 @@ class ProjectFiles extends events.EventEmitter
       #Currently send this information with the init request.
 
     @watcher.on "fileCreated", (path) =>
-      try
-        isDir = fs.statSync( path ).isDirectory()
-      catch error
-        console.error error
-        if error.code == 'ELOOP' or error.code == 'ENOENT'
-          console.warn "Ignoring broken link at #{path}"
-          return
-        else
-          @handleError error, sync:true
+      stat = @getStat _path.join(currentDir, file)
+      return unless stat
+
+      isDir = stat.isDirectory()
       relativePath = @cleanPath path
       return unless @filter relativePath
       @emit messageAction.ADD_FILES, files: [{path:relativePath, isDir:isDir}]
@@ -155,35 +154,50 @@ class ProjectFiles extends events.EventEmitter
       return unless @filter relativePath
       @emit messageAction.REMOVE_FILES, paths: [relativePath]
 
-# based on a similar fucntion found in wrench
-# https://github.com/ryanmcgrath/wrench-js
-# but with an added isDir field
-readdirSyncRecursive = (rootDir, relativeDir) ->
-  files = []
-  nextDirs = []
-  newFiles = []
-  currentDir = _path.join rootDir, relativeDir
-  prependBaseDir = (fname) ->
-    _path.join relativeDir, fname
-
-  curFiles = fs.readdirSync(currentDir)
-  for file in curFiles
+  getStat : (path) ->
     try
-      isDir = fs.statSync( _path.join(currentDir, file) ).isDirectory()
-      nextDirs.push file if isDir
-      newFiles.push {isDir: isDir, path: prependBaseDir(file)}
+      return fs.statSync( path )
     catch error
       if error.code == 'ELOOP' or error.code == 'ENOENT'
-        console.warn "Ignoring broken link at", _path.join(currentDir, file)
-        continue
+        console.log clc.blackBright "Ignoring broken link at #{path}" #if process.env.MADEYE_DEBUG
+      else if error.code == 'EACCES'
+        console.log clc.blackBright "Permission denied for #{path}" #if process.env.MADEYE_DEBUG
       else
         @handleError error, sync:true
-  files = files.concat newFiles if newFiles
+      return null
 
-  while nextDirs.length
-    files = files.concat(readdirSyncRecursive( rootDir, _path.join(relativeDir, nextDirs.shift()) ) )
-  return files.sort (a,b)->
-    a.path > b.path
+  # based on a similar fucntion found in wrench
+  # https://github.com/ryanmcgrath/wrench-js
+  # but with an added isDir field
+  readdirSyncRecursive : (rootDir, relativeDir) ->
+    files = []
+    nextDirs = []
+    newFiles = []
+    currentDir = _path.join rootDir, relativeDir
+    prependBaseDir = (fname) ->
+      _path.join relativeDir, fname
 
+    try
+      curFiles = fs.readdirSync(currentDir)
+    catch error
+      if error.code == 'EACCES'
+        console.log clc.blackBright "Permission denied for #{currentDir}" #if process.env.MADEYE_DEBUG
+        return
+      else
+        @handleError error, sync:true
+
+    for file in curFiles
+      stat = @getStat _path.join(currentDir, file)
+      continue unless stat
+      isDir = stat.isDirectory()
+      nextDirs.push file if isDir
+      newFiles.push {isDir: isDir, path: prependBaseDir(file)}
+    files = files.concat newFiles if newFiles
+
+    while nextDirs.length
+      dirFiles = @readdirSyncRecursive( rootDir, _path.join(relativeDir, nextDirs.shift()) )
+      files = files.concat dirFiles if dirFiles
+    return files.sort (a,b)->
+      a.path > b.path
 
 exports.ProjectFiles = ProjectFiles
