@@ -134,9 +134,8 @@ class ProjectFiles extends events.EventEmitter
       #Currently send this information with the init request.
 
     @watcher.on "fileCreated", (path) =>
-      stat = @getStat _path.join(currentDir, file)
+      stat = @getStat path
       return unless stat
-
       isDir = stat.isDirectory()
       relativePath = @cleanPath path
       return unless @filter relativePath
