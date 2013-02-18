@@ -41,11 +41,11 @@ defaultHttpClient = new MockHttpClient (options, params) ->
 
 describe "Dementor", ->
   before ->
-    fileUtils.initTestArea()
+    #fileUtils.initTestArea()
     fileUtils.mkDirClean homeDir
 
   after ->
-    fileUtils.destroyTestArea()
+    #fileUtils.destroyTestArea()
 
   describe "constructor", ->
     registeredDir = fileUtils.testProjectDir 'alreadyRegistered'

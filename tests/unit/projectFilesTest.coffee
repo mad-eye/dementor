@@ -17,7 +17,7 @@ resetHome = ->
 
 describe 'ProjectFiles', ->
   before ->
-    fileUtils.initTestArea()
+    #fileUtils.initTestArea()
     fileUtils.mkDirClean homeDir
 
   after ->
@@ -262,30 +262,28 @@ describe 'ProjectFiles', ->
       at exports.StatWatcher.StatWatcher.statPath (/Users/jag/Dropbox/madeye/dementor/node_modules/watch-tree-maintained/lib/watchers/stat.js:102:21)
       at Object.oncomplete (fs.js:297:15)
     ###
-    it "should notice when i add a file"
-    #it "should notice when i add a file", (done) ->
-      #fileName = 'file.txt'
-      #filePath = makeFile fileName
-      #projectFiles.on messageAction.ADD_FILES, (data) ->
-        #file = data.files[0]
-        #assert.equal file.path, fileName
-        #assert.equal file.isDir, false
-        #done()
-      #projectFiles.watchFileTree()
-      #watcher.emit 'fileCreated', filePath
+    it "should notice when i add a file", (done) ->
+      fileName = 'file.txt'
+      filePath = makeFile fileName
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        file = data.files[0]
+        assert.equal file.path, fileName
+        assert.equal file.isDir, false
+        done()
+      projectFiles.watchFileTree()
+      watcher.emit 'fileCreated', filePath
 
     #FIXME: Same strange error here
-    it "should ignore cruft files"
-    #it "should ignore cruft files", (done) ->
-      #fileName = 'file.txt~'
-      #filePath = makeFile fileName
-      #projectFiles.on messageAction.ADD_FILES, (data) ->
-        #assert.fail "Should not notice file."
-      #projectFiles.on 'stop', (data) ->
-        #done()
-      #projectFiles.watchFileTree()
-      #watcher.emit 'fileCreated', filePath
-      #projectFiles.emit 'stop'
+    it "should ignore cruft files", (done) ->
+      fileName = 'file.txt~'
+      filePath = makeFile fileName
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        assert.fail "Should not notice file."
+      projectFiles.on 'stop', (data) ->
+        done()
+      projectFiles.watchFileTree()
+      watcher.emit 'fileCreated', filePath
+      projectFiles.emit 'stop'
 
     it "should notice when I add a directory"
       
@@ -300,20 +298,19 @@ describe 'ProjectFiles', ->
     it "should ignore the contents of the .gitignore or should it?"
 
     #This is failing sometimes, due to a race condition?
-    it "should ignore broken symlinks"
-    #it "should ignore broken symlinks", (done) ->
-      #fileName = 'DNE'
-      #filePath = _path.join projectDir, fileName
-      #linkName = 'brokenLink'
-      #linkPath = _path.join projectDir, linkName
-      #fs.symlinkSync filePath, linkPath
-      #projectFiles.on messageAction.ADD_FILES, (data) ->
-        #assert.fail "Should not notice file."
-      #projectFiles.on 'stop', (data) ->
-        #done()
-      #projectFiles.watchFileTree()
-      #watcher.emit 'fileCreated', linkPath
-      #projectFiles.emit 'stop'
+    it "should ignore broken symlinks", (done) ->
+      fileName = 'DNE'
+      filePath = _path.join projectDir, fileName
+      linkName = 'brokenLink'
+      linkPath = _path.join projectDir, linkName
+      fs.symlinkSync filePath, linkPath
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        assert.fail "Should not notice file."
+      projectFiles.on 'stop', (data) ->
+        done()
+      projectFiles.watchFileTree()
+      watcher.emit 'fileCreated', linkPath
+      projectFiles.emit 'stop'
 
 
 
