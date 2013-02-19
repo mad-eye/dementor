@@ -112,6 +112,7 @@ class ProjectFiles extends events.EventEmitter
   filter: (path) ->
     return false unless path?
     return false if path[path.length-1] == '~'
+    return false if path[-4..] == ".swp"
     components = path.split _path.sep
     return false if '.git' in components
     return false if 'node_modules' in components

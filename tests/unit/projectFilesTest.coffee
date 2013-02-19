@@ -275,6 +275,7 @@ describe 'ProjectFiles', ->
 
     #FIXME: Same strange error here
     it "should ignore cruft files", (done) ->
+      #TODO include a few other file types here (i.e. garbage.swp)
       fileName = 'file.txt~'
       filePath = makeFile fileName
       projectFiles.on messageAction.ADD_FILES, (data) ->
