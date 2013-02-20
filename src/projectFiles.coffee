@@ -1,10 +1,10 @@
 fs = require "fs"
 _path = require "path"
-{errors} = require 'madeye-common'
+{errors} = require '../madeye-common/common'
 _ = require 'underscore'
 clc = require 'cli-color'
 events = require 'events'
-{messageAction} = require 'madeye-common'
+{messageAction} = require '../madeye-common/common'
 
 #File Events:
 #  type: fileEventType

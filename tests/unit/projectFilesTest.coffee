@@ -5,7 +5,7 @@ assert = require 'assert'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
-{errorType, messageAction} = require 'madeye-common'
+{errorType, messageAction} = require '../../madeye-common/common'
 events = require 'events'
 
 

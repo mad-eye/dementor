@@ -7,9 +7,9 @@ _path = require 'path'
 {ProjectFiles} = require '../../src/projectFiles'
 {fileUtils} = require '../util/fileUtils'
 {MockHttpClient} = require '../mock/mockHttpClient'
-{MockSocket} = require 'madeye-common'
-{messageMaker, messageAction} = require 'madeye-common'
-{errors, errorType} = require 'madeye-common'
+{MockSocket} = require '../../madeye-common/common'
+{messageMaker, messageAction} = require '../../madeye-common/common'
+{errors, errorType} = require '../../madeye-common/common'
 
 
 #TODO: Reduce redundancy with better before/etc hooks.

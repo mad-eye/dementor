@@ -1,6 +1,5 @@
 #! /bin/sh
 
 git submodule update --init --recursive
-npm install -q .madeye-common
 npm install -q
 

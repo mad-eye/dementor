@@ -1,10 +1,10 @@
 {Dementor} = require('./src/dementor')
 {HttpClient} = require('./src/httpClient')
-{Settings} = require('madeye-common')
+{Settings} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
-{errorType} = require 'madeye-common'
+{errorType} = require './madeye-common/common'
 
 dementor = null
 
