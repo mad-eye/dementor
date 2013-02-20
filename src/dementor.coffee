@@ -26,6 +26,16 @@ class Dementor extends events.EventEmitter
     @socket.emit messageAction.METRIC, metric
     @emit 'error', err
 
+  handleWarning: (msg) ->
+    return unless msg?
+    metric =
+      type : 'warning'
+      timestamp : new Date()
+      projectId : @projectId
+      level : 'warn'
+    @socket.emit messageAction.METRIC, metric
+    @emit 'warning', msg
+
   enable: ->
     @projectFiles.readFileTree (err, files) =>
       @handleError err
@@ -87,8 +97,10 @@ class Dementor extends events.EventEmitter
       data.projectId = @projectId
       file = @fileTree.findByPath(data.paths[0])
       data.files = [file]
-      @socket.emit messageAction.REMOVE_FILES, data, (err) =>
+      @socket.emit messageAction.REMOVE_FILES, data, (err, response) =>
         @handleError err
+        if response?.action == messageAction.WARNING
+          @emit messageAction.WARNING, response.message
 
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'

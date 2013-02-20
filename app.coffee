@@ -37,6 +37,9 @@ run = ->
     console.error 'ERROR:', err.message
     shutdown(err.code ? 1)
 
+  dementor.on 'warning', (msg) ->
+    console.error 'Warning:', msg
+
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
     testHangoutUrl = "https://hangoutsapi.talkgadget.google.com/hangouts/_?gid=63701048231&gd=#{apogeeUrl}"
