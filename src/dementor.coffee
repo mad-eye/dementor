@@ -92,6 +92,8 @@ class Dementor extends events.EventEmitter
       data.file = @fileTree.findByPath(data.path)
       @socket.emit messageAction.SAVE_FILE, data, (err) =>
         @handleError err
+        if response?.action == messageAction.WARNING
+          @emit messageAction.WARNING, response.message
 
     @projectFiles.on messageAction.REMOVE_FILES, (data) =>
       data.projectId = @projectId
