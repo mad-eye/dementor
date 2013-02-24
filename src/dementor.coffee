@@ -23,6 +23,7 @@ class Dementor extends events.EventEmitter
       timestamp : new Date()
       projectId : @projectId
       level : 'error'
+      cause: err.message
     @socket.emit messageAction.METRIC, metric
     @emit 'error', err
 
@@ -33,6 +34,7 @@ class Dementor extends events.EventEmitter
       timestamp : new Date()
       projectId : @projectId
       level : 'warn'
+      cause: msg
     @socket.emit messageAction.METRIC, metric
     @emit 'warning', msg
 
@@ -103,6 +105,7 @@ class Dementor extends events.EventEmitter
         @handleError err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
+        #XXX: Should we remove the file from the filetree? or leave it in case of being resaved?
 
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'
