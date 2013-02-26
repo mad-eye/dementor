@@ -40,7 +40,7 @@ class Dementor extends events.EventEmitter
 
   enable: ->
     @projectFiles.readFileTree (err, files) =>
-      @handleError err
+      return @handleError err if err
       if file? and files.length > 40000
         throw "MadEye currently only supports projects with less than 40,000 files"
       @addMetric 'READ_FILETREE'
@@ -57,7 +57,7 @@ class Dementor extends events.EventEmitter
         version: @version
 
       @httpClient.request {method: method, action:action, json: json}, (result) =>
-        @handleError result.error
+        return @handleError result.error if result.error
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
         @fileTree.addFiles result.files
@@ -86,14 +86,14 @@ class Dementor extends events.EventEmitter
     @projectFiles.on messageAction.ADD_FILES, (data) =>
       data.projectId = @projectId
       @socket.emit messageAction.ADD_FILES, data, (err, files) =>
-        @handleError err
+        return @handleError err if err
         @fileTree.addFiles files
 
     @projectFiles.on messageAction.SAVE_FILE, (data) =>
       data.projectId = @projectId
       data.file = @fileTree.findByPath(data.path)
       @socket.emit messageAction.SAVE_FILE, data, (err) =>
-        @handleError err
+        return @handleError err if err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
 
@@ -102,7 +102,7 @@ class Dementor extends events.EventEmitter
       file = @fileTree.findByPath(data.paths[0])
       data.files = [file]
       @socket.emit messageAction.REMOVE_FILES, data, (err, response) =>
-        @handleError err
+        return @handleError err if err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
         #XXX: Should we remove the file from the filetree? or leave it in case of being resaved?
