@@ -155,7 +155,7 @@ class Dementor extends events.EventEmitter
     socket.on messageAction.SAVE_FILE, (data, callback) =>
       fileId = data.fileId
       contents = data.contents
-      unless fileId && contents
+      unless fileId && contents?
         callback errors.new 'MISSING_PARAM'; return
       path = @fileTree.findById(fileId)?.path
       @projectFiles.writeFile path, contents, (err) ->
