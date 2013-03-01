@@ -48,7 +48,7 @@ run = ->
 
     util.puts "View your project at " + clc.bold apogeeUrl
 
-    if process.env.MADEYE_DEBUG
+    if process.env.MADEYE_HANGOUT_DEV
       util.puts "Test Google Hangout at " + clc.bold devHangoutUrl
       util.puts "Use Google Hangout at " + clc.bold hangoutUrl
     else
