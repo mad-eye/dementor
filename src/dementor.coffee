@@ -100,6 +100,8 @@ class Dementor extends events.EventEmitter
         #Make sure it's not an old possibly stuck serverOp? 
         if serverOp.timestamp.UTC() > now - 1000
           return
+        else
+          @handleWarning "Server Op might be stuck: #{JSON.stringify serverOp}"
 
       @socket.emit messageAction.SAVE_FILE, data, (err, response) =>
         return @handleError err if err
