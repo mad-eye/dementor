@@ -15,6 +15,7 @@ class Dementor extends events.EventEmitter
     @fileTree = new FileTree null
     @attach socket
     @version = require('../package.json').version
+    @fileOps = {}
 
   handleError: (err) ->
     return unless err?
@@ -92,7 +93,14 @@ class Dementor extends events.EventEmitter
     @projectFiles.on messageAction.SAVE_FILE, (data) =>
       data.projectId = @projectId
       data.file = @fileTree.findByPath(data.path)
-      @socket.emit messageAction.SAVE_FILE, data, (err) =>
+      op = @fileOps[data.file._id]
+      if op && op.action == messageAction.SAVE_FILE
+        #This saveFile comes from the server; don't echo it
+        console.log "SAVE_FILE is from server; ignoring."
+        delete @fileOps[data.file._id]
+        return
+      console.log "Reporting SAVE_FILE to server."
+      @socket.emit messageAction.SAVE_FILE, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
@@ -157,6 +165,7 @@ class Dementor extends events.EventEmitter
       contents = data.contents
       unless fileId && contents?
         callback errors.new 'MISSING_PARAM'; return
+      @fileOps[fileId] = action: messageAction.SAVE_FILE, timestamp: new Date
       path = @fileTree.findById(fileId)?.path
       @projectFiles.writeFile path, contents, (err) ->
         console.log "Saving file " + clc.bold path unless err
