@@ -78,10 +78,6 @@ describe "Dementor", ->
     dementor = null
     projectPath = null
 
-    it "should not allow two dementors to monitor the same directory"
-
-    it "should not allow a dementor to watch a subdir of an existing dementors territory"
-
     describe "when not registered", ->
       targetFileTree = null
       before (done) ->

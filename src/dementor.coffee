@@ -15,6 +15,7 @@ class Dementor extends events.EventEmitter
     @fileTree = new FileTree null
     @attach socket
     @version = require('../package.json').version
+    @serverOps = {}
 
   handleError: (err) ->
     return unless err?
@@ -92,7 +93,17 @@ class Dementor extends events.EventEmitter
     @projectFiles.on messageAction.SAVE_FILE, (data) =>
       data.projectId = @projectId
       data.file = @fileTree.findByPath(data.path)
-      @socket.emit messageAction.SAVE_FILE, data, (err) =>
+      serverOp = @serverOps[data.file._id]
+      if serverOp && serverOp.action == messageAction.SAVE_FILE
+        delete @serverOps[data.file._id]
+        now = new Date().UTC()
+        #Make sure it's not an old possibly stuck serverOp? 
+        if serverOp.timestamp.UTC() > now - 1000
+          return
+        else
+          @handleWarning "Server Op might be stuck: #{JSON.stringify serverOp}"
+
+      @socket.emit messageAction.SAVE_FILE, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
@@ -157,6 +168,7 @@ class Dementor extends events.EventEmitter
       contents = data.contents
       unless fileId && contents?
         callback errors.new 'MISSING_PARAM'; return
+      @serverOps[fileId] = action: messageAction.SAVE_FILE, timestamp: new Date
       path = @fileTree.findById(fileId)?.path
       @projectFiles.writeFile path, contents, (err) ->
         console.log "Saving file " + clc.bold path unless err

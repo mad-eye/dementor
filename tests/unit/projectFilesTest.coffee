@@ -274,9 +274,21 @@ describe 'ProjectFiles', ->
       watcher.emit 'fileCreated', filePath
 
     #FIXME: Same strange error here
-    it "should ignore cruft files", (done) ->
+    it "should ignore cruft ~ files", (done) ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = 'file.txt~'
+      filePath = makeFile fileName
+      projectFiles.on messageAction.ADD_FILES, (data) ->
+        assert.fail "Should not notice file."
+      projectFiles.on 'stop', (data) ->
+        done()
+      projectFiles.watchFileTree()
+      watcher.emit 'fileCreated', filePath
+      projectFiles.emit 'stop'
+
+    it "should ignore cruft .swp files", (done) ->
+      #TODO include a few other file types here (i.e. garbage.swp)
+      fileName = '.file.txt.swp'
       filePath = makeFile fileName
       projectFiles.on messageAction.ADD_FILES, (data) ->
         assert.fail "Should not notice file."
@@ -292,11 +304,7 @@ describe 'ProjectFiles', ->
 
     it "should notice when i change a file"
 
-    it "should not notice images"
-
     it "should ignore the .git directory"
-
-    it "should ignore the contents of the .gitignore or should it?"
 
     #This is failing sometimes, due to a race condition?
     it "should ignore broken symlinks", (done) ->
