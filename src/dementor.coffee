@@ -96,10 +96,8 @@ class Dementor extends events.EventEmitter
       op = @fileOps[data.file._id]
       if op && op.action == messageAction.SAVE_FILE
         #This saveFile comes from the server; don't echo it
-        console.log "SAVE_FILE is from server; ignoring."
         delete @fileOps[data.file._id]
         return
-      console.log "Reporting SAVE_FILE to server."
       @socket.emit messageAction.SAVE_FILE, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
