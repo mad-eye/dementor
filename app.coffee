@@ -52,7 +52,7 @@ run = ->
       util.puts "Test Google Hangout at " + clc.bold devHangoutUrl
       util.puts "Use Google Hangout at " + clc.bold hangoutUrl
     else
-      util.puts "Use Google Hangout at " + clc.bold prodHangoutUrl  
+      util.puts "Use Google Hangout at " + clc.bold prodHangoutUrl
   dementor.enable()
 
 # Shutdown section
