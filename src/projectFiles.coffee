@@ -202,7 +202,7 @@ class ProjectFiles extends events.EventEmitter
       continue unless stat
       isDir = stat.isDirectory()
       nextDirs.push file if isDir
-      newFiles.push {isDir: isDir, path: prependBaseDir(file)}
+      newFiles.push {isDir: isDir, path: @cleanPath prependBaseDir file }
     files = files.concat newFiles if newFiles
 
     while nextDirs.length
