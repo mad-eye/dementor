@@ -96,7 +96,7 @@ class Dementor extends events.EventEmitter
       serverOp = @serverOps[data.file._id]
       if serverOp && serverOp.action == messageAction.SAVE_FILE
         delete @serverOps[data.file._id]
-        now = new Date().UTC()
+        now = (new Date()).UTC()
         #Make sure it's not an old possibly stuck serverOp? 
         if serverOp.timestamp.UTC() > now - 1000
           return
