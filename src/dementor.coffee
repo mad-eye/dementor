@@ -96,9 +96,9 @@ class Dementor extends events.EventEmitter
       serverOp = @serverOps[data.file._id]
       if serverOp && serverOp.action == messageAction.SAVE_FILE
         delete @serverOps[data.file._id]
-        now = (new Date()).UTC()
+        now = (new Date()).valueOf()
         #Make sure it's not an old possibly stuck serverOp? 
-        if serverOp.timestamp.UTC() > now - 1000
+        if serverOp.timestamp.valueOf() > now - 1000
           return
         else
           @handleWarning "Server Op might be stuck: #{JSON.stringify serverOp}"
