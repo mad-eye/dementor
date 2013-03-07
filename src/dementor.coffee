@@ -20,22 +20,20 @@ class Dementor extends events.EventEmitter
   handleError: (err) ->
     return unless err?
     metric =
-      type : 'error'
+      level : 'error'
+      message: err.message
       timestamp : new Date()
       projectId : @projectId
-      level : 'error'
-      cause: err.message
     @socket.emit messageAction.METRIC, metric
     @emit 'error', err
 
   handleWarning: (msg) ->
     return unless msg?
     metric =
-      type : 'warning'
-      timestamp : new Date()
-      projectId : @projectId
       level : 'warn'
-      cause: msg
+      message : msg
+      timestamp : new date()
+      projectid : @projectid
     @socket.emit messageAction.METRIC, metric
     @emit 'warning', msg
 
@@ -72,7 +70,8 @@ class Dementor extends events.EventEmitter
     callback?()
 
   addMetric: (type, metric={}) ->
-    metric.type = type
+    metric.level = 'debug'
+    metric.message = type
     metric.timestamp = new Date()
     metric.projectId = @projectId
     @socket.emit messageAction.METRIC, metric
