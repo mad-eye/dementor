@@ -140,7 +140,7 @@ class ProjectFiles extends events.EventEmitter
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
   watchFileTree: ->
-    @watcher = @watchTree.watchTree(@directory, {'sample-rate': 50})
+    @watcher = @watchTree.watchTree(@directory, {'sample-rate': 3})
     @watcher.on "filePreexisted", (path) ->
       #console.log "Found preexisting file:", path
       #Currently send this information with the init request.

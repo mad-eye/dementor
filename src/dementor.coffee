@@ -32,8 +32,8 @@ class Dementor extends events.EventEmitter
     metric =
       level : 'warn'
       message : msg
-      timestamp : new date()
-      projectid : @projectid
+      timestamp : new Date()
+      projectId : @projectId
     @socket.emit messageAction.METRIC, metric
     @emit 'warning', msg
 
@@ -70,7 +70,7 @@ class Dementor extends events.EventEmitter
     callback?()
 
   addMetric: (type, metric={}) ->
-    metric.level = 'debug'
+    metric.level ?= 'debug'
     metric.message = type
     metric.timestamp = new Date()
     metric.projectId = @projectId
@@ -97,10 +97,13 @@ class Dementor extends events.EventEmitter
         delete @serverOps[data.file._id]
         now = (new Date()).valueOf()
         #Make sure it's not an old possibly stuck serverOp? 
-        if serverOp.timestamp.valueOf() > now - 1000
+        if serverOp.timestamp.valueOf() > now - 10*1000
           return
         else
-          @handleWarning "Server Op might be stuck: #{JSON.stringify serverOp}"
+          @addMetric "SERVER_OP_STUCK",
+            level: 'info'
+            fileId: data.file._id
+            serverOp: serverOp
 
       @socket.emit messageAction.SAVE_FILE, data, (err, response) =>
         return @handleError err if err
