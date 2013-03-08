@@ -1,5 +1,16 @@
 #! /bin/sh
 
+#Use --production to npm install --production
+if [ "$1" == "--production" ]; then
+    production="--production"
+    echo Using production flag: $production
+else
+    production=""
+fi
+
 git submodule update --init --recursive
-npm install -q
+npm install -q $production
+#This goes after the top level npm install, so that it can reuse the packages.
+#Currently disabled -- it just duplicates node modules and increases install size.
+#cd madeye-common && bin/init $production
 
