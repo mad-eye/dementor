@@ -41,12 +41,12 @@ class ProjectFiles extends events.EventEmitter
   standardizePath: (path) ->
     return unless path?
     return path if _path.sep == '/'
-    return path.replace _path.sep, '/'
+    return path.split(_path.sep).join('/')
 
   localizePath: (path) ->
     return unless path?
     return path if _path.sep == '/'
-    return path.replace '/', _path.sep
+    return path.split('/').join(_path.sep)
 
   handleError: (error, options={}, callback) ->
     newError = null
