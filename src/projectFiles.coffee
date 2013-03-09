@@ -35,8 +35,7 @@ class ProjectFiles extends events.EventEmitter
 
   cleanPath: (path) ->
     return unless path?
-    pathRe = new RegExp "^#{@directory}#{_path.sep}"
-    path = path.replace(pathRe, "")
+    path = _path.relative(@directory, path)
     @standardizePath path
 
   standardizePath: (path) ->
@@ -186,7 +185,7 @@ class ProjectFiles extends events.EventEmitter
     newFiles = []
     currentDir = _path.join rootDir, relativeDir
     prependBaseDir = (fname) ->
-      _path.join relativeDir, fname
+      _path.join currentDir, fname
 
     try
       curFiles = fs.readdirSync(currentDir)
