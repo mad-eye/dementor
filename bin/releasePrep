@@ -1,0 +1,14 @@
+#! /bin/bash
+set -e
+
+basedir=$(dirname $0)
+rootdir=$(dirname $basedir)
+
+rm -rf $rootdir/node_modules $rootdir/madeye-common/node_modules
+
+rm -f $rootdir/npm-shrinkwrap.json
+cd $rootdir && bin/init --production
+cd $rootdir && npm shrinkwrap
+cd $rootdir && npm pack && mv madeye*.tgz /tmp/
+rm -rf /tmp/package/
+echo Please test the madeye pack file in tmp and then 'npm publish'
