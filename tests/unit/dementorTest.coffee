@@ -191,7 +191,7 @@ describe "Dementor", ->
         assert.equal body, null
         done()
 
-  describe "receiving SAVE_FILE message", ->
+  describe "receiving SAVE_LOCAL_FILE message", ->
     dementor = mockSocket = null
     projectPath = projectFiles = null
     filePath = null
@@ -212,7 +212,7 @@ describe "Dementor", ->
       data =
         fileId: fileId
         contents: fileBody
-      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.equal err, null, "Should not have an error."
         readContents = projectFiles.readFile(filePath, sync:true)
         assert.equal readContents, fileBody
@@ -222,7 +222,7 @@ describe "Dementor", ->
       data =
         fileId: uuid.v4()
         contents: fileBody
-      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
         done()
@@ -231,7 +231,7 @@ describe "Dementor", ->
     it 'should return the correct error if fileId parameter is missing', (done) ->
       data =
         contents: fileBody
-      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.ok err
         assert.equal err.type, errorType.MISSING_PARAM
         done()
@@ -239,7 +239,7 @@ describe "Dementor", ->
     it 'should return the correct error if contents parameter is missing', (done) ->
       data =
         fileId: uuid.v4()
-      mockSocket.trigger messageAction.SAVE_FILE, data, (err) ->
+      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.ok err
         assert.equal err.type, errorType.MISSING_PARAM
         done()
@@ -259,9 +259,9 @@ describe "Dementor", ->
         done()
       dementor.enable()
 
-    it 'should send ADD_FILES message when projectFiles emits one', (done) ->
+    it 'should send LOCAL_FILES_ADDED message when projectFiles emits one', (done) ->
       mockSocket.onEmit = (action, data, cb) ->
-        unless action == messageAction.ADD_FILES
+        unless action == messageAction.LOCAL_FILES_ADDED
           console.log "Got action", action
           return
         assert.ok data.projectId
@@ -272,15 +272,15 @@ describe "Dementor", ->
         assert.equal file.isDir, false
         done()
 
-      dementor.projectFiles.emit messageAction.ADD_FILES, files:[{path:filePath, isDir:false}]
+      dementor.projectFiles.emit messageAction.LOCAL_FILES_ADDED, files:[{path:filePath, isDir:false}]
 
-    it 'should send SAVE_FILE message when projectFiles emits one', (done) ->
+    it 'should send LOCAL_FILE_SAVED message when projectFiles emits one', (done) ->
       path = "a/path"
       contents = "Too readily we admit that the cost of inaction is failure."
       file = _id:uuid.v4(), path:path, isDir:false
       dementor.fileTree.addFile file
       mockSocket.onEmit = (action, data, cb) ->
-        unless action == messageAction.SAVE_FILE
+        unless action == messageAction.LOCAL_FILE_SAVED
           console.log "Got action", action
           return
         assert.ok data.projectId
@@ -290,14 +290,14 @@ describe "Dementor", ->
         assert.equal data.contents, contents
         done()
 
-      dementor.projectFiles.emit messageAction.SAVE_FILE, path:path, contents:contents
+      dementor.projectFiles.emit messageAction.LOCAL_FILE_SAVED, path:path, contents:contents
 
-    it 'should send REMOVE_FILES message when projectFiles emits one', (done) ->
+    it 'should send LOCAL_FILES_REMOVED message when projectFiles emits one', (done) ->
       path = "another/path"
       file = _id:uuid.v4(), path:path, isDir:false
       dementor.fileTree.addFile file
       mockSocket.onEmit = (action, data, cb) ->
-        unless action == messageAction.REMOVE_FILES
+        unless action == messageAction.LOCAL_FILES_REMOVED
           console.log "Got action", action
           return
         assert.ok data.projectId
@@ -307,5 +307,5 @@ describe "Dementor", ->
           assert.equal data.files[0][k], v
         done()
 
-      dementor.projectFiles.emit messageAction.REMOVE_FILES, paths:[path]
+      dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]
 

@@ -150,19 +150,19 @@ class ProjectFiles extends events.EventEmitter
       isDir = stat.isDirectory()
       relativePath = @cleanPath path
       return unless @filter relativePath
-      @emit messageAction.ADD_FILES, files: [{path:relativePath, isDir:isDir}]
+      @emit messageAction.LOCAL_FILES_ADDED, files: [{path:relativePath, isDir:isDir}]
 
     @watcher.on "fileModified", (path) =>
       relativePath = @cleanPath path
       return unless @filter relativePath
       fs.readFile path, "utf-8", (err, contents) =>
         if err then @emit 'error', err; return
-        @emit messageAction.SAVE_FILE, {path: relativePath, contents: contents}
+        @emit messageAction.LOCAL_FILE_SAVED, {path: relativePath, contents: contents}
 
     @watcher.on "fileDeleted", (path) =>
       relativePath = @cleanPath path
       return unless @filter relativePath
-      @emit messageAction.REMOVE_FILES, paths: [relativePath]
+      @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
 
   getStat : (path) ->
     try

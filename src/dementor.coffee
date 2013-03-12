@@ -83,17 +83,17 @@ class Dementor extends events.EventEmitter
   # XXX: When files are modified because of server messages, they will fire events.  We should ignore those.
 
   watchProject: ->
-    @projectFiles.on messageAction.ADD_FILES, (data) =>
+    @projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) =>
       data.projectId = @projectId
-      @socket.emit messageAction.ADD_FILES, data, (err, files) =>
+      @socket.emit messageAction.LOCAL_FILES_ADDED, data, (err, files) =>
         return @handleError err if err
         @fileTree.addFiles files
 
-    @projectFiles.on messageAction.SAVE_FILE, (data) =>
+    @projectFiles.on messageAction.LOCAL_FILE_SAVED, (data) =>
       data.projectId = @projectId
       data.file = @fileTree.findByPath(data.path)
       serverOp = @serverOps[data.file._id]
-      if serverOp && serverOp.action == messageAction.SAVE_FILE
+      if serverOp && serverOp.action == messageAction.SAVE_LOCAL_FILE
         delete @serverOps[data.file._id]
         now = (new Date()).valueOf()
         #Make sure it's not an old possibly stuck serverOp? 
@@ -105,16 +105,16 @@ class Dementor extends events.EventEmitter
             fileId: data.file._id
             serverOp: serverOp
 
-      @socket.emit messageAction.SAVE_FILE, data, (err, response) =>
+      @socket.emit messageAction.LOCAL_FILE_SAVED, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
 
-    @projectFiles.on messageAction.REMOVE_FILES, (data) =>
+    @projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) =>
       data.projectId = @projectId
       file = @fileTree.findByPath(data.paths[0])
       data.files = [file]
-      @socket.emit messageAction.REMOVE_FILES, data, (err, response) =>
+      @socket.emit messageAction.LOCAL_FILES_REMOVED, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
           @emit messageAction.WARNING, response.message
@@ -165,12 +165,12 @@ class Dementor extends events.EventEmitter
       @projectFiles.readFile path, callback
 
     #callback: (err) =>, errors are encoded as {error:}
-    socket.on messageAction.SAVE_FILE, (data, callback) =>
+    socket.on messageAction.SAVE_LOCAL_FILE, (data, callback) =>
       fileId = data.fileId
       contents = data.contents
       unless fileId && contents?
         callback errors.new 'MISSING_PARAM'; return
-      @serverOps[fileId] = action: messageAction.SAVE_FILE, timestamp: new Date
+      @serverOps[fileId] = action: messageAction.SAVE_LOCAL_FILE, timestamp: new Date
       path = @fileTree.findById(fileId)?.path
       @projectFiles.writeFile path, contents, (err) ->
         console.log "Saving file " + clc.bold path unless err
