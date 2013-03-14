@@ -179,10 +179,11 @@ class ProjectFiles extends events.EventEmitter
   # based on a similar fucntion found in wrench
   # https://github.com/ryanmcgrath/wrench-js
   # but with an added isDir field
-  readdirSyncRecursive : (rootDir, relativeDir) ->
+  readdirSyncRecursive : (rootDir, relativeDir='') ->
     files = []
     nextDirs = []
     newFiles = []
+
     currentDir = _path.join rootDir, relativeDir
     prependBaseDir = (fname) ->
       _path.join currentDir, fname
