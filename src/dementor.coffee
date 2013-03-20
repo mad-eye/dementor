@@ -8,10 +8,10 @@ clc = require 'cli-color'
 _path = require 'path'
 
 class Dementor extends events.EventEmitter
-  constructor: (@directory, @httpClient, socket) ->
+  constructor: (@directory, @httpClient, socket, clean=false) ->
     @projectFiles = new ProjectFiles(@directory)
     @projectName = _path.basename directory
-    @projectId = @projectFiles.projectIds()[@directory]
+    @projectId = @projectFiles.projectIds()[@directory] unless clean
     @fileTree = new FileTree null
     @attach socket
     @version = require('../package.json').version
