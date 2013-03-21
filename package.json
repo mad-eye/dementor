@@ -1,10 +1,8 @@
 {
   "name": "madeye",
   "bin": "bin/madeye",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "private": false,
-  "engines": {"node": ">=0.8.22"},
-  "engineStrict": true,
   "dependencies": {
     "wrench": "~1.4.2",
     "coffee-script": "~1.5.0",
