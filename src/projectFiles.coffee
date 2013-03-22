@@ -119,6 +119,7 @@ class ProjectFiles extends events.EventEmitter
     return false unless path?
     return false if path[path.length-1] == '~'
     return false if path[-4..] == ".swp"
+    return false if path[-4..] == ".swo"
     components = path.split _path.sep
     return false if '.git' in components
     return false if 'node_modules' in components
@@ -145,12 +146,9 @@ class ProjectFiles extends events.EventEmitter
       #Currently send this information with the init request.
 
     @watcher.on "fileCreated", (path) =>
-      stat = @getStat path
-      return unless stat
-      isDir = stat.isDirectory()
-      relativePath = @cleanPath path
-      return unless @filter relativePath
-      @emit messageAction.LOCAL_FILES_ADDED, files: [{path:relativePath, isDir:isDir}]
+      file = @makeFileData path
+      return unless file
+      @emit messageAction.LOCAL_FILES_ADDED, files: [file]
 
     @watcher.on "fileModified", (path) =>
       relativePath = @cleanPath path
@@ -164,9 +162,17 @@ class ProjectFiles extends events.EventEmitter
       return unless @filter relativePath
       @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
 
-  getStat : (path) ->
+  makeFileData : (path) ->
     try
-      return fs.statSync( path )
+      stat = fs.lstatSync( path )
+      cleanPath = @cleanPath path
+      return unless @filter cleanPath
+      return {
+          path: cleanPath
+          isDir: stat.isDirectory()
+          isLink: stat.isSymbolicLink()
+          mtime: stat.mtime
+      }
     catch error
       if error.code == 'ELOOP' or error.code == 'ENOENT'
         console.log clc.blackBright "Ignoring broken link at #{path}" #if process.env.MADEYE_DEBUG
@@ -198,11 +204,11 @@ class ProjectFiles extends events.EventEmitter
         @handleError error, sync:true
 
     for file in curFiles
-      stat = @getStat _path.join(currentDir, file)
-      continue unless stat
-      isDir = stat.isDirectory()
-      nextDirs.push file if isDir
-      newFiles.push {isDir: isDir, path: @cleanPath prependBaseDir file }
+      path = prependBaseDir file
+      fileData = @makeFileData path
+      continue unless fileData
+      nextDirs.push file if fileData.isDir
+      newFiles.push fileData
     files = files.concat newFiles if newFiles
 
     while nextDirs.length

@@ -1,7 +1,7 @@
 fs = require 'fs'
 _path = require 'path'
 wrench = require 'wrench'
-assert = require 'assert'
+{assert} = require 'chai'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
@@ -14,6 +14,16 @@ process.env["MADEYE_HOME"] = _path.resolve homeDir
 
 resetHome = ->
   fileUtils.mkDirClean homeDir
+
+assertFilesEqual = (files, expectedFiles) ->
+  assert.equal files.length, expectedFiles.length
+  for file, i in files
+    expectedFile = expectedFiles[i]
+    assert.equal file.path, expectedFile.path
+    assert.equal file.isDir, expectedFile.isDir
+    assert.isNotNull file.isLink
+    assert.isNotNull file.mtime
+
 
 describe 'ProjectFiles', ->
   before ->
@@ -120,7 +130,7 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree should return true results."
-        assert.deepEqual results, [
+        assertFilesEqual results, [
           isDir: false
           path: "readme"
         ]
@@ -134,7 +144,7 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree should return true results."
-        assert.deepEqual results, [
+        assertFilesEqual results, [
           {isDir: false
           path: "app.js"},
           {isDir: false
@@ -155,7 +165,7 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree should return true results."
-        assert.deepEqual results, [
+        assertFilesEqual results, [
           {isDir: false
           path: "app.js"},
           {isDir: true
@@ -180,7 +190,7 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree should return true results."
-        assert.deepEqual results, [
+        assertFilesEqual results, [
           {isDir: true
           path: "dir1"},
           {isDir: false
@@ -238,6 +248,7 @@ describe 'ProjectFiles', ->
     beforeEach ->
       resetHome()
       projectFiles.removeAllListeners 'stop'
+      projectFiles.removeAllListeners messageAction.LOCAL_FILES_ADDED
 
     makeFile = (fileName) ->
       filePath = _path.join projectDir, fileName
@@ -306,20 +317,20 @@ describe 'ProjectFiles', ->
 
     it "should ignore the .git directory"
 
-    #This is failing sometimes, due to a race condition?
-    it "should ignore broken symlinks", (done) ->
-      fileName = 'DNE'
-      filePath = _path.join projectDir, fileName
-      linkName = 'brokenLink'
-      linkPath = _path.join projectDir, linkName
-      fs.symlinkSync filePath, linkPath
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
-        assert.fail "Should not notice file."
-      projectFiles.on 'stop', (data) ->
-        done()
-      projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', linkPath
-      projectFiles.emit 'stop'
+    #Currently we report them, but mark them as links.
+    it "should ignore broken symlinks"
+      #fileName = 'DNE'
+      #filePath = _path.join projectDir, fileName
+      #linkName = 'brokenLink'
+      #linkPath = _path.join projectDir, linkName
+      #fs.symlinkSync filePath, linkPath
+      #projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+        #assert.fail "Should not notice file."
+      #projectFiles.on 'stop', (data) ->
+        #done()
+      #projectFiles.watchFileTree()
+      #watcher.emit 'fileCreated', linkPath
+      #projectFiles.emit 'stop'
 
 
 
