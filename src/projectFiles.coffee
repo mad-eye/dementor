@@ -171,7 +171,7 @@ class ProjectFiles extends events.EventEmitter
           path: cleanPath
           isDir: stat.isDirectory()
           isLink: stat.isSymbolicLink()
-          mtime: stat.mtime
+          mtime: stat.mtime.getTime()
       }
     catch error
       if error.code == 'ELOOP' or error.code == 'ENOENT'

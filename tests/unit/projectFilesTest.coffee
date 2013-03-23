@@ -22,7 +22,7 @@ assertFilesEqual = (files, expectedFiles) ->
     assert.equal file.path, expectedFile.path
     assert.equal file.isDir, expectedFile.isDir
     assert.isNotNull file.isLink
-    assert.isNotNull file.mtime
+    assert.equal typeof file.mtime, 'number'
 
 
 describe 'ProjectFiles', ->
