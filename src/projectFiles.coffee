@@ -122,6 +122,7 @@ class ProjectFiles extends events.EventEmitter
     return false if path[-4..] == ".swo"
     components = path.split _path.sep
     return false if '.git' in components
+    return false if '.meteor' in components
     return false if 'node_modules' in components
     return false if '.DS_Store' in components
     return true
