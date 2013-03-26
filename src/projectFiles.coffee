@@ -165,9 +165,9 @@ class ProjectFiles extends events.EventEmitter
 
   makeFileData : (path) ->
     try
-      stat = fs.lstatSync( path )
       cleanPath = @cleanPath path
       return unless @filter cleanPath
+      stat = fs.lstatSync( path )
       return {
           path: cleanPath
           isDir: stat.isDirectory()
@@ -192,8 +192,6 @@ class ProjectFiles extends events.EventEmitter
     newFiles = []
 
     currentDir = _path.join rootDir, relativeDir
-    prependBaseDir = (fname) ->
-      _path.join currentDir, fname
 
     try
       curFiles = fs.readdirSync(currentDir)
@@ -204,11 +202,11 @@ class ProjectFiles extends events.EventEmitter
       else
         @handleError error, sync:true
 
-    for file in curFiles
-      path = prependBaseDir file
+    for fname in curFiles
+      path = _path.join currentDir, fname
       fileData = @makeFileData path
       continue unless fileData
-      nextDirs.push file if fileData.isDir
+      nextDirs.push fname if fileData.isDir
       newFiles.push fileData
     files = files.concat newFiles if newFiles
 
