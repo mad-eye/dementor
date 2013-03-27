@@ -118,9 +118,10 @@ class ProjectFiles extends events.EventEmitter
   filter: (path) ->
     return false unless path?
     return false if path[path.length-1] == '~'
-    return false if path[-4..] == ".swp"
-    return false if path[-4..] == ".swo"
-    components = path.split _path.sep
+    return false if path[-4..] == ".swp" #vim temp file
+    return false if path[-4..] == ".swo" #vim temp file
+    return false if _path.basename(path)[0..1] == '.#' #emacs temp file
+    components = path.split '/'
     return false if '.git' in components
     return false if '.meteor' in components
     return false if 'node_modules' in components
@@ -132,8 +133,6 @@ class ProjectFiles extends events.EventEmitter
     results = null
     try
       results = @readdirSyncRecursive @directory
-      results = _.filter results, (result) =>
-        @filter result.path
     catch error
       @handleError error, null, callback; return
     callback null, results
