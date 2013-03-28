@@ -17,15 +17,16 @@ class Dementor extends events.EventEmitter
     @version = require('../package.json').version
     @serverOps = {}
 
-  handleError: (err) ->
+  handleError: (err, silent=false) ->
     return unless err?
+    message = err.message ? err
     metric =
       level : 'error'
-      message: err.message
+      message: message
       timestamp : new Date()
       projectId : @projectId
     @socket.emit messageAction.METRIC, metric
-    @emit 'error', err
+    @emit 'error', err unless silent
 
   handleWarning: (msg) ->
     return unless msg?
@@ -113,6 +114,10 @@ class Dementor extends events.EventEmitter
     @projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) =>
       data.projectId = @projectId
       file = @fileTree.findByPath(data.paths[0])
+      #FIXME: This was happening in production.  Write tests for it.
+      unless file?
+        @handleError "#{errorType.MISSING_PARAM}: filePath #{data.paths[0]} not found in fileTree", true
+        return
       data.files = [file]
       @socket.emit messageAction.LOCAL_FILES_REMOVED, data, (err, response) =>
         return @handleError err if err

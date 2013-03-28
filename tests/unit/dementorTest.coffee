@@ -244,7 +244,7 @@ describe "Dementor", ->
         assert.equal err.type, errorType.MISSING_PARAM
         done()
 
-  describe 'watchFileTree', ->
+  describe 'watchProject', ->
     dementor = mockSocket = null
     projectPath = projectFiles = null
     filePath = null
@@ -309,3 +309,12 @@ describe "Dementor", ->
 
       dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]
 
+    it 'should send an error a file not in fileTree is removed', (done) ->
+      path = "missing/path"
+      mockSocket.onEmit = (action, data, cb) ->
+        if action == messageAction.LOCAL_FILES_REMOVED
+          fail "Should not receive a LOCAL_FILES_REMOVED message"
+        else if action == messageAction.METRIC and data.level == 'error'
+          done()
+
+      dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]
