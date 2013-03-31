@@ -82,7 +82,7 @@ describe "Dementor", ->
       targetFileTree = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
-        targetFileTree = fileUtils.constructFileTree fileMap
+        targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
         dementor.on 'enabled', ->
@@ -106,7 +106,7 @@ describe "Dementor", ->
       targetFileTree = projectId = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
-        targetFileTree = fileUtils.constructFileTree fileMap
+        targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "alreadyEnableTest-#{uuid.v4()}", fileMap
         projectId = uuid.v4()
         dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
