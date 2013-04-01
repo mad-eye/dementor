@@ -50,7 +50,7 @@ describe 'ProjectFiles', ->
         assert.equal err, null
         assert.equal body, fileBody
         done()
-      
+
     it 'should return the correct error when a file does not exist', (done) ->
       fileName = 'nofile.txt'
       projectFiles.readFile fileName, false, (err, body) ->
@@ -68,8 +68,23 @@ describe 'ProjectFiles', ->
         assert.equal body, null
         done()
 
-    it 'should read from absolute paths when absolute=true'
-    it 'should allow absolute argument to be skipped'
+    it 'should read from absolute paths when absolute=true', (done) ->
+      anotherPath = "/tmp/" + uuid.v4()
+      fileBody = 'this is quite another real body'
+      fs.writeFileSync anotherPath, fileBody
+      projectFiles.readFile anotherPath, absolute:true, (err, body) ->
+        assert.isNull err, "Found error", err
+        assert.equal body, fileBody
+        done()
+
+    it 'should allow absolute argument to be skipped', (done) ->
+      fileName = 'anotherfile.txt'
+      fileBody = 'this is quite a body'
+      fs.writeFileSync (_path.join projectDir, fileName), fileBody
+      projectFiles.readFile fileName, (err, body) ->
+        assert.equal err, null
+        assert.equal body, fileBody
+        done()
 
   describe 'writeFile', ->
     projectFiles = null
@@ -80,7 +95,7 @@ describe 'ProjectFiles', ->
     beforeEach ->
       resetHome()
       fileName = 'file.txt'
-      fileBody = 'this is quite a body'
+      fileBody = 'this is quite some fun time body'
       filePath = _path.join homeDir, fileName
 
     it 'should write the contents to the path', (done) ->
@@ -100,7 +115,15 @@ describe 'ProjectFiles', ->
           assert.equal contents, fileBody
           done()
 
-    it 'should write to absolute paths when absolute=true'
+    it 'should write to absolute paths when absolute=true', (done) ->
+      anotherPath = "/tmp/" + uuid.v4()
+      anotherBody = "with a body there is fun"
+      projectFiles.writeFile anotherPath, anotherBody, absolute:true, (err) ->
+        assert.equal err, null
+        contents = fs.readFileSync(anotherPath, "utf-8")
+        assert.equal contents, anotherBody
+        done()
+
 
   describe 'readFileTree', ->
     projectFiles = null
@@ -309,6 +332,7 @@ describe 'ProjectFiles', ->
       watcher.emit 'fileCreated', filePath
       projectFiles.emit 'stop'
 
+    #TODO: Once we have the new filewatcher
     it "should notice when I add a directory"
       
     it "should notice when i delete a file"
