@@ -101,6 +101,26 @@ describe "Dementor", ->
           assert.ok file.isDir?
           assert.ok file.path?
           assert.ok file._id
+          
+    describe "with outdated NodeJs", ->
+      targetFileTree = null
+      before (done) ->
+        fileMap = fileUtils.defaultFileMap
+        targetFileTree = fileUtils.constructFileTree fileMap, "."
+        projectPath = fileUtils.createProject "outdatedNodeJsTest-#{uuid.v4()}", fileMap
+        warningMsg = "its not right!"
+        httpClient = new MockHttpClient (options, params) ->
+          assert.equal options.json?['nodeVersion'], process.version
+          projectName = options.json?['projectName']
+          files = options.json?['files']
+          return {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
+            
+        dementor = new Dementor projectPath, httpClient, new MockSocket
+        dementor.on 'warn', (msg) ->
+          assert.equal msg, warningMsg
+          done()
+        dementor.enable()
+      
 
     describe "when already registered", ->
       targetFileTree = projectId = null

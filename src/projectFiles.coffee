@@ -21,13 +21,6 @@ events = require 'events'
 #    oldPath:
 #    newPath:
 
-#hack for dealing with excpetions caused by broken links
-process.on 'uncaughtException', (err)->
-  if err.code == "ENOENT"
-    console.log "File does not exist #{err.path}"
-  else
-    throw err
-
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->

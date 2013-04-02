@@ -56,6 +56,16 @@ run = ->
       util.puts "Use Google Hangout at " + clc.bold prodHangoutUrl
   dementor.enable()
 
+  #hack for dealing with exceptions caused by broken links
+  process.on 'uncaughtException', (err)->
+    if err.code == "ENOENT"
+      #Silence the error for now
+      #console.log "File does not exist #{err.path}"
+      0
+    else
+      throw err
+
+
 # Shutdown section
 SHUTTING_DOWN = false
 

@@ -36,7 +36,7 @@ class Dementor extends events.EventEmitter
       timestamp : new Date()
       projectId : @projectId
     @socket.emit messageAction.METRIC, metric
-    @emit 'warning', msg
+    @emit messageAction.WARNING, msg
 
   enable: ->
     @projectFiles.readFileTree (err, files) =>
@@ -55,9 +55,11 @@ class Dementor extends events.EventEmitter
         projectName: @projectName
         files: files
         version: @version
+        nodeVersion: process.version
 
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         return @handleError result.error if result.error
+        @handleWarning result.warning
         @projectId = result.project._id
         @projectFiles.saveProjectId @projectId
         @fileTree.addFiles result.files
@@ -109,7 +111,7 @@ class Dementor extends events.EventEmitter
       @socket.emit messageAction.LOCAL_FILE_SAVED, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
-          @emit messageAction.WARNING, response.message
+          @handleWarning response.message
 
     @projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) =>
       data.projectId = @projectId
@@ -122,7 +124,7 @@ class Dementor extends events.EventEmitter
       @socket.emit messageAction.LOCAL_FILES_REMOVED, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
-          @emit messageAction.WARNING, response.message
+          @handleWarning response.message
         #XXX: Should we remove the file from the filetree? or leave it in case of being resaved?
 
     @projectFiles.watchFileTree()
