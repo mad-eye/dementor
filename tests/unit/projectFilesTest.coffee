@@ -46,14 +46,14 @@ describe 'ProjectFiles', ->
       fileName = 'file.txt'
       fileBody = 'this is quite a body'
       fs.writeFileSync (_path.join projectDir, fileName), fileBody
-      projectFiles.readFile fileName, false, (err, body) ->
+      projectFiles.readFile fileName, (err, body) ->
         assert.equal err, null
         assert.equal body, fileBody
         done()
 
     it 'should return the correct error when a file does not exist', (done) ->
       fileName = 'nofile.txt'
-      projectFiles.readFile fileName, false, (err, body) ->
+      projectFiles.readFile fileName, (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
         assert.equal body, null
@@ -62,28 +62,10 @@ describe 'ProjectFiles', ->
     it 'should return the correct error when a file is a directory', (done) ->
       fileName = 'someDir'
       fileUtils.mkDir _path.join projectDir, fileName
-      projectFiles.readFile fileName, false, (err, body) ->
+      projectFiles.readFile fileName, (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.IS_DIR
         assert.equal body, null
-        done()
-
-    it 'should read from absolute paths when absolute=true', (done) ->
-      anotherPath = "/tmp/" + uuid.v4()
-      fileBody = 'this is quite another real body'
-      fs.writeFileSync anotherPath, fileBody
-      projectFiles.readFile anotherPath, absolute:true, (err, body) ->
-        assert.isNull err, "Found error", err
-        assert.equal body, fileBody
-        done()
-
-    it 'should allow absolute argument to be skipped', (done) ->
-      fileName = 'anotherfile.txt'
-      fileBody = 'this is quite a body'
-      fs.writeFileSync (_path.join projectDir, fileName), fileBody
-      projectFiles.readFile fileName, (err, body) ->
-        assert.equal err, null
-        assert.equal body, fileBody
         done()
 
   describe 'writeFile', ->
@@ -99,31 +81,21 @@ describe 'ProjectFiles', ->
       filePath = _path.join homeDir, fileName
 
     it 'should write the contents to the path', (done) ->
-      projectFiles.writeFile filePath, fileBody, false, (err) ->
+      projectFiles.writeFile filePath, fileBody, (err) ->
         assert.equal err, null
         contents = fs.readFileSync(filePath, "utf-8")
         assert.equal contents, fileBody
         done()
 
     it 'should overwrite existing files at that path', (done) ->
-      projectFiles.writeFile filePath, fileBody, false, (err) ->
+      projectFiles.writeFile filePath, fileBody, (err) ->
         assert.equal err, null
         fileBody = 'this is a different, but equally good, body'
-        projectFiles.writeFile filePath, fileBody, false, (err) ->
+        projectFiles.writeFile filePath, fileBody, (err) ->
           assert.equal err, null
           contents = fs.readFileSync(filePath, "utf-8")
           assert.equal contents, fileBody
           done()
-
-    it 'should write to absolute paths when absolute=true', (done) ->
-      anotherPath = "/tmp/" + uuid.v4()
-      anotherBody = "with a body there is fun"
-      projectFiles.writeFile anotherPath, anotherBody, absolute:true, (err) ->
-        assert.equal err, null
-        contents = fs.readFileSync(anotherPath, "utf-8")
-        assert.equal contents, anotherBody
-        done()
-
 
   describe 'readFileTree', ->
     projectFiles = null
@@ -134,7 +106,6 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
-        assert.equal results, null
         done()
 
     it 'should correctly serialize empty directory', (done) ->
@@ -159,7 +130,7 @@ describe 'ProjectFiles', ->
         ]
         done()
 
-    it 'should correctly serialize directory with two file', (done) ->
+    it 'should correctly serialize directory with two files', (done) ->
       projectDir = fileUtils.createProject "twoFile",
         readme: "nothing important here"
         "app.js": "console.log('hello world');"
