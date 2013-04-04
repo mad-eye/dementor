@@ -159,6 +159,8 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree should return true results."
+        results = results.sort (a, b) ->
+          a.path > b.path
         assertFilesEqual results, [
           {isDir: false
           path: "app.js"},
@@ -184,6 +186,8 @@ describe 'ProjectFiles', ->
       projectFiles.readFileTree (err, results) ->
         assert.equal err, null, "Should not have returned an error."
         assert.ok results, "readFileTree should return true results."
+        results = results.sort (a, b) ->
+          a.path > b.path
         assertFilesEqual results, [
           {isDir: true
           path: "dir1"},

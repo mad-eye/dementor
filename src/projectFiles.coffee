@@ -26,7 +26,6 @@ MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
     @watchTree = require('watch-tree-maintained')
-    @files = {} #path:fileData
 
   cleanPath: (path) ->
     return unless path?
@@ -112,12 +111,10 @@ class ProjectFiles extends events.EventEmitter
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
     try
-      @readdirRecursive null, (err) =>
-        fileList = _.values(@files).sort (a,b) ->
-          a.path > b.path
-        callback @wrapError(err), fileList
+      @readdirRecursive null, (err, files) =>
+        callback @wrapError(err), files
     catch error
-      callback @wrapError(error), @files
+      callback @wrapError(error), files
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
@@ -145,32 +142,33 @@ class ProjectFiles extends events.EventEmitter
       return unless @shouldInclude relativePath
       @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
 
+  _handleScanError: (error, callback) ->
+    if error.code == 'ELOOP' or error.code == 'ENOENT'
+      console.log clc.blackBright "Ignoring broken link at #{path}" #if process.env.MADEYE_DEBUG
+      callback null
+    else if error.code == 'EACCES'
+      console.log clc.blackBright "Permission denied for #{path}" #if process.env.MADEYE_DEBUG
+      callback null
+    else
+      callback error
+
   #callback: (error, fileData) ->
   makeFileData: (path, callback) ->
-    try
-      cleanPath = @cleanPath path
-      return callback null unless @shouldInclude cleanPath
-      fs.lstat path, (err, stat) =>
-        return callback err if err
-        callback null, {
-          path: cleanPath
-          isDir: stat.isDirectory()
-          isLink: stat.isSymbolicLink()
-          mtime: stat.mtime.getTime()
-        }
-    catch error
-      if error.code == 'ELOOP' or error.code == 'ENOENT'
-        console.log clc.blackBright "Ignoring broken link at #{path}" #if process.env.MADEYE_DEBUG
-        callback null
-      else if error.code == 'EACCES'
-        console.log clc.blackBright "Permission denied for #{path}" #if process.env.MADEYE_DEBUG
-        callback null
-      else
-        callback error
+    cleanPath = @cleanPath path
+    return callback null unless @shouldInclude cleanPath
+    fs.lstat path, (err, stat) =>
+      return @_handleScanError err if err
+      callback null, {
+        path: cleanPath
+        isDir: stat.isDirectory()
+        isLink: stat.isSymbolicLink()
+        mtime: stat.mtime.getTime()
+      }
 
-  #callback: (error) ->
+  #callback: (error, files) ->
   readdirRecursive : (relDir='', callback) ->
     currentDir = _path.join(@directory, relDir)
+    results = []
     #console.log "calling readdirRecursive for", currentDir
     fs.readdir currentDir, (err, fileNames) =>
       if err
@@ -180,21 +178,22 @@ class ProjectFiles extends events.EventEmitter
         else
           callback err
       else
-        filePaths = (_path.join relDir, fileName for fileName in fileNames)
-        async.each filePaths, (filePath, cb) =>
-          @makeFileData _path.join(@directory, filePath), (err, fileData) =>
+        async.each fileNames, (fileName, cb) =>
+          @makeFileData _path.join(@directory, relDir, fileName), (err, fileData) =>
             return cb err if err or !fileData?
-            @files[fileData.path] = fileData
+            results.push fileData
             #watch file
             #@emit 'EXISTING_FILE', fileData
             if fileData.isDir
               #console.log "Recusing into", fileData.path
-              @readdirRecursive fileData.path, cb
+              @readdirRecursive fileData.path, (err, res) =>
+                results = results.concat res if res
+                cb err
             else
               cb null
         , (error) =>
           #console.log "Finished reading", relDir
-          callback error
+          callback error, results
 
 
 exports.ProjectFiles = ProjectFiles
