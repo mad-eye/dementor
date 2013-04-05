@@ -234,7 +234,7 @@ describe "Dementor", ->
         contents: fileBody
       mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.equal err, null, "Should not have an error."
-        readContents = projectFiles.readFile(filePath, sync:true)
+        readContents = fs.readFileSync _path.join projectPath, filePath
         assert.equal readContents, fileBody
         done()
 

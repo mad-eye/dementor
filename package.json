@@ -15,7 +15,8 @@
     "watch-tree-maintained": "~0.1.2",
     "commander": "~1.1.0",
     "cli-color": "~0.2.1",
-    "socket.io-client": "~0.9.11"
+    "socket.io-client": "~0.9.11",
+    "async": "~0.2.6"
   },
   "devDependencies": {
     "mocha": "~1.8.1",

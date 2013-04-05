@@ -41,7 +41,7 @@ class Dementor extends events.EventEmitter
   enable: ->
     @projectFiles.readFileTree (err, files) =>
       return @handleError err if err
-      if file? and files.length > 40000
+      if files? and files.length > 40000
         throw "MadEye currently only supports projects with less than 40,000 files"
       @addMetric 'READ_FILETREE'
       action = method = null
