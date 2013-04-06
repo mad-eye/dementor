@@ -25,7 +25,7 @@ async = require 'async'
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
-    @watchTree = require('watch-tree-maintained')
+    @watcher = require('watchr')
 
   cleanPath: (path) ->
     return unless path?
@@ -119,28 +119,45 @@ class ProjectFiles extends events.EventEmitter
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
   watchFileTree: ->
-    @watcher = @watchTree.watchTree(@directory, {'sample-rate': 3})
-    @watcher.on "filePreexisted", (path) ->
-      #console.log "Found preexisting file:", path
-      #Currently send this information with the init request.
+    @watcher.watch
+      path: @directory
+      ignoreCustomPatterns: null
+      interval: 3007
+      duplicateDelay: 500
+      persistent: false #Maybe need true?
 
-    @watcher.on "fileCreated", (path) =>
-      @makeFileData path, (err, file) =>
+      next: (err, watcher) =>
         return @emit 'error', err if err
-        return unless file
-        @emit messageAction.LOCAL_FILES_ADDED, files: [file]
+        #Done initial watch.
+        @emit 'done'
 
-    @watcher.on "fileModified", (path) =>
-      relativePath = @cleanPath path
-      return unless @shouldInclude relativePath
-      fs.readFile path, "utf-8", (err, contents) =>
-        if err then @emit 'error', err; return
-        @emit messageAction.LOCAL_FILE_SAVED, {path: relativePath, contents: contents}
+      listeners:
+        error: (err) =>
+            @emit 'error', err
 
-    @watcher.on "fileDeleted", (path) =>
-      relativePath = @cleanPath path
-      return unless @shouldInclude relativePath
-      @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
+        #watching: (err, watcherInstance, isWatching) ->
+          #console.log "Watching", watcherInstance.path
+
+        change: (changeType, path, currentStat, previousStat) =>
+          console.log "Watcher:", changeType, path, Date.now()
+          switch changeType
+            when 'create'
+              @makeFileData path, (err, file) =>
+                return @emit 'error', err if err
+                return unless file
+                @emit messageAction.LOCAL_FILES_ADDED, files: [file]
+
+            when 'delete'
+              relativePath = @cleanPath path
+              return unless @shouldInclude relativePath
+              @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
+
+            when 'update'
+              relativePath = @cleanPath path
+              return unless @shouldInclude relativePath
+              fs.readFile path, "utf-8", (err, contents) =>
+                if err then @emit 'error', err; return
+                @emit messageAction.LOCAL_FILE_SAVED, {path: relativePath, contents: contents}
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'

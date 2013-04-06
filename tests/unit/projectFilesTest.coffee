@@ -234,23 +234,16 @@ describe 'ProjectFiles', ->
 
   describe "watchFileTree", ->
     projectFiles = projectDir = watcher = null
-    before ->
-      projectDir = _path.resolve fileUtils.createProject 'watchFileTree', fileUtils.defaultFileMap
-      projectFiles = new ProjectFiles projectDir
-      projectFiles.watchTree =
-        watchTree: (directory) ->
-          watcher = new events.EventEmitter
-          watcher.directory = directory
-          return watcher
-
     beforeEach ->
-      resetHome()
-      projectFiles.removeAllListeners 'stop'
-      projectFiles.removeAllListeners messageAction.LOCAL_FILES_ADDED
+      projectDir = _path.resolve fileUtils.createProject "watchFileTree-#{uuid.v4()}", fileUtils.defaultFileMap
+      projectFiles = new ProjectFiles projectDir
 
-    makeFile = (fileName) ->
+    makeFile = (fileName, isDir=false) ->
       filePath = _path.join projectDir, fileName
-      fs.writeFileSync filePath, 'touched'
+      if isDir
+        fs.mkdirSync filePath
+      else
+        fs.writeFileSync filePath, 'touched'
       return _path.resolve filePath
 
     ###
@@ -273,63 +266,118 @@ describe 'ProjectFiles', ->
     ###
     it "should notice when i add a file", (done) ->
       fileName = 'file.txt'
-      filePath = makeFile fileName
       projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
         file = data.files[0]
         assert.equal file.path, fileName
         assert.equal file.isDir, false
         done()
+      projectFiles.on 'done', ->
+        makeFile fileName
       projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', filePath
 
     #FIXME: Same strange error here
     it "should ignore cruft ~ files", (done) ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = 'file.txt~'
-      filePath = makeFile fileName
       projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
         assert.fail "Should not notice file."
       projectFiles.on 'stop', (data) ->
         done()
+      projectFiles.on 'done', ->
+        makeFile fileName
+        setTimeout ->
+          projectFiles.emit 'stop'
+        , 500
       projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', filePath
-      projectFiles.emit 'stop'
 
     it "should ignore cruft .swp files", (done) ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = '.file.txt.swp'
-      filePath = makeFile fileName
       projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
         assert.fail "Should not notice file."
       projectFiles.on 'stop', (data) ->
         done()
+      projectFiles.on 'done', ->
+        makeFile fileName
+        setTimeout ->
+          projectFiles.emit 'stop'
+        , 500
       projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', filePath
-      projectFiles.emit 'stop'
 
-    #TODO: Once we have the new filewatcher
-    it "should notice when I add a directory"
+    it "should notice when I add a directory", (done) ->
+      fileName = 'adir'
+      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+        file = data.files[0]
+        assert.equal file.path, fileName
+        assert.equal file.isDir, true
+        done()
+      projectFiles.on 'done', ->
+        makeFile fileName, true
+      projectFiles.watchFileTree()
       
-    it "should notice when i delete a file"
+    it "should notice when i delete a file", (done) ->
+      fileName = 'rmfile.txt'
+      filePath = makeFile fileName
+      projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) ->
+        path = data.paths[0]
+        assert.equal path, fileName
+        done()
+      projectFiles.on 'done', ->
+        fs.unlinkSync filePath
+      projectFiles.watchFileTree()
 
-    it "should notice when i change a file"
+    it "should notice when i change a file", (done) ->
+      fileName = 'upfile.txt'
+      filePath = makeFile fileName
+      firstContents = "Happy days!"
+      projectFiles.on messageAction.LOCAL_FILE_SAVED, (data) ->
+        assert.equal data.path, fileName
+        assert.equal data.contents, firstContents
+        done()
+      projectFiles.on 'done', ->
+        fs.writeFileSync filePath, firstContents
+      projectFiles.watchFileTree()
+
+    it "should notice when i change a file twice", (done) ->
+      fileName = 'up2file.txt'
+      filePath = makeFile fileName
+      savedOnce = false
+      firstContents = "Happy days!"
+      secondContents = "Another happy day"
+      projectFiles.on messageAction.LOCAL_FILE_SAVED, (data) ->
+        assert.equal data.path, fileName
+        unless savedOnce
+          assert.equal data.contents, firstContents
+          savedOnce = true
+          setTimeout ->
+            fs.writeFileSync filePath, secondContents
+          , 600
+        else
+          assert.equal data.contents, secondContents
+          done()
+      projectFiles.on 'done', ->
+        fs.writeFileSync filePath, firstContents
+      projectFiles.watchFileTree()
 
     it "should ignore the .git directory"
 
     #Currently we report them, but mark them as links.
-    it "should ignore broken symlinks"
-      #fileName = 'DNE'
-      #filePath = _path.join projectDir, fileName
-      #linkName = 'brokenLink'
-      #linkPath = _path.join projectDir, linkName
-      #fs.symlinkSync filePath, linkPath
-      #projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
-        #assert.fail "Should not notice file."
-      #projectFiles.on 'stop', (data) ->
-        #done()
-      #projectFiles.watchFileTree()
-      #watcher.emit 'fileCreated', linkPath
-      #projectFiles.emit 'stop'
+    it "should ignore broken symlinks fweep", (done) ->
+      fileName = 'DNE'
+      filePath = _path.join projectDir, fileName
+      linkName = 'brokenLink'
+      linkPath = _path.join projectDir, linkName
+      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+        file = data.files[0]
+        assert.equal file.path, linkName
+        assert.equal file.isDir, false
+        assert.equal file.isLink, true
+        done()
+
+      projectFiles.on 'done', ->
+        fs.symlinkSync filePath, linkPath
+
+      projectFiles.watchFileTree()
 
 
 
