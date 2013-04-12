@@ -139,7 +139,7 @@ class ProjectFiles extends events.EventEmitter
           #console.log "Watching", watcherInstance.path
 
         change: (changeType, path, currentStat, previousStat) =>
-          console.log "Watcher:", changeType, path, Date.now()
+          #console.log "Watcher:", changeType, path, Date.now()
           switch changeType
             when 'create'
               @makeFileData path, (err, file) =>

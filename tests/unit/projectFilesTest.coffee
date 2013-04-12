@@ -363,23 +363,23 @@ describe 'ProjectFiles', ->
 
     it "should ignore the .git directory"
 
-    #Currently we report them, but mark them as links.
-    it "should ignore broken symlinks fweep", (done) ->
-      fileName = 'DNE'
-      filePath = _path.join projectDir, fileName
-      linkName = 'brokenLink'
-      linkPath = _path.join projectDir, linkName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
-        file = data.files[0]
-        assert.equal file.path, linkName
-        assert.equal file.isDir, false
-        assert.equal file.isLink, true
-        done()
+    it "should recognize and not fail on broken symlinks"
+    #it "should recognize and not fail on broken symlinks", (done) ->
+      #fileName = 'DNE'
+      #filePath = _path.join projectDir, fileName
+      #linkName = 'brokenLink'
+      #linkPath = _path.join projectDir, linkName
+      #projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+        #file = data.files[0]
+        #assert.equal file.path, linkName
+        #assert.equal file.isDir, false
+        #assert.equal file.isLink, true
+        #done()
 
-      projectFiles.on 'done', ->
-        fs.symlinkSync filePath, linkPath
+      #projectFiles.on 'done', ->
+        #fs.symlinkSync filePath, linkPath
 
-      projectFiles.watchFileTree()
+      #projectFiles.watchFileTree()
 
 
 
