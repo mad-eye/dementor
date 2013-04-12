@@ -12,11 +12,11 @@
     "underscore": "~1.4.2",
     "node-uuid": "~1.4.0",
     "request": "~2.14.0",
-    "watch-tree-maintained": "~0.1.2",
     "commander": "~1.1.0",
     "cli-color": "~0.2.1",
     "socket.io-client": "~0.9.11",
-    "async": "~0.2.6"
+    "async": "~0.2.6",
+    "watchr": "~2.4.0"
   },
   "devDependencies": {
     "mocha": "~1.8.1",
