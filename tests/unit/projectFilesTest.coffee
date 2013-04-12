@@ -17,6 +17,8 @@ resetHome = ->
 
 assertFilesEqual = (files, expectedFiles) ->
   assert.equal files.length, expectedFiles.length
+  files.sort (f1,f2) -> f1.path < f2.path
+  expectedFiles.sort (f1,f2) -> f1.path < f2.path
   for file, i in files
     expectedFile = expectedFiles[i]
     assert.equal file.path, expectedFile.path
