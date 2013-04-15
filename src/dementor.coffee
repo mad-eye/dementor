@@ -18,10 +18,11 @@ class Dementor extends events.EventEmitter
     @serverOps = {}
 
   handleError: (err, silent=false) ->
-    return unless err?
+    return unless err
     message = err.message ? err
     metric =
       level : 'error'
+      type: err.type
       message: message
       timestamp : new Date()
       projectId : @projectId
@@ -42,7 +43,10 @@ class Dementor extends events.EventEmitter
     @projectFiles.readFileTree (err, files) =>
       return @handleError err if err
       if files? and files.length > 5000
-        throw "MadEye currently only supports projects with less than 5000 files"
+        error =
+          type: 'TOO_MANY_FILES'
+          message: "MadEye currently only supports projects with less than 5000 files"
+        return @handleError error
       @addMetric 'READ_FILETREE'
       action = method = null
       if @projectId
