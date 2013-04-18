@@ -45,13 +45,13 @@ class Dementor extends events.EventEmitter
       unless files?
         error = message: "No files found!"
         return @handleError error
-      if files.length > 3000
+      if files.length > 5000
         error =
           type: 'TOO_MANY_FILES'
-          message: "MadEye currently only supports projects with less than 3000 files"
+          message: "MadEye currently only supports projects with less than 5000 files"
         return @handleError error
-      else if files.length > 500
-        @handleWarning "MadEye currently runs best with projects with less than 500 files.  Performance may be slow, especially in a Hangout or using Internet Explorer."
+      else if files.length > 1000
+        @handleWarning "MadEye currently runs best with projects with less than 1000 files.  Performance may be slow, especially in a Hangout or using Internet Explorer."
       @addMetric 'READ_FILETREE'
       action = method = null
       if @projectId
