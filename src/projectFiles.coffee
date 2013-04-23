@@ -10,9 +10,9 @@ async = require 'async'
 
 #Info Events:
 #  'error', message:, file?:
-#  'warn', message:, file?:
-#  'info', message:, file?:
-#  'debug', message:, file?:
+#  'warn', message
+#  'info', message
+#  'debug', message
 #    
 #File Events:
 #  type: fileEventType

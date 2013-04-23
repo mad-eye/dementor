@@ -34,12 +34,7 @@ run = ->
   dementor = new Dementor process.cwd(), httpClient, socket, program.clean
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
-  dementor.on 'error', (err) ->
-    console.error 'ERROR:', err.message
-    shutdown(err.code ? 1)
-
-  dementor.on 'warning', (msg) ->
-    console.error 'Warning:', msg
+  listenLog dementor
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -56,6 +51,9 @@ run = ->
       util.puts "Use Google Hangout at " + clc.bold prodHangoutUrl
   dementor.enable()
 
+  listenLog dementor.projectFiles
+
+
   #hack for dealing with exceptions caused by broken links
   process.on 'uncaughtException', (err)->
     if err.code == "ENOENT"
@@ -66,6 +64,21 @@ run = ->
       throw err
 
   #FIXME: Need to listen to projectFiles error, warn, info, and debug events
+
+listenLog = (emitter) ->
+  if emitter
+    emitter.on 'error', (err) ->
+      console.error clc.red('ERROR:'), err.message
+      shutdown(err.code ? 1)
+
+    emitter.on 'warn', (message) ->
+      console.error clc.bold('Warning:'), message
+
+    emitter.on 'info', (message) ->
+      console.log message
+
+    emitter.on 'debug', (message) ->
+      console.log clc.blackBright message if process.env.MADEYE_DEBUG
 
 # Shutdown section
 SHUTTING_DOWN = false
