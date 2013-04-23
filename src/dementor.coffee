@@ -37,7 +37,7 @@ class Dementor extends events.EventEmitter
       timestamp : new Date()
       projectId : @projectId
     @socket.emit messageAction.METRIC, metric
-    @emit messageAction.WARNING, msg
+    @emit 'warn', msg
 
   enable: ->
     @projectFiles.readFileTree (err, files) =>

@@ -7,15 +7,22 @@ events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
 
+
+#Info Events:
+#  'error', message:, file?:
+#  'warn', message
+#  'info', message
+#  'debug', message
+#    
 #File Events:
 #  type: fileEventType
 #  data: #Event specific data
 #  [For ADD]
 #    files: [file,...]
 #  [For REMOVE]
-#    files: [path,...]
-#  [For EDIT]
-#    path:
+#    files: [file,...]
+#  [For SAVED]
+#    file:
 #    contents:
 #  [For MOVE]
 #    fileId:
@@ -25,7 +32,7 @@ async = require 'async'
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory) ->
-    @watchTree = require('watch-tree-maintained')
+    @fileWatcher = require 'chokidar'
 
   cleanPath: (path) ->
     return unless path?
@@ -119,25 +126,29 @@ class ProjectFiles extends events.EventEmitter
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
   watchFileTree: ->
-    @watcher = @watchTree.watchTree(@directory, {'sample-rate': 3})
-    @watcher.on "filePreexisted", (path) ->
-      #console.log "Found preexisting file:", path
-      #Currently send this information with the init request.
+    options =
+      ignored: (path) =>
+        return !@shouldInclude path
+      ignoreInitial: true
+    @watcher = @fileWatcher.watch @directory, options
+    @watcher.on "error", (error) =>
+      @_handleScanError error, (err) =>
+        @emit 'error', err if err
 
-    @watcher.on "fileCreated", (path) =>
+    @watcher.on "add", (path, stats) =>
       @makeFileData path, (err, file) =>
         return @emit 'error', err if err
         return unless file
         @emit messageAction.LOCAL_FILES_ADDED, files: [file]
 
-    @watcher.on "fileModified", (path) =>
+    @watcher.on "change", (path, stats) =>
       relativePath = @cleanPath path
       return unless @shouldInclude relativePath
       fs.readFile path, "utf-8", (err, contents) =>
         if err then @emit 'error', err; return
         @emit messageAction.LOCAL_FILE_SAVED, {path: relativePath, contents: contents}
 
-    @watcher.on "fileDeleted", (path) =>
+    @watcher.on "unlink", (path) =>
       relativePath = @cleanPath path
       return unless @shouldInclude relativePath
       @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
@@ -157,7 +168,7 @@ class ProjectFiles extends events.EventEmitter
     cleanPath = @cleanPath path
     return callback null unless @shouldInclude cleanPath
     fs.lstat path, (err, stat) =>
-      return @_handleScanError err if err
+      return @_handleScanError err, callback if err
       callback null, {
         path: cleanPath
         isDir: stat.isDirectory()
@@ -173,7 +184,7 @@ class ProjectFiles extends events.EventEmitter
     fs.readdir currentDir, (err, fileNames) =>
       if err
         if err.code == 'EACCES'
-          console.log clc.blackBright "Permission denied for #{relDir}" #if process.env.MADEYE_DEBUG
+          @emit 'debug', "Permission denied for #{relDir}"
           callback null
         else
           callback err
