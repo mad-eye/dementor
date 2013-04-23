@@ -65,6 +65,7 @@ run = ->
     else
       throw err
 
+  #FIXME: Need to listen to projectFiles error, warn, info, and debug events
 
 # Shutdown section
 SHUTTING_DOWN = false
