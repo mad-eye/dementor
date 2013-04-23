@@ -73,12 +73,6 @@ class ProjectFiles extends events.EventEmitter
     fs.readFile filePath, 'utf-8', (err, contents) =>
       callback @wrapError(err), contents
 
-  #callback: (err, body) -> ...
-  readFileById: (fileId, callback) ->
-    #TODO: STUB
-    path = @fileTree.findById(fileId)?.path
-    throw 'NOT YET IMPLEMENTED'
-
   #callback: (err) -> ...
   writeFile: (filePath, contents, callback) ->
     return callback errors.new 'NO_FILE' unless filePath
@@ -87,12 +81,6 @@ class ProjectFiles extends events.EventEmitter
     fs.writeFile filePath, contents, (err) =>
       callback @wrapError err
 
-  #callback: (err) -> ...
-  writeFileById: (fileId, contents, callback) ->
-    path = @fileTree.findById(fileId)?.path
-    #TODO: STUB
-    throw 'NOT YET IMPLEMENTED'
-    
   homeDir: ->
     return _path.resolve process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]
     envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"

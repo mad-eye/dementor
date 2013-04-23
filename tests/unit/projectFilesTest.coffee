@@ -239,8 +239,8 @@ describe 'ProjectFiles', ->
     before ->
       projectDir = _path.resolve fileUtils.createProject 'watchFileTree', fileUtils.defaultFileMap
       projectFiles = new ProjectFiles projectDir
-      projectFiles.watchTree =
-        watchTree: (directory) ->
+      projectFiles.fileWatcher =
+        watch: (directory) ->
           watcher = new events.EventEmitter
           watcher.directory = directory
           return watcher
@@ -282,7 +282,7 @@ describe 'ProjectFiles', ->
         assert.equal file.isDir, false
         done()
       projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', filePath
+      watcher.emit 'add', filePath
 
     #FIXME: Same strange error here
     it "should ignore cruft ~ files", (done) ->
@@ -294,7 +294,7 @@ describe 'ProjectFiles', ->
       projectFiles.on 'stop', (data) ->
         done()
       projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', filePath
+      watcher.emit 'add', filePath
       projectFiles.emit 'stop'
 
     it "should ignore cruft .swp files", (done) ->
@@ -306,7 +306,7 @@ describe 'ProjectFiles', ->
       projectFiles.on 'stop', (data) ->
         done()
       projectFiles.watchFileTree()
-      watcher.emit 'fileCreated', filePath
+      watcher.emit 'add', filePath
       projectFiles.emit 'stop'
 
     #TODO: Once we have the new filewatcher
