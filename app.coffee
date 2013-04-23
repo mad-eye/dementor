@@ -34,7 +34,8 @@ run = ->
   dementor = new Dementor process.cwd(), httpClient, socket, program.clean
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
-  listenLog dementor
+  logEvents dementor
+  logEvents dementor.projectFiles
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -51,7 +52,6 @@ run = ->
       util.puts "Use Google Hangout at " + clc.bold prodHangoutUrl
   dementor.enable()
 
-  listenLog dementor.projectFiles
 
 
   #hack for dealing with exceptions caused by broken links
@@ -65,7 +65,7 @@ run = ->
 
   #FIXME: Need to listen to projectFiles error, warn, info, and debug events
 
-listenLog = (emitter) ->
+logEvents = (emitter) ->
   if emitter
     emitter.on 'error', (err) ->
       console.error clc.red('ERROR:'), err.message
