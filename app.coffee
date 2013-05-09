@@ -19,7 +19,7 @@ run = ->
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
-    .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye')
+    .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
       console.log "  Give the returned url to your friends, and you can edit the project"
