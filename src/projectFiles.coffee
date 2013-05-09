@@ -32,7 +32,7 @@ async = require 'async'
 
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
-  constructor: (@directory) ->
+  constructor: (@directory, @ignorefile=".madeyeignore") ->
     @fileWatcher = require 'chokidar'
 
   cleanPath: (path) ->
@@ -138,7 +138,7 @@ class ProjectFiles extends events.EventEmitter
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
     try
-      madeyeIgnore = fs.readFileSync(_path.join @directory, ".madeyeignore")
+      madeyeIgnore = fs.readFileSync(_path.join @directory, @ignorefile)
     catch e
     @addIgnoreFile madeyeIgnore, =>
       try
