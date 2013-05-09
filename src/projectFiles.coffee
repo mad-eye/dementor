@@ -108,7 +108,7 @@ class ProjectFiles extends events.EventEmitter
   addIgnoreFile: (file, callback)->
     return callback?() unless file
     addIgnoreRules = (rules) =>
-      rules.filter (rule)->
+      rules = rules.filter (rule)->
         rule = rule.trim()
         rule && not rule.match(/^#/)
       return if !rules.length
