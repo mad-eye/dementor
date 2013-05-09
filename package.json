@@ -16,10 +16,11 @@
     "cli-color": "~0.2.1",
     "socket.io-client": "~0.9.11",
     "async": "~0.2.6",
-    "chokidar": "~0.6.2"
+    "chokidar": "~0.6.2",
+    "minimatch": "~0.2.12"
   },
   "devDependencies": {
     "mocha": "~1.8.1",
-    "chai": "~1.5.0"
+    "chai": "~1.6.0"
   }
 }

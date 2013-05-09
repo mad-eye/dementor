@@ -179,6 +179,28 @@ describe 'ProjectFiles', ->
         ]
         done()
 
+    it "should ignore files included in .madeyignore fweep", (done)->
+      ignoreFiles = ["superfluousFile", "superfluousDirectory", "junk", "dir2/moreJunk"]
+      projectDir = fileUtils.createProject "madeyeignore_test", 
+        rootFile: "this is the rootfile"
+        ".madeyeignore": ignoreFiles.join "\n"
+        superfluousFile: "this is a superfluous file"
+        dir1: {}
+        dir2:
+          moreJunk: {}
+          moderateFile: "this is a moderate file"
+          superfluousDirectory:
+            leafFile: "another leaf file"
+          dir3:
+            leafFile: "this is a leaf file"
+      projectFiles = new ProjectFiles projectDir
+      projectFiles.readFileTree (err, results)->
+        assert.equal err, null, "Should not have returned an error."
+        assert.ok results, "readFileTree should return true results."
+        results.forEach (result)->
+          assert.notInclude ignoreFiles, result.path
+        done()
+
     it 'should give relative, not absolute, paths', (done) ->
       projectDir = fileUtils.createProject "relPaths",
         readme: "nothing important here"

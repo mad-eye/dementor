@@ -6,6 +6,7 @@ clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
+{Minimatch} = require 'minimatch'
 
 
 #Info Events:
@@ -102,6 +103,23 @@ class ProjectFiles extends events.EventEmitter
     return {} unless fs.existsSync @projectsDbPath()
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
+
+  #based loosely off of https://github.com/isaacs/fstream-ignore/blob/master/ignore.js
+  addIgnoreFile: (file, callback)->
+    return callback?() unless file
+    addIgnoreRules = (rules) =>
+      rules.filter (rule)->
+        rule = rule.trim()
+        rule && not rule.match(/^#/)
+      return if !rules.length
+      minimatchOptions = { matchBase: true, dot: true, flipNegate: true }
+      @ignoreRules ?= []
+      rules.forEach (rule) =>
+        @ignoreRules.push new Minimatch rule, minimatchOptions
+    rules = file.toString().split(/\r?\n/)
+    addIgnoreRules rules
+    callback?()
+
   shouldInclude: (path) ->
     return false unless path?
     return false if path[path.length-1] == '~'
@@ -113,15 +131,21 @@ class ProjectFiles extends events.EventEmitter
     return false if '.meteor' in components
     return false if 'node_modules' in components
     return false if '.DS_Store' in components
+    return false if _.some @ignoreRules, (rule)->
+      rule.match path
     return true
 
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
     try
-      @readdirRecursive null, (err, files) =>
-        callback @wrapError(err), files
-    catch error
-      callback @wrapError(error), files
+      madeyeIgnore = fs.readFileSync(_path.join @directory, ".madeyeignore")
+    catch e
+    @addIgnoreFile madeyeIgnore, =>
+      try
+        @readdirRecursive null, (err, files) =>
+          callback @wrapError(err), files
+      catch error
+        callback @wrapError(error), files
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
