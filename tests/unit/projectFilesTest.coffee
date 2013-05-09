@@ -180,7 +180,7 @@ describe 'ProjectFiles', ->
         done()
 
     it "should ignore files included in .madeyignore", (done)->
-      ignoreFiles = ["superfluousFile", "superfluousDirectory", "junk", "dir2/moreJunk", "garbage"]
+      ignoreFiles = ["superfluousFile", "superfluousDirectory", "junk", "dir2/moreJunk", "garbage", "dir4/"]
       projectDir = fileUtils.createProject "madeyeignore_test",
         rootFile: "this is the rootfile"
         ".madeyeignore": ignoreFiles.join "\n"

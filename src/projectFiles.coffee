@@ -2,6 +2,7 @@ fs = require "fs"
 _path = require "path"
 {errors} = require '../madeye-common/common'
 _ = require 'underscore'
+_.str = require 'underscore.string'
 clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
@@ -115,6 +116,7 @@ class ProjectFiles extends events.EventEmitter
       minimatchOptions = { matchBase: true, dot: true, flipNegate: true }
       @ignoreRules ?= []
       rules.forEach (rule) =>
+        rule = _.str.rstrip rule.trim(), '/'
         @ignoreRules.push new Minimatch rule, minimatchOptions
     rules = file.toString().split(/\r?\n/)
     addIgnoreRules rules
@@ -131,8 +133,7 @@ class ProjectFiles extends events.EventEmitter
     return false if '.meteor' in components
     return false if 'node_modules' in components
     return false if '.DS_Store' in components
-    return false if _.some @ignoreRules, (rule)->
-      rule.match path
+    return false if (_.some @ignoreRules, (rule) -> rule.match path)
     return true
 
   #callback: (err, results) -> ...
