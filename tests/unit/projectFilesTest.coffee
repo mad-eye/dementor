@@ -179,7 +179,7 @@ describe 'ProjectFiles', ->
         ]
         done()
 
-    it "should ignore files included in .madeyignore fweep", (done)->
+    it "should ignore files included in .madeyignore", (done)->
       ignoreFiles = ["superfluousFile", "superfluousDirectory", "junk", "dir2/moreJunk"]
       projectDir = fileUtils.createProject "madeyeignore_test", 
         rootFile: "this is the rootfile"
