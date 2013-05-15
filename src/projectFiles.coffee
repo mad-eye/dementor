@@ -31,6 +31,41 @@ async = require 'async'
 #    oldPath:
 #    newPath:
 
+base_excludes = '''
+*~
+#*#
+.#*
+%*%
+._*
+*.swp
+*.swo
+CVS
+SCCS
+.svn
+.git
+.bzr
+.hg
+_MTN
+_darcs
+.meteor
+node_modules
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+*.class
+*.o
+*.a
+*.pyc
+*.pyo'''.split(/\r?\n/)
+
+MINIMATCH_OPTIONS = { matchBase: true, dot: true, flipNegate: true }
+BASE_IGNORE_RULES = (new Minimatch(rule, MINIMATCH_OPTIONS) for rule in base_excludes when rule)
+
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory, @ignorefile) ->
@@ -113,26 +148,17 @@ class ProjectFiles extends events.EventEmitter
         rule = rule.trim()
         rule && not rule.match(/^#/)
       return if !rules.length
-      minimatchOptions = { matchBase: true, dot: true, flipNegate: true }
       @ignoreRules ?= []
       rules.forEach (rule) =>
         rule = _.str.rstrip rule.trim(), '/'
-        @ignoreRules.push new Minimatch rule, minimatchOptions
+        @ignoreRules.push new Minimatch rule, MINIMATCH_OPTIONS
     rules = file.toString().split(/\r?\n/)
     addIgnoreRules rules
     callback?()
 
   shouldInclude: (path) ->
     return false unless path?
-    return false if path[path.length-1] == '~'
-    return false if path[-4..] == ".swp" #vim temp file
-    return false if path[-4..] == ".swo" #vim temp file
-    return false if _path.basename(path)[0..1] == '.#' #emacs temp file
-    components = path.split '/'
-    return false if '.git' in components
-    return false if '.meteor' in components
-    return false if 'node_modules' in components
-    return false if '.DS_Store' in components
+    return false if (_.some BASE_IGNORE_RULES, (rule) -> rule.match path)
     return false if (_.some @ignoreRules, (rule) -> rule.match path)
     return true
 
