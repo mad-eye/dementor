@@ -152,7 +152,7 @@ describe "Dementor", ->
           assert.ok file._id
 
 
-  describe "disable", ->
+  describe "shutdown", ->
     dementor = mockSocket = null
     socketClosed = false
     before (done) ->
@@ -161,7 +161,7 @@ describe "Dementor", ->
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
       dementor.on 'enabled', ->
-        dementor.disable done
+        dementor.shutdown done
       dementor.on 'DISCONNECT', ->
         socketClosed = true
       dementor.enable()

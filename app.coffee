@@ -91,7 +91,7 @@ shutdownGracefully = (returnVal=0) ->
   return if SHUTTING_DOWN
   SHUTTING_DOWN = true
   console.log "Shutting down MadEye.  Press ^C to force shutdown."
-  dementor.disable ->
+  dementor.shutdown ->
     console.log "Closed out connections."
     process.exit returnVal
  

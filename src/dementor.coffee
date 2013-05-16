@@ -77,9 +77,9 @@ class Dementor extends events.EventEmitter
         @socket.socket.connect =>
           @watchProject()
 
-  disable: (callback) ->
+  shutdown: (callback) ->
+    @.on 'DISCONNECT', callback if callback
     @socket?.disconnect()
-    callback?()
 
   addMetric: (type, metric={}) ->
     metric.level ?= 'debug'
