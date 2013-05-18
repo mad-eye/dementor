@@ -9,7 +9,6 @@ async = require 'async'
 {messageAction} = require '../madeye-common/common'
 {Minimatch} = require 'minimatch'
 
-
 #Info Events:
 #  'error', message:, file?:
 #  'warn', message
