@@ -1,6 +1,6 @@
+{assert} = require 'chai'
 uuid = require 'node-uuid'
 wrench = require 'wrench'
-assert = require 'assert'
 fs = require 'fs'
 _path = require 'path'
 {Dementor} = require '../../src/dementor'
@@ -152,7 +152,7 @@ describe "Dementor", ->
           assert.ok file._id
 
 
-  describe "disable", ->
+  describe "shutdown", ->
     dementor = mockSocket = null
     socketClosed = false
     before (done) ->
@@ -160,8 +160,8 @@ describe "Dementor", ->
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.on 'enabled', ->
-        dementor.disable done
+      dementor.on 'CONNECTED', ->
+        dementor.shutdown done
       dementor.on 'DISCONNECT', ->
         socketClosed = true
       dementor.enable()
@@ -169,7 +169,7 @@ describe "Dementor", ->
     it "should close down successfully", ->
       return #it would have failed by now!
     it "should call socket.disconnect", ->
-      assert.ok mockSocket.disconnected, 'Socket should be disconnected'
+      assert.isFalse mockSocket.connected, 'Socket should be disconnected'
       assert.ok socketClosed, 'Dementor should emit disconnect event.'
 
   describe "receiving REQUEST_FILE message", ->

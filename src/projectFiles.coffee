@@ -2,11 +2,12 @@ fs = require "fs"
 _path = require "path"
 {errors} = require '../madeye-common/common'
 _ = require 'underscore'
+_.str = require 'underscore.string'
 clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
-
+{Minimatch} = require 'minimatch'
 
 #Info Events:
 #  'error', message:, file?:
@@ -29,9 +30,44 @@ async = require 'async'
 #    oldPath:
 #    newPath:
 
+base_excludes = '''
+*~
+#*#
+.#*
+%*%
+._*
+*.swp
+*.swo
+CVS
+SCCS
+.svn
+.git
+.bzr
+.hg
+_MTN
+_darcs
+.meteor
+node_modules
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+*.class
+*.o
+*.a
+*.pyc
+*.pyo'''.split(/\r?\n/)
+
+MINIMATCH_OPTIONS = { matchBase: true, dot: true, flipNegate: true }
+BASE_IGNORE_RULES = (new Minimatch(rule, MINIMATCH_OPTIONS) for rule in base_excludes when rule)
+
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
-  constructor: (@directory) ->
+  constructor: (@directory, @ignorefile) ->
     @fileWatcher = require 'chokidar'
 
   cleanPath: (path) ->
@@ -102,26 +138,44 @@ class ProjectFiles extends events.EventEmitter
     return {} unless fs.existsSync @projectsDbPath()
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
+
+  #based loosely off of https://github.com/isaacs/fstream-ignore/blob/master/ignore.js
+  addIgnoreFile: (file, callback)->
+    return callback?() unless file
+    addIgnoreRules = (rules) =>
+      rules = rules.filter (rule)->
+        rule = rule.trim()
+        rule && not rule.match(/^#/)
+      return if !rules.length
+      @ignoreRules ?= []
+      rules.forEach (rule) =>
+        rule = _.str.rstrip rule.trim(), '/'
+        @ignoreRules.push new Minimatch rule, MINIMATCH_OPTIONS
+    rules = file.toString().split(/\r?\n/)
+    addIgnoreRules rules
+    callback?()
+
   shouldInclude: (path) ->
     return false unless path?
-    return false if path[path.length-1] == '~'
-    return false if path[-4..] == ".swp" #vim temp file
-    return false if path[-4..] == ".swo" #vim temp file
-    return false if _path.basename(path)[0..1] == '.#' #emacs temp file
-    components = path.split '/'
-    return false if '.git' in components
-    return false if '.meteor' in components
-    return false if 'node_modules' in components
-    return false if '.DS_Store' in components
+    return false if (_.some BASE_IGNORE_RULES, (rule) -> rule.match path)
+    return false if (_.some @ignoreRules, (rule) -> rule.match path)
     return true
 
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
-    try
-      @readdirRecursive null, (err, files) =>
-        callback @wrapError(err), files
-    catch error
-      callback @wrapError(error), files
+    unless @ignorefile
+      try
+        madeyeIgnore = fs.readFileSync(_path.join @directory, ".madeyeignore")
+      catch e
+    else
+      madeyeIgnore = fs.readFileSync(_path.join @directory, @ignorefile)
+
+    @addIgnoreFile madeyeIgnore, =>
+      try
+        @readdirRecursive null, (err, files) =>
+          callback @wrapError(err), files
+      catch error
+        callback @wrapError(error), files
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions

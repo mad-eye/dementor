@@ -6,10 +6,11 @@
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
+{FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
-  constructor: (@directory, @httpClient, socket, clean=false) ->
-    @projectFiles = new ProjectFiles(@directory)
+  constructor: (@directory, @httpClient, socket, clean=false, ignorefile) ->
+    @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
     @fileTree = new FileTree null
@@ -45,12 +46,9 @@ class Dementor extends events.EventEmitter
       unless files?
         error = message: "No files found!"
         return @handleError error
-      if files.length > 5000
-        error =
-          type: 'TOO_MANY_FILES'
-          message: "MadEye currently only supports projects with less than 5000 files"
-        return @handleError error
-      else if files.length > 1000
+      if files.length > FILE_HARD_LIMIT
+        return @handleError ERROR_TOO_MANY_FILES
+      else if files.length > FILE_SOFT_LIMIT
         @handleWarning "MadEye currently runs best with projects with less than 1000 files.  Performance may be slow, especially in a Hangout or using Internet Explorer."
       @addMetric 'READ_FILETREE'
       action = method = null
@@ -77,9 +75,12 @@ class Dementor extends events.EventEmitter
         @socket.socket.connect =>
           @watchProject()
 
-  disable: (callback) ->
-    @socket?.disconnect()
-    callback?()
+  shutdown: (callback) ->
+    if @socket? and @socket.connected
+      @.on 'DISCONNECT', callback if callback
+      @socket.disconnect()
+    else
+      callback?()
 
   addMetric: (type, metric={}) ->
     metric.level ?= 'debug'
