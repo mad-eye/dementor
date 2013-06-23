@@ -209,10 +209,10 @@ class ProjectFiles extends events.EventEmitter
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
-      console.log clc.blackBright "Ignoring broken link at #{path}" #if process.env.MADEYE_DEBUG
+      console.log clc.blackBright "Ignoring broken link", error #if process.env.MADEYE_DEBUG
       callback null
     else if error.code == 'EACCES'
-      console.log clc.blackBright "Permission denied for #{path}" #if process.env.MADEYE_DEBUG
+      console.log clc.blackBright "Permission denied for", error #if process.env.MADEYE_DEBUG
       callback null
     else
       callback error
