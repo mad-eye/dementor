@@ -26,13 +26,15 @@ run = ->
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
   program.parse(process.argv)
+  execute(process.cwd(), program.clean, program.ignorefile)
 
+execute = (directory, clean=false, ignorefile)->
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
-  dementor = new Dementor process.cwd(), httpClient, socket, program.clean, program.ignorefile
+  dementor = new Dementor process.cwd(), httpClient, socket, clean, ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   logEvents dementor
@@ -103,6 +105,6 @@ process.on 'SIGINT', ->
 process.on 'SIGTERM', ->
   #console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
   shutdown()
-  
-  
+
 exports.run = run
+exports.execute = execute

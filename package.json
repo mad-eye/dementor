@@ -23,5 +23,6 @@
   "devDependencies": {
     "mocha": "~1.8.1",
     "chai": "~1.6.0"
-  }
+  },
+  "main":"lib.js"
 }
