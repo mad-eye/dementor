@@ -9,7 +9,7 @@ _path = require 'path'
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
-  constructor: (@directory, @httpClient, socket, clean=false, ignorefile) ->
+  constructor: (@directory, @httpClient, socket, clean=false, ignorefile, @tunnel=false) ->
     @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
@@ -63,6 +63,7 @@ class Dementor extends events.EventEmitter
         files: files
         version: @version
         nodeVersion: process.version
+        tunnel: @tunnel
 
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         return @handleError result.error if result.error

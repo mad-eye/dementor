@@ -28,13 +28,13 @@ run = ->
   program.parse(process.argv)
   execute(process.cwd(), program.clean, program.ignorefile)
 
-execute = (directory, clean=false, ignorefile)->
+execute = (directory, clean=false, ignorefile, tunnel=false)->
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
-  dementor = new Dementor process.cwd(), httpClient, socket, clean, ignorefile
+  dementor = new Dementor process.cwd(), httpClient, socket, clean, ignorefile, tunnel
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   logEvents dementor
@@ -44,8 +44,8 @@ execute = (directory, clean=false, ignorefile)->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
     hangoutUrl = "#{Settings.azkabanUrl}/hangout/#{dementor.projectId}"
 
-    util.puts "View your project at " + clc.bold apogeeUrl
-    util.puts "Use Google Hangout at " + clc.bold hangoutUrl
+    util.puts "View your project with MadEye at " + clc.bold apogeeUrl
+    util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
   dementor.enable()
 
