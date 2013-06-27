@@ -68,7 +68,9 @@ execute = (options) ->
       outputWrapper.on 'error', ->
         outputWrapper.shutdown()
       outputWrapper.connect (err) ->
-        console.error clc.red('ERROR:'), "Failed to connect to share output: #{err.message}" if err
+        return console.error clc.red('ERROR:'), "Failed to connect to share output: #{err.message}" if err
+        outputUrl = "#{Settings.apogeeUrl}/output/#{dementor.projectId}"
+        util.puts "View the output of your project at " + clc.bold outputUrl
         
   dementor.enable()
 
