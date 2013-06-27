@@ -26,9 +26,17 @@ run = ->
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
   program.parse(process.argv)
-  execute(process.cwd(), program.clean, program.ignorefile)
+  execute
+    directory: process.cwd()
+    clean: program.clean
+    ignorefile: program.ignorefile
 
-execute = (directory, clean=false, ignorefile, tunnel=false)->
+execute = (options)->
+  directory = options.directory
+  clean = options.clean
+  ignorefile = options.ignorefile
+  tunnel = options.tunnel
+
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
