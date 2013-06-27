@@ -1,5 +1,6 @@
 {Dementor} = require('./src/dementor')
 {HttpClient} = require('./src/httpClient')
+OutputWrapper = require './src/outputWrapper'
 {Settings} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
@@ -12,7 +13,6 @@ run = ->
   program = require 'commander'
 
   #TODO should be able to grab last arugment and use it as filename/dir
-  #TODO turn this into class that takes argv and add some tests
 
   pkg = require './package.json'
 
@@ -26,19 +26,35 @@ run = ->
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
   program.parse(process.argv)
-  execute(process.cwd(), program.clean, program.ignorefile)
+  execute
+    directory:process.cwd()
+    clean: program.clean
+    ignorefile: program.ignorefile
+    tunnel: program.tunnel
 
-execute = (directory, clean=false, ignorefile, tunnel=false)->
+
+###
+#options:
+# directory: path
+# clean: bool
+# ignorefile: path
+# tunnel: bool
+# shareOutput: bool
+###
+execute = (options) ->
+#execute = (directory, clean=false, ignorefile, tunnel=false)->
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
-  dementor = new Dementor process.cwd(), httpClient, socket, clean, ignorefile, tunnel
+  #TODO: Refactor dementor to take options
+  dementor = new Dementor options.directory, httpClient, socket, options.clean, options.ignorefile, options.tunnel
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   logEvents dementor
   logEvents dementor.projectFiles
+
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -47,6 +63,14 @@ execute = (directory, clean=false, ignorefile, tunnel=false)->
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
+    if options.shareOutput
+      outputWrapper = new OutputWrapper projectId: dementor.projectId, host: Settings.apogeeDDPHost, port: Settings.apogeePort
+      logEvents outputWrapper
+      outputWrapper.on 'error', ->
+        outputWrapper.shutdown()
+      outputWrapper.connect (err) ->
+        console.error clc.red('ERROR:'), "Failed to connect to share output: #{err.message}"
+        
   dementor.enable()
 
 
@@ -65,6 +89,7 @@ execute = (directory, clean=false, ignorefile, tunnel=false)->
 logEvents = (emitter) ->
   if emitter
     emitter.on 'error', (err) ->
+      console.error err
       console.error clc.red('ERROR:'), err.message
       shutdown(err.code ? 1)
 
