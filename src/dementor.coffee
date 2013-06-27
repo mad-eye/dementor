@@ -78,7 +78,7 @@ class Dementor extends events.EventEmitter
             console.log "ERROR", error
             console.log "STDOUT", stdout
             console.log "STDERR", stderr
-          console.log "Your site is publicly viewable at http://ec2-54-224-63-211.compute-1.amazonaws.com:#{port}"
+          console.log "Your site is publicly viewable at", clc.bold "http://ec2-54-224-63-211.compute-1.amazonaws.com:#{port}"
 
         return @handleError result.error if result.error
         @handleWarning result.warning
