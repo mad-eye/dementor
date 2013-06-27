@@ -42,14 +42,13 @@ run = ->
 # shareOutput: bool
 ###
 execute = (options) ->
-#execute = (directory, clean=false, ignorefile, tunnel=false)->
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
   #TODO: Refactor dementor to take options
-  dementor = new Dementor options.directory, httpClient, socket, options.clean, options.ignorefile, options.tunnel
+  dementor = new Dementor options.directory, httpClient, socket, options.clean, options.ignorefile, options.tunnel, options.appPort
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   logEvents dementor
