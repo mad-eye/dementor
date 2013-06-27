@@ -68,7 +68,7 @@ execute = (options) ->
       outputWrapper.on 'error', ->
         outputWrapper.shutdown()
       outputWrapper.connect (err) ->
-        console.error clc.red('ERROR:'), "Failed to connect to share output: #{err.message}"
+        console.error clc.red('ERROR:'), "Failed to connect to share output: #{err.message}" if err
         
   dementor.enable()
 
