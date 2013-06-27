@@ -6,6 +6,7 @@
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
+exec = require("child_process").exec
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
@@ -66,6 +67,18 @@ class Dementor extends events.EventEmitter
         tunnel: @tunnel
 
       @httpClient.request {method: method, action:action, json: json}, (result) =>
+        if result.project.tunnel and result.project.port
+          port = result.project.port
+          #TODO don't assume that metoer is running on port 3000
+          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:3000 -o StrictHostKeyChecking=no ubuntu@ec2-54-224-63-211.compute-1.amazonaws.com"
+
+          #console.log "COMMAND", ssh_cmd
+          exec ssh_cmd, (error, stdout, stderr) ->
+            console.log "ERROR", error
+            console.log "STDOUT", stdout
+            console.log "STDERR", stderr
+          console.log "Your site is publicly viewable at http://ec2-54-224-63-211.compute-1.amazonaws.com:#{port}"
+
         return @handleError result.error if result.error
         @handleWarning result.warning
         @projectId = result.project._id
