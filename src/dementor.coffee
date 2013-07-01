@@ -71,14 +71,14 @@ class Dementor extends events.EventEmitter
         if result.project.tunnel and result.project.port
           port = result.project.port
           #TODO don't assume that metoer is running on port 3000
-          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@ec2-54-224-63-211.compute-1.amazonaws.com"
+          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
           # console.log "COMMAND", ssh_cmd
           exec ssh_cmd, (error, stdout, stderr) ->
             console.log "ERROR", error
             console.log "STDOUT", stdout
             console.log "STDERR", stderr
-          console.log "Your site is publicly viewable at", clc.bold "http://ec2-54-224-63-211.compute-1.amazonaws.com:#{port}"
+          console.log "Your site is publicly viewable at", clc.bold "http://share.madeye.io:#{port}"
 
         return @handleError result.error if result.error
         @handleWarning result.warning
