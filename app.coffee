@@ -1,6 +1,5 @@
 {Dementor} = require('./src/dementor')
 {HttpClient} = require('./src/httpClient')
-OutputWrapper = require './src/outputWrapper'
 {Settings} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
@@ -54,7 +53,6 @@ execute = (options) ->
   logEvents dementor
   logEvents dementor.projectFiles
 
-
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
     hangoutUrl = "#{Settings.azkabanUrl}/hangout/#{dementor.projectId}"
@@ -62,16 +60,6 @@ execute = (options) ->
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
-    if options.shareOutput
-      outputWrapper = new OutputWrapper projectId: dementor.projectId, host: Settings.apogeeDDPHost, port: Settings.apogeePort
-      logEvents outputWrapper
-      outputWrapper.on 'error', ->
-        outputWrapper.shutdown()
-      outputWrapper.connect (err) ->
-        return console.error clc.red('ERROR:'), "Failed to connect to share output: #{err.message}" if err
-        outputUrl = "#{Settings.apogeeUrl}/output/#{dementor.projectId}"
-        util.puts "View the output of your project at " + clc.bold outputUrl
-        
   dementor.enable()
 
 
@@ -90,7 +78,6 @@ execute = (options) ->
 logEvents = (emitter) ->
   if emitter
     emitter.on 'error', (err) ->
-      console.error err
       console.error clc.red('ERROR:'), err.message
       shutdown(err.code ? 1)
 
