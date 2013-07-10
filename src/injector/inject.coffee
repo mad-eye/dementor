@@ -6,15 +6,6 @@ EventEmitter = require("events").EventEmitter
 
 outputWatcher = new EventEmitter
 
-getMeteorPid = (meteorPort, callback)->
-  #make sure to test w/ and w/o explicit port
-
-  # console.log "fetching meteor pid"
-  cmd = """ps ax | grep "tools/meteor.js" | grep -v "grep" | awk '{ print $1 }' """
-  # console.log "COMMAND", cmd
-  exec cmd, (err, stdout, stderr)->
-    callback null, stdout.split("\n")[0]
-
 connectDebugger = (port, callback)->
   #debugger is a reserved word
   theDebugger = require("./node-inspector-debugger/debugger.js").attachDebugger(5858)
@@ -44,7 +35,9 @@ connectDebugger = (port, callback)->
     # console.log "clearing out buffers"
     injectScript fs.readFileSync("#{__dirname}/flushOutputBuffer.js", "utf-8"), (result)->
       if result.body.text != ""
-        # console.log "GOT TEXT", result.body.text
+        #TODO add ddp stuff here
+        # this line useful for debugging
+        # fs.appendFile "/tmp/log.txt", result.body.text, ->
         clearBuffer()
       else
         #console.log "no new text"
@@ -64,15 +57,11 @@ connectDebugger = (port, callback)->
 
 #TODO leave hacky logic to find port somewhere else so this can be tested nicely
 exports.captureProcessOutput = (pid)->
-  getMeteorPid 3000, (error, pid)->
-    # console.log "METEOR PID", pid
-    #TODO better handle this error
-    throw "UNKNOWN PID" unless pid
-    process.kill pid, "SIGUSR1"
-    connectDebugger 3000, (outputWatcher)->
-      outputWatcher.on "connect", ->
-        #TODO figure out why this isn't being called
-        console.log "CONNECTED"
-    #callback with attached debugger?
-
-exports.captureProcessOutput()
+  # console.log "METEOR PID", pid
+  #TODO better handle this error
+  throw "UNKNOWN PID" unless pid
+  process.kill pid, "SIGUSR1"
+  connectDebugger 3000, (outputWatcher)->
+    outputWatcher.on "connect", ->
+      #TODO figure out why this isn't being called
+      console.log "CONNECTED"
