@@ -47,7 +47,7 @@ execute = (options) ->
     'auto connect': false
   
   #TODO: Refactor dementor to take options
-  dementor = new Dementor options.directory, httpClient, socket, options.clean, options.ignorefile, options.tunnel, options.appPort
+  dementor = new Dementor options.directory, httpClient, socket, options.clean, options.ignorefile, options.tunnel, options.appPort, options.captureViaDebugger
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   logEvents dementor

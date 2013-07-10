@@ -1,4 +1,3 @@
-
 {ProjectFiles, fileEventType} = require './projectFiles'
 {FileTree, File} = require '../madeye-common/common'
 {HttpClient} = require './httpClient'
@@ -8,10 +7,12 @@ events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
 exec = require("child_process").exec
+captureProcessOutput = require("./injector/inject").captureProcessOutput
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
-  constructor: (@directory, @httpClient, socket, clean=false, ignorefile, @tunnel=false, @appPort) ->
+  #TODO turn this into object of options
+  constructor: (@directory, @httpClient, socket, clean=false, ignorefile, @tunnel=false, @appPort, @captureViaDebugger) ->
     @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
@@ -43,6 +44,9 @@ class Dementor extends events.EventEmitter
     @emit 'warn', msg
 
   enable: ->
+    if @captureViaDebugger
+      captureProcessOutput()
+
     @projectFiles.readFileTree (err, files) =>
       return @handleError err if err
       unless files?
@@ -70,11 +74,11 @@ class Dementor extends events.EventEmitter
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         if result.project.tunnel and result.project.port
           port = result.project.port
-          #TODO don't assume that metoer is running on port 3000
           ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
           # console.log "COMMAND", ssh_cmd
           exec ssh_cmd, (error, stdout, stderr) ->
+            #TODO gracefully handle connection errors here
             console.log "ERROR", error
             console.log "STDOUT", stdout
             console.log "STDERR", stderr
