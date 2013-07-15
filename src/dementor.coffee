@@ -44,6 +44,7 @@ class Dementor extends events.EventEmitter
     @emit 'warn', msg
 
   #TODO write tests for this
+  #TODO test meteor processes started w/ and w/o explicit port (defaulted to 3000)
   getMeteorPid: (meteorPort, callback)->
     cmd = """ps ax | grep "tools/meteor.js" | grep -v "grep" | awk '{ print $1 }' """
     console.log "COMMAND", cmd
@@ -57,11 +58,6 @@ class Dementor extends events.EventEmitter
       @getMeteorPid @appPort, (err, pid)->
         console.log "capturing"
         captureProcessOutput(pid)
-
-  #make sure to test w/ and w/o explicit port
-
-  # console.log "fetching meteor pid"
-
 
     @projectFiles.readFileTree (err, files) =>
       return @handleError err if err
