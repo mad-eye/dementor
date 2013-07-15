@@ -15,6 +15,7 @@ run = ->
 
   pkg = require './package.json'
 
+  #TODO add tunnel as option
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
