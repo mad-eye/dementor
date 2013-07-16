@@ -48,7 +48,7 @@ class Dementor extends events.EventEmitter
   #TODO test meteor processes started w/ and w/o explicit port (defaulted to 3000)
   getMeteorPid: (meteorPort, callback)->
     cmd = """ps ax | grep "tools/meteor.js" | grep -v "grep" | awk '{ print $1 }' """
-    console.log "COMMAND", cmd
+#    console.log "COMMAND", cmd
     #TODO if there are multiple pids, match on port
     exec cmd, (err, stdout, stderr)->
       callback null, stdout.split("\n")[0]
@@ -92,7 +92,7 @@ class Dementor extends events.EventEmitter
           ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@#{shareServer}"
 #          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
-          console.log "COMMAND", ssh_cmd
+#          console.log "COMMAND", ssh_cmd
           exec ssh_cmd, (error, stdout, stderr) ->
             #TODO gracefully handle connection errors here
             console.log "Error establishing ssh tunnel", error
