@@ -4,6 +4,7 @@
 {messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
 events = require 'events'
+fs = require "fs"
 clc = require 'cli-color'
 _path = require 'path'
 exec = require("child_process").exec
@@ -86,7 +87,10 @@ class Dementor extends events.EventEmitter
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         if result.project.tunnel and result.project.port
           port = result.project.port
-          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
+
+          fs.chmodSync "#{__dirname}/../lib/id_rsa", "400"
+          ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
+#          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
           # console.log "COMMAND", ssh_cmd
           exec ssh_cmd, (error, stdout, stderr) ->
