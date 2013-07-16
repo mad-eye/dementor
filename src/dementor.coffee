@@ -85,20 +85,20 @@ class Dementor extends events.EventEmitter
         tunnel: @tunnel
 
       @httpClient.request {method: method, action:action, json: json}, (result) =>
+        shareServer = process.env.MADEYE_SHARE_SERVER or "share.madeye.io"
         if result.project.tunnel and result.project.port
           port = result.project.port
-
           fs.chmodSync "#{__dirname}/../lib/id_rsa", "400"
-          ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
+          ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@#{shareServer}"
 #          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
-          # console.log "COMMAND", ssh_cmd
+          console.log "COMMAND", ssh_cmd
           exec ssh_cmd, (error, stdout, stderr) ->
             #TODO gracefully handle connection errors here
-            console.log "ERROR", error
-            console.log "STDOUT", stdout
-            console.log "STDERR", stderr
-          console.log "Your site is publicly viewable at", clc.bold "http://share.madeye.io:#{port}"
+            console.log "Error establishing ssh tunnel", error
+            console.log stdout
+            console.log "Error establishing ssh tunnel", stderr
+          console.log "Your site is publicly viewable at", clc.bold "http://#{shareServer}:#{port}"
 
         return @handleError result.error if result.error
         @handleWarning result.warning
