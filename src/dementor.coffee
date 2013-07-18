@@ -54,7 +54,7 @@ class Dementor extends events.EventEmitter
       callback null, stdout.split("\n")[0]
 
   enable: ->
-    if @captureViaDebugger
+    if false and @captureViaDebugger
       console.log "fetch meteor pid"
       @getMeteorPid @appPort, (err, pid)->
         console.log "capturing"

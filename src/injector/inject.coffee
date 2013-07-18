@@ -21,6 +21,7 @@ connectDebugger = (port, callback)->
     setTimeout clearBuffer, 2500
 
   theDebugger.on "error", (error)->
+    #TODO this looks broken..
     callback(outputWatcher)
     outputWatcher.emit "connect"
 
