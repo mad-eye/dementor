@@ -8,7 +8,7 @@ fs = require "fs"
 clc = require 'cli-color'
 _path = require 'path'
 exec = require("child_process").exec
-captureProcessOutput = require("./injector/inject").captureProcessOutput
+#captureProcessOutput = require("./injector/inject").captureProcessOutput
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
