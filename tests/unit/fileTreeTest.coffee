@@ -70,7 +70,7 @@ describe "FileTree", ->
       assert.isUndefined tree.findById(file._id).modified
       assert.isUndefined tree.findByPath(file.path).modified
 
-  describe "completeFiles", ->
+  describe "completeParentFiles", ->
     tree = null
     beforeEach ->
       tree = new FileTree
@@ -78,18 +78,18 @@ describe "FileTree", ->
 
     it 'should add missing directories', ->
       file = _id: uuid.v4(), path: 'a1/a2/a.txt', isDir:false
-      files = tree.completeFiles [file]
+      files = tree.completeParentFiles [file]
       assert.equal files.length, 3
 
     it 'should not add multiple copies if adding two detached files', ->
       file1 = _id: uuid.v4(), path: 'b1/b2/b.txt', isDir:false
       file2 = _id: uuid.v4(), path: 'b1/a.txt', isDir:false
-      files = tree.completeFiles [file1, file2]
+      files = tree.completeParentFiles [file1, file2]
       assert.equal files.length, 4
 
     it 'should remember implicitly created directories', ->
       file1 = _id: uuid.v4(), path: 'b1/b2/b.txt', isDir:false
       file2 = _id: uuid.v4(), path: 'b1/a.txt', isDir:false
-      files1 = tree.completeFiles [file1]
-      files2 = tree.completeFiles [file2]
+      files1 = tree.completeParentFiles [file1]
+      files2 = tree.completeParentFiles [file2]
       assert.equal files2.length, 1

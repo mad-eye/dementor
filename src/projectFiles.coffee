@@ -73,17 +73,7 @@ class ProjectFiles extends events.EventEmitter
   cleanPath: (path) ->
     return unless path?
     path = _path.relative(@directory, path)
-    @standardizePath path
-
-  standardizePath: (path) ->
-    return unless path?
-    return path if _path.sep == '/'
-    return path.split(_path.sep).join('/')
-
-  localizePath: (path) ->
-    return unless path?
-    return path if _path.sep == '/'
-    return path.split('/').join(_path.sep)
+    standardizePath path
 
   wrapError: (error) ->
     return null unless error
@@ -104,7 +94,7 @@ class ProjectFiles extends events.EventEmitter
   #callback: (err, body) -> ...
   readFile: (filePath, callback) ->
     return callback errors.new 'NO_FILE' unless filePath
-    filePath = @localizePath filePath
+    filePath = localizePath filePath
     filePath = _path.join @directory, filePath
     fs.readFile filePath, 'utf-8', (err, contents) =>
       callback @wrapError(err), contents
@@ -112,7 +102,7 @@ class ProjectFiles extends events.EventEmitter
   #callback: (err) -> ...
   writeFile: (filePath, contents, callback) ->
     return callback errors.new 'NO_FILE' unless filePath
-    filePath = @localizePath filePath
+    filePath = localizePath filePath
     filePath = _path.join @directory, filePath
     fs.writeFile filePath, contents, (err) =>
       callback @wrapError err
@@ -167,6 +157,7 @@ class ProjectFiles extends events.EventEmitter
       try
         madeyeIgnore = fs.readFileSync(_path.join @directory, ".madeyeignore")
       catch e
+        #No .madeyeignore, no problem
     else
       madeyeIgnore = fs.readFileSync(_path.join @directory, @ignorefile)
 
@@ -175,7 +166,7 @@ class ProjectFiles extends events.EventEmitter
         @readdirRecursive null, (err, files) =>
           callback @wrapError(err), files
       catch error
-        callback @wrapError(error), files
+        callback @wrapError(error)
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
@@ -260,5 +251,15 @@ class ProjectFiles extends events.EventEmitter
           #console.log "Finished reading", relDir
           callback error, results
 
+
+exports.standardizePath = standardizePath = (path) ->
+  return unless path?
+  return path if _path.sep == '/'
+  return path.split(_path.sep).join('/')
+
+exports.localizePath = localizePath = (path) ->
+  return unless path?
+  return path if _path.sep == '/'
+  return path.split('/').join(_path.sep)
 
 exports.ProjectFiles = ProjectFiles

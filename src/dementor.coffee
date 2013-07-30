@@ -99,6 +99,7 @@ class Dementor extends events.EventEmitter
   watchProject: ->
     @projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) =>
       data.projectId = @projectId
+      data.files = @fileTree.completeParentFiles data.files
       @socket.emit messageAction.LOCAL_FILES_ADDED, data, (err, files) =>
         return @handleError err if err
         @fileTree.addFiles files
