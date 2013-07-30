@@ -6,7 +6,7 @@ FileTree = require './fileTree'
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
-{FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
+{FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket, clean=false, ignorefile) ->
@@ -46,10 +46,11 @@ class Dementor extends events.EventEmitter
       unless files?
         error = message: "No files found!"
         return @handleError error
+      @emit 'debug', "Found #{files.length} files"
       if files.length > FILE_HARD_LIMIT
         return @handleError ERROR_TOO_MANY_FILES
       else if files.length > FILE_SOFT_LIMIT
-        @handleWarning "MadEye currently runs best with projects with less than 1000 files.  Performance may be slow, especially in a Hangout or using Internet Explorer."
+        @handleWarning WARNING_MANY_FILES
       @addMetric 'READ_FILETREE'
       action = method = null
       if @projectId
