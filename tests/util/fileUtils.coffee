@@ -2,7 +2,7 @@ wrench = require 'wrench'
 fs = require 'fs'
 _path = require 'path'
 uuid = require 'node-uuid'
-{FileTree} = require '../../madeye-common/common'
+FileTree = require '../../src/fileTree'
 
 #TODO: Move this to madeye-common
 

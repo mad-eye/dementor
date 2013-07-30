@@ -1,5 +1,5 @@
 {ProjectFiles, fileEventType} = require './projectFiles'
-{FileTree, File} = require '../madeye-common/common'
+FileTree = require './fileTree'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
@@ -13,7 +13,7 @@ class Dementor extends events.EventEmitter
     @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
-    @fileTree = new FileTree null
+    @fileTree = new FileTree
     @attach socket
     @version = require('../package.json').version
     @serverOps = {}
@@ -68,6 +68,7 @@ class Dementor extends events.EventEmitter
         return @handleError result.error if result.error
         @handleWarning result.warning
         @projectId = result.project._id
+        @fileTree.projectId = @projectId
         @projectFiles.saveProjectId @projectId
         @fileTree.addFiles result.files
         @addMetric 'enabled'
