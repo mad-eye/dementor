@@ -39,6 +39,7 @@ run = ->
 
   logEvents dementor
   logEvents dementor.projectFiles
+  logEvents dementor.fileTree
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"

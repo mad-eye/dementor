@@ -128,17 +128,24 @@ class Dementor extends events.EventEmitter
 
     @projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) =>
       data.projectId = @projectId
-      file = @fileTree.findByPath(data.paths[0])
-      #FIXME: This was happening in production.  Write tests for it.
-      unless file?
-        @handleError "#{errorType.MISSING_PARAM}: filePath #{data.paths[0]} not found in fileTree", true
-        return
-      data.files = [file]
+      data.files = []
+      for path in data.paths
+        file = @fileTree.findByPath(path)
+        #FIXME: This was happening in production.  Write tests for it.
+        unless file?
+          @handleWarning "#{errorType.MISSING_PARAM}: filePath #{data.paths[0]} not found in fileTree", true
+          continue
+        data.files.push file
+      return unless data.files.length > 0
       @socket.emit messageAction.LOCAL_FILES_REMOVED, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
           @handleWarning response.message
-        #XXX: Should we remove the file from the filetree? or leave it in case of being resaved?
+          #XXX: Going to cause problems if a file is not deleted due to warning.
+          #But need to not delete it from the tree in order to resave it.
+          #Need to rethink the separation of fs files and mongo files.
+        else
+          @fileTree.remove file._id for file in data.files
 
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'

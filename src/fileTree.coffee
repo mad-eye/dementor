@@ -20,7 +20,9 @@ class FileTree extends EventEmitter
     return unless file
     @filesById[file._id] = file
     @filesByPath[file.path] = file
-    removeItemFromArray file.path, @dirsPending
+    @emit 'debug', "Added file #{file.path}"
+    removed = removeItemFromArray file.path, @dirsPending
+    @emit 'debug', "Removed #{file.path} from pending dirs." if removed
 
   addFiles: (files) ->
     return unless files
@@ -30,7 +32,9 @@ class FileTree extends EventEmitter
     file = @filesById[fileId]
     delete @filesById[fileId]
     delete @filesByPath[file.path]
-    removeItemFromArray file.path, @dirsPending
+    @emit 'debug', "Removed file #{file.path}"
+    removed = removeItemFromArray file.path, @dirsPending
+    @emit 'debug', "Removed #{file.path} from pending dirs." if removed
 
   change: (fileId, fields={}, cleared=[]) ->
     file = @filesById[fileId]
@@ -53,6 +57,9 @@ class FileTree extends EventEmitter
         unless path in @dirsPending
           newFileMap[path] = {path: path, isDir: true}
           @dirsPending.push standardizePath path
+          @emit 'debug', "Adding #{path} to dirsPending."
+        else
+          @emit 'debug', "#{path} is in dirsPending, ignoring."
 
     return _.values(newFileMap)
 
@@ -61,5 +68,6 @@ class FileTree extends EventEmitter
 removeItemFromArray = (item, array) ->
   idx = array.indexOf item
   array.splice(idx,1) if idx != -1
+  return idx != -1
 
 module.exports = FileTree
