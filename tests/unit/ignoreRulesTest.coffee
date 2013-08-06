@@ -71,7 +71,6 @@ describe 'ignoreRules', ->
       assert.isFalse ignoreRules.shouldIgnore('c.txt'), 'Should not match c.txt'
       assert.isFalse ignoreRules.shouldIgnore('abd.txt'), 'Should not match abc.txt'
 
-
   describe 'dir slashes', ->
     it 'matches directories and contents on trailing /'
       #ignoreRules = new IgnoreRules 'foo/'
@@ -80,8 +79,26 @@ describe 'ignoreRules', ->
       #assert.isTrue ignoreRules.shouldIgnore 'bar/foo/b.txt'
       #assert.isFalse ignoreRules.shouldIgnore 'a.txt'
 
-    it 'matches only top-level files on leading /'
+    it 'matches only top-level files on leading /', ->
+      ignoreRules = new IgnoreRules '/TODO'
+      assert.isTrue ignoreRules.shouldIgnore('TODO'), 'Should ignore top-level TODO'
+      assert.isFalse ignoreRules.shouldIgnore('foo/TODO'), 'Should not ignore deeper TODO'
+      assert.isFalse ignoreRules.shouldIgnore 'NotTODO'
+      
 
-  describe 'negation with !', ->
-    it 'negates a pattern starting with a !'
+  describe 'negation', ->
+    it 'negates a pattern starting with a !', ->
+      ignoreRules = new IgnoreRules '*.txt\n!a.txt'
+      assert.isFalse ignoreRules.shouldIgnore('a.txt'), 'Should match a.txt'
+      assert.isTrue ignoreRules.shouldIgnore('c.txt'), 'Should not match c.txt'
+
+    it 'negates a pattern starting with !/', ->
+      ignoreRules = new IgnoreRules '**/*.txt\n!/a.txt'
+      assert.isFalse ignoreRules.shouldIgnore('a.txt'), 'Should match a.txt'
+      assert.isTrue ignoreRules.shouldIgnore('c.txt'), 'Should not match c.txt'
+      assert.isTrue ignoreRules.shouldIgnore('foo/a.txt'), 'Should not match foo/a.txt'
+      assert.isTrue ignoreRules.shouldIgnore('foo/c.txt'), 'Should not match foo/c.txt'
+
+
+
 
