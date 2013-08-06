@@ -1,9 +1,42 @@
 _ = require 'underscore'
 _.str = require 'underscore.string'
 {Minimatch} = require 'minimatch'
-#{RelPathSpec, RelPathList} = require('pathspec')
 
 MINIMATCH_OPTIONS = { matchBase: true, dot: true, flipNegate: true }
+
+base_excludes = '''
+*~
+#*#
+.#*
+%*%
+._*
+*.swp
+*.swo
+CVS
+SCCS
+.svn
+.git
+.bzr
+.hg
+_MTN
+_darcs
+.meteor
+node_modules
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+*.class
+*.o
+*.a
+*.pyc
+*.pyo'''.split(/\r?\n/)
+
+BASE_IGNORE_RULES = (new Minimatch(rule, MINIMATCH_OPTIONS) for rule in base_excludes when rule)
 
 class TopLevelMatch
   constructor: (@pattern) ->
@@ -14,7 +47,7 @@ class TopLevelMatch
 
 class IgnoreRules
   constructor: (rulesStr) ->
-    @rules = []
+    @rules = BASE_IGNORE_RULES[..]
     @negations = []
     return unless rulesStr
 
@@ -22,7 +55,6 @@ class IgnoreRules
     rawRules = _.filter rawRules, (rule) ->
       rule && rule[0] != '#'
 
-    #@rules = RelPathList.parse rawRules
     for rule in rawRules
       if rule.charAt(0) == '/'
         @rules.push new TopLevelMatch rule.substr 1
@@ -38,8 +70,6 @@ class IgnoreRules
 
   shouldIgnore: (path) ->
     return true unless path?
-    #return @rules.matches path
-    #return true if (_.some BASE_IGNORE_RULES, (rule) -> rule.match path)
     if _.some(@rules, (rule) -> rule.match path)
       return true unless _.some @negations, (rule) -> rule.match path
     return false

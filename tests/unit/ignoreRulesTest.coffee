@@ -24,11 +24,11 @@ describe 'ignoreRules', ->
       assert.isFalse ignoreRules.shouldIgnore 'ba'
 
   describe 'glob patterns', ->
-    it 'matches * correctly', ->
+    it 'matches * correctly fweep', ->
       ignoreRules = new IgnoreRules '*.txt'
       assert.isTrue ignoreRules.shouldIgnore('a.txt')
-      assert.isFalse ignoreRules.shouldIgnore('a.js')
-      assert.isFalse ignoreRules.shouldIgnore('a')
+      assert.isFalse ignoreRules.shouldIgnore('a.js'), 'Should not match a.js'
+      assert.isFalse ignoreRules.shouldIgnore('a'), 'Should not match a'
       assert.isTrue ignoreRules.shouldIgnore('foo/a.txt')
 
     it 'matches ** correctly', ->
