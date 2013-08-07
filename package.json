@@ -17,8 +17,7 @@
     "async": "0.2.9",
     "chokidar": "0.6.2",
     "minimatch": "0.2.12",
-    "underscore.string": "2.3.3",
-    "pathspec": "~0.9.2"
+    "underscore.string": "2.3.3"
   },
   "devDependencies": {
     "wrench": "~1.4.2",
