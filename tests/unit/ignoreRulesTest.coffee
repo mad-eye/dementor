@@ -22,9 +22,14 @@ describe 'ignoreRules', ->
       assert.isTrue ignoreRules.shouldIgnore 'a'
       assert.isFalse ignoreRules.shouldIgnore 'ab'
       assert.isFalse ignoreRules.shouldIgnore 'ba'
+    it 'should ignore specified directories fweep', ->
+      ignoreRules = new IgnoreRules 'foo'
+      assert.isTrue ignoreRules.shouldIgnore 'foo'
+      assert.isTrue ignoreRules.shouldIgnore 'bar/foo'
+
 
   describe 'glob patterns', ->
-    it 'matches * correctly fweep', ->
+    it 'matches * correctly', ->
       ignoreRules = new IgnoreRules '*.txt'
       assert.isTrue ignoreRules.shouldIgnore('a.txt')
       assert.isFalse ignoreRules.shouldIgnore('a.js'), 'Should not match a.js'
@@ -72,12 +77,11 @@ describe 'ignoreRules', ->
       assert.isFalse ignoreRules.shouldIgnore('abd.txt'), 'Should not match abc.txt'
 
   describe 'dir slashes', ->
-    it 'matches directories and contents on trailing /'
-      #ignoreRules = new IgnoreRules 'foo/'
-      #assert.isTrue ignoreRules.shouldIgnore('foo/a.txt'), 'Should ignore directory contents'
-      #assert.isTrue ignoreRules.shouldIgnore 'foo/bar/b.txt'
-      #assert.isTrue ignoreRules.shouldIgnore 'bar/foo/b.txt'
-      #assert.isFalse ignoreRules.shouldIgnore 'a.txt'
+    it 'matches directories and contents on trailing /', ->
+      ignoreRules = new IgnoreRules 'foo/'
+      assert.isTrue ignoreRules.shouldIgnore('foo'), 'Should ignore directory contents'
+      assert.isTrue ignoreRules.shouldIgnore('bar/foo'), 'Should ignore bar/foo/b.txt'
+      assert.isFalse ignoreRules.shouldIgnore('a.txt'), 'Should not ignore a.txt'
 
     it 'matches only top-level files on leading /', ->
       ignoreRules = new IgnoreRules '/TODO'

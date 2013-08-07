@@ -48,6 +48,7 @@ class TopLevelMatch
 class IgnoreRules
   constructor: (rulesStr) ->
     @rules = BASE_IGNORE_RULES[..]
+    #@rules = []
     @negations = []
     return unless rulesStr
 
@@ -56,11 +57,15 @@ class IgnoreRules
       rule && rule[0] != '#'
 
     for rule in rawRules
+      if _.str.endsWith rule, '/'
+        #git ignores directories but not files.
+        #Just ignore everything
+        rule = rule.substr 0, rule.length - 1
+      
       if rule.charAt(0) == '/'
         @rules.push new TopLevelMatch rule.substr 1
       else if rule.substr(0,2) == '!/'
         @negations.push new TopLevelMatch rule.substr 2
-      #else if rule.charAt(-1) == '/'
       else
         minimatch = new Minimatch(rule, MINIMATCH_OPTIONS)
         unless minimatch.negate
