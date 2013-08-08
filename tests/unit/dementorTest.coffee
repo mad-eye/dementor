@@ -1,3 +1,4 @@
+_ = require 'underscore'
 {assert} = require 'chai'
 uuid = require 'node-uuid'
 wrench = require 'wrench'
@@ -95,8 +96,8 @@ describe "Dementor", ->
 
       it "should populate file tree with files (and ids)", ->
         assert.ok dementor.fileTree
-        files = dementor.fileTree.files
-        assert.equal files.length, targetFileTree.files.length
+        files = dementor.fileTree.getFiles()
+        assert.equal files.length, targetFileTree.getFiles().length
         for file in files
           assert.ok file.isDir?
           assert.ok file.path?
@@ -144,8 +145,8 @@ describe "Dementor", ->
 
       it "should populate file tree with files (and ids)", ->
         assert.ok dementor.fileTree
-        files = dementor.fileTree.files
-        assert.equal files.length, targetFileTree.files.length
+        files = dementor.fileTree.getFiles()
+        assert.equal files.length, targetFileTree.getFiles().length
         for file in files
           assert.ok file.isDir?
           assert.ok file.path?
@@ -334,7 +335,7 @@ describe "Dementor", ->
       mockSocket.onEmit = (action, data, cb) ->
         if action == messageAction.LOCAL_FILES_REMOVED
           fail "Should not receive a LOCAL_FILES_REMOVED message"
-        else if action == messageAction.METRIC and data.level == 'error'
+        else if action == messageAction.METRIC and data.level == 'warn'
           done()
 
       dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]

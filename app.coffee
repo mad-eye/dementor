@@ -7,18 +7,19 @@ io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
 
 dementor = null
+debug = false
 
 run = ->
   program = require 'commander'
 
   #TODO should be able to grab last arugment and use it as filename/dir
-  #TODO turn this into class that takes argv and add some tests
 
   pkg = require './package.json'
 
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
+    .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
@@ -26,6 +27,7 @@ run = ->
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
   program.parse(process.argv)
+  debug = program.debug
 
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl,
@@ -37,6 +39,7 @@ run = ->
 
   logEvents dementor
   logEvents dementor.projectFiles
+  logEvents dementor.fileTree
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -58,8 +61,6 @@ run = ->
     else
       throw err
 
-  #FIXME: Need to listen to projectFiles error, warn, info, and debug events
-
 logEvents = (emitter) ->
   if emitter
     emitter.on 'error', (err) ->
@@ -69,11 +70,11 @@ logEvents = (emitter) ->
     emitter.on 'warn', (message) ->
       console.error clc.bold('Warning:'), message
 
-    emitter.on 'info', (message) ->
-      console.log message
+    emitter.on 'info', (msgs...) ->
+      console.log msgs
 
-    emitter.on 'debug', (message) ->
-      console.log clc.blackBright message if process.env.MADEYE_DEBUG
+    emitter.on 'debug', (msgs...) ->
+      console.log clc.blackBright msgs if debug
 
 # Shutdown section
 SHUTTING_DOWN = false
@@ -103,6 +104,5 @@ process.on 'SIGINT', ->
 process.on 'SIGTERM', ->
   #console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
   shutdown()
-  
-  
+
 exports.run = run
