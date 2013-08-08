@@ -7,7 +7,7 @@ clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
-{Minimatch} = require 'minimatch'
+IgnoreRules = require './ignoreRules'
 
 #Info Events:
 #  'error', message:, file?:
@@ -30,45 +30,11 @@ async = require 'async'
 #    oldPath:
 #    newPath:
 
-base_excludes = '''
-*~
-#*#
-.#*
-%*%
-._*
-*.swp
-*.swo
-CVS
-SCCS
-.svn
-.git
-.bzr
-.hg
-_MTN
-_darcs
-.meteor
-node_modules
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-Icon?
-ehthumbs.db
-Thumbs.db
-*.class
-*.o
-*.a
-*.pyc
-*.pyo'''.split(/\r?\n/)
-
-MINIMATCH_OPTIONS = { matchBase: true, dot: true, flipNegate: true }
-BASE_IGNORE_RULES = (new Minimatch(rule, MINIMATCH_OPTIONS) for rule in base_excludes when rule)
-
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
-  constructor: (@directory, @ignorefile) ->
+  constructor: (@directory, ignorepath) ->
     @fileWatcher = require 'chokidar'
+    @loadIgnoreRules ignorepath
 
   cleanPath: (path) ->
     return unless path?
@@ -90,6 +56,16 @@ class ProjectFiles extends events.EventEmitter
     #console.error "Found error:", newError ? error
     return newError ? error
 
+  loadIgnoreRules: (ignorepath) ->
+    unless ignorepath
+      try
+        ignorefile = fs.readFileSync(_path.join @directory, ".madeyeignore")
+      catch e
+    else
+      ignorefile = fs.readFileSync(_path.join @directory, ignorepath)
+
+    @ignoreRules = new IgnoreRules ignorefile
+    callback?()
 
   #callback: (err, body) -> ...
   readFile: (filePath, callback) ->
@@ -129,44 +105,16 @@ class ProjectFiles extends events.EventEmitter
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
 
-  #based loosely off of https://github.com/isaacs/fstream-ignore/blob/master/ignore.js
-  addIgnoreFile: (file, callback)->
-    return callback?() unless file
-    addIgnoreRules = (rules) =>
-      rules = rules.filter (rule)->
-        rule = rule.trim()
-        rule && not rule.match(/^#/)
-      return if !rules.length
-      @ignoreRules ?= []
-      rules.forEach (rule) =>
-        rule = _.str.rstrip rule.trim(), '/'
-        @ignoreRules.push new Minimatch rule, MINIMATCH_OPTIONS
-    rules = file.toString().split(/\r?\n/)
-    addIgnoreRules rules
-    callback?()
-
   shouldInclude: (path) ->
-    return false unless path?
-    return false if (_.some BASE_IGNORE_RULES, (rule) -> rule.match path)
-    return false if (_.some @ignoreRules, (rule) -> rule.match path)
-    return true
+    not @ignoreRules.shouldIgnore path
 
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
-    unless @ignorefile
-      try
-        madeyeIgnore = fs.readFileSync(_path.join @directory, ".madeyeignore")
-      catch e
-        #No .madeyeignore, no problem
-    else
-      madeyeIgnore = fs.readFileSync(_path.join @directory, @ignorefile)
-
-    @addIgnoreFile madeyeIgnore, =>
-      try
-        @readdirRecursive null, (err, files) =>
-          callback @wrapError(err), files
-      catch error
-        callback @wrapError(error)
+    try
+      @readdirRecursive null, (err, files) =>
+        callback @wrapError(err), files
+    catch error
+      callback @wrapError(error), files
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions

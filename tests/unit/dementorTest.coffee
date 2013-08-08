@@ -335,7 +335,7 @@ describe "Dementor", ->
       mockSocket.onEmit = (action, data, cb) ->
         if action == messageAction.LOCAL_FILES_REMOVED
           fail "Should not receive a LOCAL_FILES_REMOVED message"
-        else if action == messageAction.METRIC and data.level == 'error'
+        else if action == messageAction.METRIC and data.level == 'warn'
           done()
 
       dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]
