@@ -44,15 +44,6 @@ class Dementor extends events.EventEmitter
     @socket.emit messageAction.METRIC, metric
     @emit 'warn', msg
 
-  #TODO write tests for this
-  #TODO test meteor processes started w/ and w/o explicit port (defaulted to 3000)
-  getMeteorPid: (meteorPort, callback)->
-    cmd = """ps ax | grep "tools/meteor.js" | grep -v "grep" | awk '{ print $1 }' """
-#    console.log "COMMAND", cmd
-    #TODO if there are multiple pids, match on port
-    exec cmd, (err, stdout, stderr)->
-      callback null, stdout.split("\n")[0]
-
   enable: ->
     if false and @captureViaDebugger
       console.log "fetch meteor pid"

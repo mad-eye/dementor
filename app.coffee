@@ -5,8 +5,15 @@ util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
+exec = require("child_process").exec
+_s = require 'underscore.string'
 
 dementor = null
+
+getMeteorPid = (meteorPort, callback)->
+  cmd = """lsof -n -i4TCP:#{meteorPort} | grep LISTEN | awk '{print $2}'"""
+  exec cmd, (err, stdout, stderr)->
+    callback null, _s.trim(stdout)
 
 run = ->
   program = require 'commander'
@@ -64,6 +71,13 @@ execute = (options) ->
   dementor.enable()
 
 
+  if options.linkToMeteorProcess
+    setInterval ->
+      getMeteorPid options.appPort, (err, pid)->
+        console.log "found meteor pid", pid
+        #TODO if metoer process isn't found then exit this process
+        #how to best handle a rapid restart...
+    , 2000
 
   #hack for dealing with exceptions caused by broken links
   process.on 'uncaughtException', (err)->
@@ -73,6 +87,15 @@ execute = (options) ->
       0
     else
       throw err
+
+  process.on 'SIGINT', ->
+    console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
+    shutdown()
+
+  process.on 'SIGTERM', ->
+    unless options.linkToMeteorProcess
+      console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
+      shutdown()
 
   #FIXME: Need to listen to projectFiles error, warn, info, and debug events
 
@@ -111,14 +134,6 @@ shutdownGracefully = (returnVal=0) ->
     console.error "Could not close connections in time, shutting down harder."
     process.exit(returnVal || 1)
   , 20*1000
-
-process.on 'SIGINT', ->
-  #console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
-  shutdown()
-
-process.on 'SIGTERM', ->
-  #console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
-  shutdown()
 
 exports.run = run
 exports.execute = execute
