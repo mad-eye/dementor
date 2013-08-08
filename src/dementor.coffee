@@ -1,19 +1,19 @@
 {ProjectFiles, fileEventType} = require './projectFiles'
-{FileTree, File} = require '../madeye-common/common'
+FileTree = require './fileTree'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
-{FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES} = require './constants'
+{FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket, clean=false, ignorefile) ->
     @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
-    @fileTree = new FileTree null
+    @fileTree = new FileTree
     @attach socket
     @version = require('../package.json').version
     @serverOps = {}
@@ -46,10 +46,11 @@ class Dementor extends events.EventEmitter
       unless files?
         error = message: "No files found!"
         return @handleError error
+      @emit 'debug', "Found #{files.length} files"
       if files.length > FILE_HARD_LIMIT
         return @handleError ERROR_TOO_MANY_FILES
       else if files.length > FILE_SOFT_LIMIT
-        @handleWarning "MadEye currently runs best with projects with less than 1000 files.  Performance may be slow, especially in a Hangout or using Internet Explorer."
+        @handleWarning WARNING_MANY_FILES
       @addMetric 'READ_FILETREE'
       action = method = null
       if @projectId
@@ -68,6 +69,7 @@ class Dementor extends events.EventEmitter
         return @handleError result.error if result.error
         @handleWarning result.warning
         @projectId = result.project._id
+        @fileTree.projectId = @projectId
         @projectFiles.saveProjectId @projectId
         @fileTree.addFiles result.files
         @addMetric 'enabled'
@@ -98,6 +100,7 @@ class Dementor extends events.EventEmitter
   watchProject: ->
     @projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) =>
       data.projectId = @projectId
+      data.files = @fileTree.completeParentFiles data.files
       @socket.emit messageAction.LOCAL_FILES_ADDED, data, (err, files) =>
         return @handleError err if err
         @fileTree.addFiles files
@@ -125,17 +128,24 @@ class Dementor extends events.EventEmitter
 
     @projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) =>
       data.projectId = @projectId
-      file = @fileTree.findByPath(data.paths[0])
-      #FIXME: This was happening in production.  Write tests for it.
-      unless file?
-        @handleError "#{errorType.MISSING_PARAM}: filePath #{data.paths[0]} not found in fileTree", true
-        return
-      data.files = [file]
+      data.files = []
+      for path in data.paths
+        file = @fileTree.findByPath(path)
+        #FIXME: This was happening in production.  Write tests for it.
+        unless file?
+          @handleWarning "#{errorType.MISSING_PARAM}: filePath #{data.paths[0]} not found in fileTree", true
+          continue
+        data.files.push file
+      return unless data.files.length > 0
       @socket.emit messageAction.LOCAL_FILES_REMOVED, data, (err, response) =>
         return @handleError err if err
         if response?.action == messageAction.WARNING
           @handleWarning response.message
-        #XXX: Should we remove the file from the filetree? or leave it in case of being resaved?
+          #XXX: Going to cause problems if a file is not deleted due to warning.
+          #But need to not delete it from the tree in order to resave it.
+          #Need to rethink the separation of fs files and mongo files.
+        else
+          @fileTree.remove file._id for file in data.files
 
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'
