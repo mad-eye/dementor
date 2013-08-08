@@ -47,8 +47,8 @@ class TopLevelMatch
 
 class IgnoreRules
   constructor: (rulesStr) ->
+    #copy so that other instances of IgnoreRules don't alter BASE_IGNORE_RULES
     @rules = BASE_IGNORE_RULES[..]
-    #@rules = []
     @negations = []
     return unless rulesStr
 

@@ -8,7 +8,6 @@ events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
 IgnoreRules = require './ignoreRules'
-{Minimatch} = require 'minimatch'
 
 #Info Events:
 #  'error', message:, file?:
@@ -30,41 +29,6 @@ IgnoreRules = require './ignoreRules'
 #    fileId:
 #    oldPath:
 #    newPath:
-
-base_excludes = '''
-*~
-#*#
-.#*
-%*%
-._*
-*.swp
-*.swo
-CVS
-SCCS
-.svn
-.git
-.bzr
-.hg
-_MTN
-_darcs
-.meteor
-node_modules
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-Icon?
-ehthumbs.db
-Thumbs.db
-*.class
-*.o
-*.a
-*.pyc
-*.pyo'''.split(/\r?\n/)
-
-MINIMATCH_OPTIONS = { matchBase: true, dot: true, flipNegate: true }
-BASE_IGNORE_RULES = (new Minimatch(rule, MINIMATCH_OPTIONS) for rule in base_excludes when rule)
 
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
