@@ -23,5 +23,8 @@
     "wrench": "~1.4.2",
     "mocha": "~1.12.0",
     "chai": "~1.6.0"
+  },
+  "optionalDependencies": {
+    "tty.js": "git://github.com/rissem/tty.js.git#embeddable"
   }
 }
