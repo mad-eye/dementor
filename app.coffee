@@ -5,9 +5,9 @@ util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
-
 dementor = null
 debug = false
+tty = require 'tty.js'
 
 run = ->
   program = require 'commander'
@@ -20,6 +20,7 @@ run = ->
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
     .option('-d --debug', 'Show debug output (may be noisy)')
+    .option('-t --term', 'Share terminal in MadEye session (premium feature)')
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
@@ -28,6 +29,10 @@ run = ->
     )
   program.parse(process.argv)
   debug = program.debug
+
+  if program.term
+    ttyServer = new tty.Server
+    ttyServer.listen 8081, "localhost"
 
   httpClient = new HttpClient Settings.azkabanUrl
   socket = io.connect Settings.azkabanUrl,
