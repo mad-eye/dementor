@@ -10,10 +10,10 @@ wrapError = (err) ->
 #callback: (body) ->; takes an obj (parsed from JSON) body
 #errors are passed as an {error:} object
 class HttpClient
-  constructor: (@host) ->
+  constructor: (@url) ->
 
   targetUrl: (action) ->
-    "http://#{@host}/#{action}"
+    "#{@url}/#{action}"
 
   post: (options, params, callback) ->
     options.method = 'POST'

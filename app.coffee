@@ -29,7 +29,7 @@ run = ->
   program.parse(process.argv)
   debug = program.debug
 
-  httpClient = new HttpClient Settings.azkabanHost
+  httpClient = new HttpClient Settings.azkabanUrl
   socket = io.connect Settings.azkabanUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
