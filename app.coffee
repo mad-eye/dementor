@@ -35,7 +35,7 @@ run = ->
     ttyServer.listen 8081, "localhost"
 
   httpClient = new HttpClient Settings.azkabanUrl
-  socket = io.connect Settings.azkabanUrl,
+  socket = io.connect Settings.socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   

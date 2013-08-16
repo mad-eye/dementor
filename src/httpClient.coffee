@@ -17,14 +17,17 @@ class HttpClient
 
   post: (options, params, callback) ->
     options.method = 'POST'
+    options.rejectUnauthorized = false
     @request options, params, callback
 
   put: (options, params, callback) ->
     options.method = 'PUT'
+    options.rejectUnauthorized = false
     @request options, params, callback
 
   get: (options, params, callback) ->
     options.method = 'GET'
+    options.rejectUnauthorized = false
     @request options, params, callback
 
   #callback : (body) ->
