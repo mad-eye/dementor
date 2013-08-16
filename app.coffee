@@ -5,6 +5,7 @@ util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
+LogListener = require './src/logListener'
 
 dementor = null
 debug = false
@@ -20,6 +21,7 @@ run = ->
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
     .option('-d --debug', 'Show debug output (may be noisy)')
+    .option('--trace', 'Show trace-level debug output (will be very noisy)')
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
@@ -28,8 +30,17 @@ run = ->
     )
   program.parse(process.argv)
   debug = program.debug
+  logLevel = switch
+    when program.trace then 'trace'
+    when program.debug then 'debug'
+    else 'info'
+  listener = new LogListener
+    logLevel: logLevel
+    onError: (err) ->
+      shutdown(err.code ? 1)
 
   httpClient = new HttpClient Settings.azkabanUrl
+  listener.log 'debug', "Connecting to socketUrl #{Settings.socketUrl}"
   socket = io.connect Settings.socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
@@ -37,9 +48,10 @@ run = ->
   dementor = new Dementor process.cwd(), httpClient, socket, program.clean, program.ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
-  logEvents dementor
-  logEvents dementor.projectFiles
-  logEvents dementor.fileTree
+  listener.listen dementor, 'dementor'
+  listener.listen dementor.projectFiles, 'projectFiles'
+  listener.listen dementor.fileTree, 'fileTree'
+  listener.listen httpClient, 'httpClient'
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -60,21 +72,6 @@ run = ->
       0
     else
       throw err
-
-logEvents = (emitter) ->
-  if emitter
-    emitter.on 'error', (err) ->
-      console.error clc.red('ERROR:'), err.message
-      shutdown(err.code ? 1)
-
-    emitter.on 'warn', (message) ->
-      console.error clc.bold('Warning:'), message
-
-    emitter.on 'info', (msgs...) ->
-      console.log msgs
-
-    emitter.on 'debug', (msgs...) ->
-      console.log clc.blackBright msgs if debug
 
 # Shutdown section
 SHUTTING_DOWN = false

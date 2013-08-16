@@ -10,6 +10,7 @@ _path = require 'path'
 
 class Dementor extends events.EventEmitter
   constructor: (@directory, @httpClient, socket, clean=false, ignorefile) ->
+    @emit 'trace', "Constructing with directory #{@directory}"
     @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
@@ -78,6 +79,7 @@ class Dementor extends events.EventEmitter
           @watchProject()
 
   shutdown: (callback) ->
+    @emit 'trace', "Shutting down."
     if @socket? and @socket.connected
       @.on 'DISCONNECT', callback if callback
       @socket.disconnect()
@@ -149,6 +151,7 @@ class Dementor extends events.EventEmitter
 
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'
+    @emit 'trace', 'Watching file tree.'
 
 
   #####
@@ -189,6 +192,7 @@ class Dementor extends events.EventEmitter
       fileId = data.fileId
       unless fileId then callback errors.new 'MISSING_PARAM'; return
       path = @fileTree.findById(fileId)?.path
+      @emit 'trace', "Remote request for #{path}"
       @projectFiles.readFile path, callback
 
     #callback: (err) =>, errors are encoded as {error:}
@@ -199,6 +203,7 @@ class Dementor extends events.EventEmitter
         callback errors.new 'MISSING_PARAM'; return
       @serverOps[fileId] = action: messageAction.SAVE_LOCAL_FILE, timestamp: new Date
       path = @fileTree.findById(fileId)?.path
+      @emit 'trace', "Remote save for #{path}"
       @projectFiles.writeFile path, contents, (err) ->
         console.log "Saving file " + clc.bold path unless err
         callback err
