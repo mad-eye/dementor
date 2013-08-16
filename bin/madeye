@@ -2,6 +2,7 @@
 
 process.env.MADEYE_APOGEE_URL="https://madeye.io"
 process.env.MADEYE_AZKABAN_URL="https://api.madeye.io"
+process.env.MADEYE_SOCKET_URL="http://madeye.io:4004"
 
 require("coffee-script");
 require("../app").run();
