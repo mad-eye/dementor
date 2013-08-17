@@ -39,7 +39,7 @@ class Dementor extends events.EventEmitter
       timestamp : new Date()
       projectId : @projectId
     @socket.emit messageAction.METRIC, metric
-    @emit 'warn', msg
+    @emit 'message-warning', msg
 
   enable: ->
     @projectFiles.readFileTree (err, files) =>
@@ -175,7 +175,7 @@ class Dementor extends events.EventEmitter
       @addMetric "RECONNECTED"
 
     socket.on 'connect_failed', (reason) =>
-      console.warn "Connection failed:", reason
+      @handleWarning "Connection failed: " + reason
       @addMetric "CONNECTION_FAILED"
 
     socket.on 'disconnect', =>

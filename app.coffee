@@ -60,6 +60,9 @@ run = ->
     util.puts "View your project at " + clc.bold apogeeUrl
     util.puts "Use Google Hangout at " + clc.bold hangoutUrl
 
+  dementor.on 'message-warning', (msg) ->
+    console.warn clc.bold('Warning:'), msg
+
   dementor.enable()
 
 
