@@ -2,6 +2,9 @@ _ = require 'underscore'
 request = require 'request'
 querystring = require 'querystring'
 {errors, errorType} = require '../madeye-common/common'
+events = require 'events'
+
+require('https').globalAgent.options.rejectUnauthorized = false
 
 wrapError = (err) ->
   return err if err.madeye
@@ -9,11 +12,12 @@ wrapError = (err) ->
 
 #callback: (body) ->; takes an obj (parsed from JSON) body
 #errors are passed as an {error:} object
-class HttpClient
-  constructor: (@host) ->
+class HttpClient extends events.EventEmitter
+  constructor: (@url) ->
+    @emit 'debug', "Constructed with url #{@url}"
 
   targetUrl: (action) ->
-    "http://#{@host}/#{action}"
+    "#{@url}/#{action}"
 
   post: (options, params, callback) ->
     options.method = 'POST'
@@ -30,19 +34,21 @@ class HttpClient
   #callback : (body) ->
   #errors are encoded as body={error:}
   request: (options, params, callback) ->
+#    options.rejectUnauthorized = false
     if typeof params == 'function'
       callback = params
       params = {}
     options.uri =  @targetUrl (options['action'] ? '')
     options.qs = querystring.stringify params if options.method == 'GET'
     delete options['action']
+    @emit 'trace', "#{options.method} #{options.uri}"
     request options, (err, res, body) ->
       if err
+        @emit 'debug', "#{options.method} #{options.uri} returned error"
         err = wrapError err
         body = {error:err}
       else
-        #if res.statusCode != 200
-          #console.warn "Unexpected status code:" + res.statusCode
+        @emit 'trace', "#{options.method} #{options.uri} returned #{res.statusCode}"
         body = JSON.parse(body) if typeof body == 'string'
       callback(body)
 

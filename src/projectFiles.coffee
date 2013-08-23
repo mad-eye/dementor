@@ -7,7 +7,7 @@ clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
-{Minimatch} = require 'minimatch'
+IgnoreRules = require './ignoreRules'
 
 #Info Events:
 #  'error', message:, file?:
@@ -30,60 +30,16 @@ async = require 'async'
 #    oldPath:
 #    newPath:
 
-base_excludes = '''
-*~
-#*#
-.#*
-%*%
-._*
-*.swp
-*.swo
-CVS
-SCCS
-.svn
-.git
-.bzr
-.hg
-_MTN
-_darcs
-.meteor
-node_modules
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-Icon?
-ehthumbs.db
-Thumbs.db
-*.class
-*.o
-*.a
-*.pyc
-*.pyo'''.split(/\r?\n/)
-
-MINIMATCH_OPTIONS = { matchBase: true, dot: true, flipNegate: true }
-BASE_IGNORE_RULES = (new Minimatch(rule, MINIMATCH_OPTIONS) for rule in base_excludes when rule)
-
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
-  constructor: (@directory, @ignorefile) ->
+  constructor: (@directory, ignorepath) ->
     @fileWatcher = require 'chokidar'
+    @loadIgnoreRules ignorepath
 
   cleanPath: (path) ->
     return unless path?
     path = _path.relative(@directory, path)
-    @standardizePath path
-
-  standardizePath: (path) ->
-    return unless path?
-    return path if _path.sep == '/'
-    return path.split(_path.sep).join('/')
-
-  localizePath: (path) ->
-    return unless path?
-    return path if _path.sep == '/'
-    return path.split('/').join(_path.sep)
+    standardizePath path
 
   wrapError: (error) ->
     return null unless error
@@ -100,11 +56,21 @@ class ProjectFiles extends events.EventEmitter
     #console.error "Found error:", newError ? error
     return newError ? error
 
+  loadIgnoreRules: (ignorepath) ->
+    unless ignorepath
+      try
+        ignorefile = fs.readFileSync(_path.join @directory, ".madeyeignore")
+      catch e
+    else
+      ignorefile = fs.readFileSync(_path.join @directory, ignorepath)
+
+    @ignoreRules = new IgnoreRules ignorefile
+    callback?()
 
   #callback: (err, body) -> ...
   readFile: (filePath, callback) ->
     return callback errors.new 'NO_FILE' unless filePath
-    filePath = @localizePath filePath
+    filePath = localizePath filePath
     filePath = _path.join @directory, filePath
     fs.readFile filePath, 'utf-8', (err, contents) =>
       callback @wrapError(err), contents
@@ -112,7 +78,7 @@ class ProjectFiles extends events.EventEmitter
   #callback: (err) -> ...
   writeFile: (filePath, contents, callback) ->
     return callback errors.new 'NO_FILE' unless filePath
-    filePath = @localizePath filePath
+    filePath = localizePath filePath
     filePath = _path.join @directory, filePath
     fs.writeFile filePath, contents, (err) =>
       callback @wrapError err
@@ -139,43 +105,16 @@ class ProjectFiles extends events.EventEmitter
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
 
-  #based loosely off of https://github.com/isaacs/fstream-ignore/blob/master/ignore.js
-  addIgnoreFile: (file, callback)->
-    return callback?() unless file
-    addIgnoreRules = (rules) =>
-      rules = rules.filter (rule)->
-        rule = rule.trim()
-        rule && not rule.match(/^#/)
-      return if !rules.length
-      @ignoreRules ?= []
-      rules.forEach (rule) =>
-        rule = _.str.rstrip rule.trim(), '/'
-        @ignoreRules.push new Minimatch rule, MINIMATCH_OPTIONS
-    rules = file.toString().split(/\r?\n/)
-    addIgnoreRules rules
-    callback?()
-
   shouldInclude: (path) ->
-    return false unless path?
-    return false if (_.some BASE_IGNORE_RULES, (rule) -> rule.match path)
-    return false if (_.some @ignoreRules, (rule) -> rule.match path)
-    return true
+    not @ignoreRules.shouldIgnore path
 
   #callback: (err, results) -> ...
   readFileTree: (callback) ->
-    unless @ignorefile
-      try
-        madeyeIgnore = fs.readFileSync(_path.join @directory, ".madeyeignore")
-      catch e
-    else
-      madeyeIgnore = fs.readFileSync(_path.join @directory, @ignorefile)
-
-    @addIgnoreFile madeyeIgnore, =>
-      try
-        @readdirRecursive null, (err, files) =>
-          callback @wrapError(err), files
-      catch error
-        callback @wrapError(error), files
+    try
+      @readdirRecursive null, (err, files) =>
+        callback @wrapError(err), files
+    catch error
+      callback @wrapError(error), files
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
@@ -260,5 +199,15 @@ class ProjectFiles extends events.EventEmitter
           #console.log "Finished reading", relDir
           callback error, results
 
+
+exports.standardizePath = standardizePath = (path) ->
+  return unless path?
+  return path if _path.sep == '/'
+  return path.split(_path.sep).join('/')
+
+exports.localizePath = localizePath = (path) ->
+  return unless path?
+  return path if _path.sep == '/'
+  return path.split('/').join(_path.sep)
 
 exports.ProjectFiles = ProjectFiles
