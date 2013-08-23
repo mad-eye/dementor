@@ -5,10 +5,17 @@ util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
+exec = require("child_process").exec
+_s = require 'underscore.string'
 LogListener = require './src/logListener'
 
 dementor = null
 debug = false
+
+getMeteorPid = (meteorPort, callback)->
+  cmd = """lsof -n -i4TCP:#{meteorPort} | grep LISTEN | awk '{print $2}'"""
+  exec cmd, (err, stdout, stderr)->
+    callback null, _s.trim(stdout)
 
 run = ->
   program = require 'commander'
@@ -17,6 +24,7 @@ run = ->
 
   pkg = require './package.json'
 
+  #TODO add tunnel as option
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
@@ -29,10 +37,30 @@ run = ->
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
   program.parse(process.argv)
-  debug = program.debug
+  execute
+    directory:process.cwd()
+    clean: program.clean
+    ignorefile: program.ignorefile
+    tunnel: program.tunnel
+    debug: program.debug
+    trace: program.trace
+
+###
+#options:
+# directory: path
+# clean: bool
+# ignorefile: path
+# tunnel: bool
+# shareOutput: bool
+###
+execute = (options) ->
+  httpClient = new HttpClient Settings.azkabanHost
+  socket = io.connect Settings.azkabanUrl,
+
+  debug = options.debug
   logLevel = switch
-    when program.trace then 'trace'
-    when program.debug then 'debug'
+    when options.trace then 'trace'
+    when options.debug then 'debug'
     else 'info'
   listener = new LogListener
     logLevel: logLevel
@@ -40,12 +68,14 @@ run = ->
       shutdown(err.code ? 1)
 
   httpClient = new HttpClient Settings.azkabanUrl
+  console.log "SETTINGS", Settings
   listener.log 'debug', "Connecting to socketUrl #{Settings.socketUrl}"
   socket = io.connect Settings.socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
-  dementor = new Dementor process.cwd(), httpClient, socket, program.clean, program.ignorefile
+  #TODO: Refactor dementor to take options
+  dementor = new Dementor options.directory, httpClient, socket, options.clean, options.ignorefile, options.tunnel, options.appPort, options.captureViaDebugger
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   listener.listen dementor, 'dementor'
@@ -57,26 +87,49 @@ run = ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
     hangoutUrl = "#{Settings.azkabanUrl}/hangout/#{dementor.projectId}"
 
-    util.puts "View your project at " + clc.bold apogeeUrl
-    util.puts "Use Google Hangout at " + clc.bold hangoutUrl
+    util.puts "View your project with MadEye at " + clc.bold apogeeUrl
+    util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
   dementor.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
   dementor.enable()
 
+  console.log "OPTIONS", options
+  if options.linkToMeteorProcess
+    setInterval ->
+      getMeteorPid options.appPort, (err, pid)->
+        console.log "found meteor pid", pid
+        #TODO if metoer process isn't found then exit this process
+        #how to best handle a rapid restart...
+    , 2000
 
+  process.on 'SIGINT', ->
+    console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
+    shutdown()
 
-  #hack for dealing with exceptions caused by broken links
-  process.on 'uncaughtException', (err)->
-    if err.code == "ENOENT"
-      #Silence the error for now
-      #console.log "File does not exist #{err.path}"
-      0
-    else
-      throw err
+  process.on 'SIGTERM', ->
+    unless options.linkToMeteorProcess
+      console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
+      shutdown()
 
-# Shutdown section
+  #FIXME: Need to listen to projectFiles error, warn, info, and debug events
+
+logEvents = (emitter) ->
+  if emitter
+    emitter.on 'error', (err) ->
+      console.error clc.red('ERROR:'), err.message
+      shutdown(err.code ? 1)
+
+    emitter.on 'warn', (message) ->
+      console.error clc.bold('Warning:'), message
+
+    emitter.on 'info', (message) ->
+      console.log message
+
+    emitter.on 'debug', (message) ->
+      console.log clc.blackBright message if process.env.MADEYE_DEBUG
+
 SHUTTING_DOWN = false
 
 shutdown = (returnVal=0) ->
@@ -97,12 +150,6 @@ shutdownGracefully = (returnVal=0) ->
     process.exit(returnVal || 1)
   , 20*1000
 
-process.on 'SIGINT', ->
-  #console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
-  shutdown()
-
-process.on 'SIGTERM', ->
-  #console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
-  shutdown()
 
 exports.run = run
+exports.execute = execute
