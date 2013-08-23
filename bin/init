@@ -8,6 +8,8 @@ else
     production=""
 fi
 
+npm install --loglevel error $production tty.js
+
 git submodule update --init --recursive
 npm install --loglevel error $production
 #This goes after the top level npm install, so that it can reuse the packages.
