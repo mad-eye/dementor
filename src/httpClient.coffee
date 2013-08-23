@@ -4,6 +4,8 @@ querystring = require 'querystring'
 {errors, errorType} = require '../madeye-common/common'
 events = require 'events'
 
+require('https').globalAgent.options.rejectUnauthorized = false
+
 wrapError = (err) ->
   return err if err.madeye
   errors.new errorType.NETWORK_ERROR, cause:err
@@ -32,7 +34,7 @@ class HttpClient extends events.EventEmitter
   #callback : (body) ->
   #errors are encoded as body={error:}
   request: (options, params, callback) ->
-    options.rejectUnauthorized = false
+#    options.rejectUnauthorized = false
     if typeof params == 'function'
       callback = params
       params = {}
