@@ -18,7 +18,15 @@
     "chokidar": "0.6.2",
     "minimatch": "0.2.12",
     "underscore.string": "2.3.3",
+    "ddp": "0.3.3",
     "moment": "2.1.0"
+  },
+  "main": "lib.js",
+  "devDependencies": {
+    "wrench": "~1.4.2",
+    "mocha": "~1.8.1",
+    "chai": "~1.6.0",
+    "sinon": "~1.7.3"
   },
   "devDependencies": {
     "wrench": "~1.4.2",
