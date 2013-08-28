@@ -49,6 +49,7 @@ run = ->
     tunnel: program.tunnel
     debug: program.debug
     trace: program.trace
+    term: program.term
 
 ###
 #options:
@@ -72,7 +73,7 @@ execute = (options) ->
     onError: (err) ->
       shutdown(err.code ? 1)
 
-  if program.term
+  if options.term
     ttyServer = new tty.Server
     ttyServer.listen 8081, "localhost"
 
@@ -119,23 +120,6 @@ execute = (options) ->
     unless options.linkToMeteorProcess
       console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
       shutdown()
-
-  #FIXME: Need to listen to projectFiles error, warn, info, and debug events
-
-logEvents = (emitter) ->
-  if emitter
-    emitter.on 'error', (err) ->
-      console.error clc.red('ERROR:'), err.message
-      shutdown(err.code ? 1)
-
-    emitter.on 'warn', (message) ->
-      console.error clc.bold('Warning:'), message
-
-    emitter.on 'info', (message) ->
-      console.log message
-
-    emitter.on 'debug', (message) ->
-      console.log clc.blackBright message if process.env.MADEYE_DEBUG
 
 SHUTTING_DOWN = false
 
