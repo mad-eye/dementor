@@ -77,7 +77,6 @@ execute = (options) ->
     ttyServer.listen 8081, "localhost"
 
   httpClient = new HttpClient Settings.azkabanUrl
-  console.log "SETTINGS", Settings
   listener.log 'debug', "Connecting to socketUrl #{Settings.socketUrl}"
   socket = io.connect Settings.socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
@@ -104,7 +103,6 @@ execute = (options) ->
 
   dementor.enable()
 
-  console.log "OPTIONS", options
   if options.linkToMeteorProcess
     setInterval ->
       getMeteorPid options.appPort, (err, pid)->
