@@ -104,13 +104,12 @@ class Dementor extends events.EventEmitter
             ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{tunnel.remote}:127.0.0.1:#{tunnel.local} -o StrictHostKeyChecking=no ubuntu@#{shareServer}"
 #            ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
-#          console.log "COMMAND", ssh_cmd
            exec ssh_cmd, (error, stdout, stderr) ->
              #TODO gracefully handle connection errors here
-#             console.log "Error establishing ssh tunnel", error
-#             console.log stdout
-#             console.log "Error establishing ssh tunnel", stderr
-           console.log "Your site is publicly viewable at", clc.bold "http://#{shareServer}:#{port}"
+             console.log "Error establishing ssh tunnel", error
+             console.log stdout
+             console.log "Error establishing ssh tunnel", stderr
+           console.log "Tunnel Opened On", clc.bold "#{shareServer}:#{tunnel.remote}"
 
         return @handleError result.error if result.error
         @handleWarning result.warning
