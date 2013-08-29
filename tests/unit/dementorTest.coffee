@@ -62,17 +62,17 @@ describe "Dementor", ->
       projects[projectPath] = projectId
       projectFiles.saveProjectIds projects
 
-      dementor = new Dementor projectPath
+      dementor = new Dementor {directory: projectPath}
       assert.equal dementor.projectId, projectId
 
     it "should have null projectId if not previously registered", ->
       projectPath = fileUtils.createProject "nothinghere"
-      dementor = new Dementor projectPath
+      dementor = new Dementor {directory: projectPath}
       assert.equal dementor.projectId, null
 
     it "should set dementor.version", ->
       projectPath = fileUtils.createProject "version"
-      dementor = new Dementor projectPath
+      dementor = new Dementor {directory: projectPath}
       assert.equal dementor.version, (require '../../package.json').version
 
   describe "enable", ->
@@ -85,7 +85,10 @@ describe "Dementor", ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+        dementor = new Dementor
+          directory: projectPath
+          httpClient: defaultHttpClient
+          socket:  new MockSocket
         dementor.on 'enabled', ->
           done()
         dementor.enable()
@@ -116,7 +119,10 @@ describe "Dementor", ->
           files = options.json?['files']
           return {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
             
-        dementor = new Dementor projectPath, httpClient, new MockSocket
+        dementor = new Dementor
+          directory: projectPath
+          httpClient: httpClient
+          socket: new MockSocket
         dementor.on 'warn', (msg) ->
           assert.equal msg, warningMsg
           done()
@@ -130,10 +136,16 @@ describe "Dementor", ->
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "alreadyEnableTest-#{uuid.v4()}", fileMap
         projectId = uuid.v4()
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+        dementor = new Dementor
+          directory: projectPath,
+          httpClient: defaultHttpClient
+          socket: new MockSocket
         dementor.projectFiles.saveProjectId projectId
 
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+        dementor = new Dementor
+          directory: projectPath,
+          httpClient: defaultHttpClient
+          socket: new MockSocket
         dementor.on 'enabled', ->
           done()
         dementor.enable()
@@ -160,7 +172,10 @@ describe "Dementor", ->
       projectPath = fileUtils.createProject "disableTest-#{uuid.v4()}", fileUtils.defaultFileMap
 
       mockSocket = new MockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor = new Dementor
+        directory: projectPath
+        httpClient: defaultHttpClient
+        socket: mockSocket
       dementor.on 'CONNECTED', ->
         dementor.shutdown done
       dementor.on 'DISCONNECT', ->
@@ -184,7 +199,10 @@ describe "Dementor", ->
       projectFiles = new ProjectFiles projectPath
 
       mockSocket = new MockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor = new Dementor
+        directory: projectPath
+        httpClient: defaultHttpClient
+        socket: mockSocket
       dementor.on 'enabled', ->
         done()
       dementor.enable()
@@ -223,7 +241,10 @@ describe "Dementor", ->
       projectFiles = new ProjectFiles projectPath
 
       mockSocket = new MockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor = new Dementor
+        directory: projectPath,
+        httpClient: defaultHttpClient
+        socket: mockSocket
       dementor.on 'READ_FILETREE', ->
         done()
       dementor.enable()
@@ -275,7 +296,10 @@ describe "Dementor", ->
       filePath = "testFile.txt"
 
       mockSocket = new MockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
+      dementor = new Dementor
+        directory: projectPath
+        httpClient: defaultHttpClient
+        socket: mockSocket
       dementor.on 'WATCHING_FILETREE', ->
         done()
       dementor.enable()

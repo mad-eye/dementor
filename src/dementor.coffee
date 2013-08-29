@@ -13,10 +13,18 @@ exec = require("child_process").exec
 
 class Dementor extends events.EventEmitter
   #TODO turn this into object of options
-  constructor: (@directory, @httpClient, socket, clean=false, ignorefile, @tunnel=null, @appPort, @captureViaDebugger) ->
+  constructor: (options)->
+    @directory = options.directory
+    @httpClient = options.httpClient
+    socket = options.socket
+    clean = options.clean? or false
+    ignorefile = options.ignorefile
+    @appPort = options.appPort
+    captureViaDebugger = options.captureViaDebugger
+
     @emit 'trace', "Constructing with directory #{@directory}"
     @projectFiles = new ProjectFiles(@directory, ignorefile)
-    @projectName = _path.basename directory
+    @projectName = _path.basename @directory
     @projectId = @projectFiles.projectIds()[@directory] unless clean
     @fileTree = new FileTree
     @attach socket
