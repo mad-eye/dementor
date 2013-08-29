@@ -98,18 +98,11 @@ class Dementor extends events.EventEmitter
 
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         shareServer = process.env.MADEYE_SHARE_SERVER or "share.madeye.io"
-        if result.project.tunnels?.length > 0
-          fs.chmodSync "#{__dirname}/../lib/id_rsa", "400"
+        if result.project.tunnels?.length
           for tunnel in result.project.tunnels
-            ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{tunnel.remote}:127.0.0.1:#{tunnel.local} -o StrictHostKeyChecking=no ubuntu@#{shareServer}"
-#            ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
-
-           exec ssh_cmd, (error, stdout, stderr) ->
-             #TODO gracefully handle connection errors here
-             console.log "Error establishing ssh tunnel", error
-             console.log stdout
-             console.log "Error establishing ssh tunnel", stderr
-           console.log "Tunnel Opened On", clc.bold "#{shareServer}:#{tunnel.remote}"
+            TunnelManager.startTunnel(name, localPort, remotePort)
+            
+            
 
         return @handleError result.error if result.error
         @handleWarning result.warning
@@ -124,6 +117,8 @@ class Dementor extends events.EventEmitter
 
   shutdown: (callback) ->
     @emit 'trace', "Shutting down."
+    #XXX: Does TunnelManager.shutdown need a callback?
+    TunnelManager.shutdown()
     if @socket? and @socket.connected
       @.on 'DISCONNECT', callback if callback
       @socket.disconnect()
