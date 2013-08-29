@@ -94,7 +94,7 @@ execute = (options) ->
     tunnel: options.tunnel
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
-    terminal: options.terminal
+    term: options.term
 
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 

@@ -172,11 +172,8 @@ class ProjectFiles extends events.EventEmitter
 
   #callback: (error, files) ->
   readdirRecursive : (relDir='', callback) ->
-    console.log "DIRECTORY", @directory
-    console.log "relDir", relDir
     currentDir = _path.join(@directory, relDir)
     results = []
-    console.log "calling readdirRecursive for", currentDir
     fs.readdir currentDir, (err, fileNames) =>
       if err
         if err.code == 'EACCES'

@@ -21,6 +21,8 @@ class Dementor extends events.EventEmitter
     ignorefile = options.ignorefile
     @appPort = options.appPort
     captureViaDebugger = options.captureViaDebugger
+    @tunnel = options.tunnel
+    @terminal = options.term
 
     @emit 'trace', "Constructing with directory #{@directory}"
     @projectFiles = new ProjectFiles(@directory, ignorefile)
@@ -83,29 +85,32 @@ class Dementor extends events.EventEmitter
         files: files
         version: @version
         nodeVersion: process.version
+        tunnels: []
 
       if @tunnel
-        json.tunnels = [
-          {
-            name: "app"
-            local: @tunnel
-          }
-        ]
+        json.tunnels.push
+          name: "app"
+          local: @tunnel
+      if @terminal
+        json.tunnels.push
+          name: "terminal"
+          local: 8081 #TODO pick a more uncommon port
+
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         shareServer = process.env.MADEYE_SHARE_SERVER or "share.madeye.io"
-        if result.project.tunnel and result.project.port
-          port = result.project.port
+        if result.project.tunnels?.length > 0
           fs.chmodSync "#{__dirname}/../lib/id_rsa", "400"
-          ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@#{shareServer}"
-#          ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
+          for tunnel in result.project.tunnels
+            ssh_cmd = "ssh -tt -i #{__dirname}/../lib/id_rsa -N -R #{tunnel.remote}:127.0.0.1:#{tunnel.local} -o StrictHostKeyChecking=no ubuntu@#{shareServer}"
+#            ssh_cmd = "ssh -v -tt -i #{__dirname}/../lib/id_rsa -N -R #{port}:127.0.0.1:#{@appPort} -o StrictHostKeyChecking=no ubuntu@share.madeye.io"
 
 #          console.log "COMMAND", ssh_cmd
-          exec ssh_cmd, (error, stdout, stderr) ->
-            #TODO gracefully handle connection errors here
-            console.log "Error establishing ssh tunnel", error
-            console.log stdout
-            console.log "Error establishing ssh tunnel", stderr
-          console.log "Your site is publicly viewable at", clc.bold "http://#{shareServer}:#{port}"
+           exec ssh_cmd, (error, stdout, stderr) ->
+             #TODO gracefully handle connection errors here
+#             console.log "Error establishing ssh tunnel", error
+#             console.log stdout
+#             console.log "Error establishing ssh tunnel", stderr
+           console.log "Your site is publicly viewable at", clc.bold "http://#{shareServer}:#{port}"
 
         return @handleError result.error if result.error
         @handleWarning result.warning
