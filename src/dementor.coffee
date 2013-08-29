@@ -13,7 +13,7 @@ exec = require("child_process").exec
 
 class Dementor extends events.EventEmitter
   #TODO turn this into object of options
-  constructor: (@directory, @httpClient, socket, clean=false, ignorefile, @tunnel=false, @appPort, @captureViaDebugger) ->
+  constructor: (@directory, @httpClient, socket, clean=false, ignorefile, @tunnel=null, @appPort, @captureViaDebugger) ->
     @emit 'trace', "Constructing with directory #{@directory}"
     @projectFiles = new ProjectFiles(@directory, ignorefile)
     @projectName = _path.basename directory
@@ -75,8 +75,14 @@ class Dementor extends events.EventEmitter
         files: files
         version: @version
         nodeVersion: process.version
-        tunnel: @tunnel
 
+      if @tunnel
+        json.tunnels = [
+          {
+            name: "app"
+            local: @tunnel
+          }
+        ]
       @httpClient.request {method: method, action:action, json: json}, (result) =>
         shareServer = process.env.MADEYE_SHARE_SERVER or "share.madeye.io"
         if result.project.tunnel and result.project.port

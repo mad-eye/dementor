@@ -35,6 +35,7 @@ run = ->
 
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
+    .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
@@ -56,7 +57,7 @@ run = ->
 # directory: path
 # clean: bool
 # ignorefile: path
-# tunnel: bool
+# tunnel: integer
 # shareOutput: bool
 ###
 execute = (options) ->
