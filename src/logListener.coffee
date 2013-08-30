@@ -25,13 +25,25 @@ class LogListener
   _printlog: (data) ->
     timestr = moment(data.timestamp).format("YYYY-MM-DD HH:mm:ss.SSS")
     data.name ?= 'root'
-    prefix = "[#{timestr} #{data.name}] "
-
     color = colors[data.level]
-    if levelnums[data.level] <= levelnums['warn']
-      console.error prefix, color(data.level+": "), data.message
+    prefix = "#{timestr} #{color(data.level+": ")} [#{data.name}] "
+
+    if 'string' == typeof data.message
+      message = data.message
     else
-      console.log prefix, color(data.level+": "), data.message
+      #Passing message as an array of args.
+      message = ''
+      for msg in data.message
+        if 'string' == typeof msg
+          message += msg + ' '
+        else
+          message += JSON.stringify(msg) + ' '
+      data.message = message
+
+    if levelnums[data.level] <= levelnums['warn']
+      console.error prefix, message
+    else
+      console.log prefix, message
 
 
   log: (level, message) ->
