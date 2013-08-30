@@ -1,3 +1,4 @@
+async = require 'async'
 {ProjectFiles, fileEventType} = require './projectFiles'
 FileTree = require './fileTree'
 {HttpClient} = require './httpClient'
@@ -9,27 +10,28 @@ clc = require 'cli-color'
 _path = require 'path'
 exec = require("child_process").exec
 #captureProcessOutput = require("./injector/inject").captureProcessOutput
-{FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
+{TERMINAL_PORT, FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
   #TODO turn this into object of options
   constructor: (options)->
     @directory = options.directory
-    @httpClient = options.httpClient
-    socket = options.socket
-    clean = options.clean? or false
-    ignorefile = options.ignorefile
+    @projectName = _path.basename @directory
+    @emit 'debug', "Constructing project #{@projectName} with directory #{@directory}"
+
     @appPort = options.appPort
     captureViaDebugger = options.captureViaDebugger
     @tunnel = options.tunnel
     @terminal = options.term
 
-    @emit 'trace', "Constructing with directory #{@directory}"
-    @projectFiles = new ProjectFiles(@directory, ignorefile)
-    @projectName = _path.basename @directory
-    @projectId = @projectFiles.projectIds()[@directory] unless clean
-    @fileTree = new FileTree
+    @httpClient = options.httpClient
+    @tunnelManager = options.tunnelManager
+    socket = options.socket
     @attach socket
+
+    @projectFiles = new ProjectFiles(@directory, options.ignorefile)
+    @projectId = @projectFiles.projectIds()[@directory] unless options.clean
+    @fileTree = new FileTree
     @version = require('../package.json').version
     @serverOps = {}
 
@@ -62,63 +64,52 @@ class Dementor extends events.EventEmitter
         console.log "capturing"
         captureProcessOutput(pid)
 
-    @projectFiles.readFileTree (err, files) =>
+    @_readFileTree (err, files) =>
       return @handleError err if err
-      unless files?
-        error = message: "No files found!"
-        return @handleError error
-      @emit 'debug', "Found #{files.length} files"
-      if files.length > FILE_HARD_LIMIT
-        return @handleError ERROR_TOO_MANY_FILES
-      else if files.length > FILE_SOFT_LIMIT
-        @handleWarning WARNING_MANY_FILES
-      @addMetric 'READ_FILETREE'
-      action = method = null
-      if @projectId
-        action = "project/#{@projectId}"
-        method = 'PUT'
-      else
-        action = "project"
-        method = 'POST'
-      json =
-        projectName: @projectName
-        files: files
-        version: @version
-        nodeVersion: process.version
-        tunnels: []
 
-      if @tunnel
-        json.tunnels.push
-          name: "app"
-          local: @tunnel
-      if @terminal
-        json.tunnels.push
-          name: "terminal"
-          local: 8081 #TODO pick a more uncommon port
+      #TODO: Run this in parallel
+      @_setupTunnels (err, tunnels) =>
+        return @handleError err if err
+        @emit 'trace', "Established tunnels:", tunnels
 
-      @httpClient.request {method: method, action:action, json: json}, (result) =>
-        shareServer = process.env.MADEYE_SHARE_SERVER or "share.madeye.io"
-        if result.project.tunnels?.length
-          for tunnel in result.project.tunnels
-            TunnelManager.startTunnel(name, localPort, remotePort)
-            
-            
+        #Http request to register project
+        action = method = null
+        if @projectId
+          action = "project/#{@projectId}"
+          method = 'PUT'
+        else
+          action = "project"
+          method = 'POST'
+        json =
+          projectName: @projectName
+          files: files
+          version: @version
+          nodeVersion: process.version
+          tunnels: tunnels
 
-        return @handleError result.error if result.error
-        @handleWarning result.warning
-        @projectId = result.project._id
-        @fileTree.projectId = @projectId
-        @projectFiles.saveProjectId @projectId
-        @fileTree.addFiles result.files
-        @addMetric 'enabled'
-        #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
-        @socket.socket.connect =>
-          @watchProject()
+
+        @httpClient.request {method: method, action:action, json: json}, (result) =>
+          if result.project.tunnels?.length
+            for tunnel in result.project.tunnels
+              TunnelManager.startTunnel(name, localPort, remotePort)
+              
+              
+
+          return @handleError result.error if result.error
+          @handleWarning result.warning
+          @projectId = result.project._id
+          @fileTree.projectId = @projectId
+          @projectFiles.saveProjectId @projectId
+          @fileTree.addFiles result.files
+          @addMetric 'enabled'
+          #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
+          @socket.socket.connect =>
+            @watchProject()
 
   shutdown: (callback) ->
     @emit 'trace', "Shutting down."
     #XXX: Does TunnelManager.shutdown need a callback?
-    TunnelManager.shutdown()
+    @tunnelManager.shutdown()
     if @socket? and @socket.connected
       @.on 'DISCONNECT', callback if callback
       @socket.disconnect()
@@ -133,6 +124,42 @@ class Dementor extends events.EventEmitter
     @socket.emit messageAction.METRIC, metric
     @emit type
  
+  #####
+  # Helper functions for enable
+
+  #callback: (err, files) ->
+  _readFileTree: (callback) ->
+    @projectFiles.readFileTree (err, files) =>
+      return callback err if err
+      unless files?
+        error = message: "No files found!"
+        return callback error
+      @emit 'debug', "Found #{files.length} files"
+      if files.length > FILE_HARD_LIMIT
+        return callback ERROR_TOO_MANY_FILES
+      else if files.length > FILE_SOFT_LIMIT
+        @handleWarning WARNING_MANY_FILES
+      @addMetric 'READ_FILETREE'
+      callback null, files
+
+  #callback: (err, tunnels) ->
+  _setupTunnels: (callback) ->
+    tunnels = []
+    #TODO: enable web tunneling.
+    #if @tunnel
+      #tunnels.push
+        #name: "app"
+        #local: @tunnel
+    if @terminal
+      tunnels.push
+        name: "terminal"
+        local: TERMINAL_PORT
+    
+    async.map tunnels, (tunnel, cb) =>
+      @tunnelManager.startTunnel tunnel, cb
+    , callback
+
+
   #####
   # Events from ProjectFiles
 
