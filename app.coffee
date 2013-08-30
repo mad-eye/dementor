@@ -79,6 +79,7 @@ execute = (options) ->
 
   if options.term
     ttyServer = new tty.Server
+      cwd: process.cwd()
     ttyServer.listen constants.TERMINAL_PORT, "localhost"
 
   httpClient = new HttpClient Settings.azkabanUrl
