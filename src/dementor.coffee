@@ -87,7 +87,6 @@ class Dementor extends events.EventEmitter
           nodeVersion: process.version
           tunnels: tunnels
 
-
         @httpClient.request {method: method, action:action, json: json}, (result) =>
           return @handleError result.error if result.error
           @handleWarning result.warning
@@ -95,7 +94,7 @@ class Dementor extends events.EventEmitter
           @fileTree.projectId = @projectId
           @projectFiles.saveProjectId @projectId
           @fileTree.addFiles result.files
-          @addMetric 'enabled'
+          @emit 'enabled'
           #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
           @socket.socket.connect =>
             @watchProject()
@@ -133,25 +132,26 @@ class Dementor extends events.EventEmitter
         return callback ERROR_TOO_MANY_FILES
       else if files.length > FILE_SOFT_LIMIT
         @handleWarning WARNING_MANY_FILES
-      @addMetric 'READ_FILETREE'
       callback null, files
 
   #callback: (err, tunnels) ->
   _setupTunnels: (callback) ->
-    tunnels = []
+    tasks = {}
     #TODO: enable web tunneling.
     #if @tunnel
-      #tunnels.push
-        #name: "app"
-        #local: @tunnel
+      #tasks['app'] = (cb) =>
+        #tunnel =
+          #name: "app"
+          #local: @tunnel
+        #@tunnelManager.startTunnel tunnel, cb
     if @terminal
-      tunnels.push
-        name: "terminal"
-        local: TERMINAL_PORT
-    
-    async.map tunnels, (tunnel, cb) =>
-      @tunnelManager.startTunnel tunnel, cb
-    , callback
+      tasks['terminal'] = (cb) =>
+        tunnel =
+          name: "terminal"
+          local: TERMINAL_PORT
+        @tunnelManager.startTunnel tunnel, cb
+
+    async.parallel tasks, callback
 
 
   #####
@@ -210,7 +210,6 @@ class Dementor extends events.EventEmitter
           @fileTree.remove file._id for file in data.files
 
     @projectFiles.watchFileTree()
-    @addMetric 'WATCHING_FILETREE'
     @emit 'trace', 'Watching file tree.'
 
 
@@ -225,21 +224,20 @@ class Dementor extends events.EventEmitter
     return unless socket?
 
     socket.on 'connect', =>
-      @addMetric "CONNECTED"
+      @emit 'trace', "Socket connected"
       clearInterval @reconnectInterval
       @reconnectInterval = null
       @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
-        @addMetric 'HANDSHAKE_RECEIVED'
+        @emit 'trace', 'Handshake received'
 
     socket.on 'reconnect', =>
-      @addMetric "RECONNECTED"
+      @emit 'trace', "Socket reconnected"
 
     socket.on 'connect_failed', (reason) =>
       @handleWarning "Connection failed: " + reason
-      @addMetric "CONNECTION_FAILED"
 
     socket.on 'disconnect', =>
-      @addMetric "DISCONNECT"
+      @emit 'trace', "Socket disconnected"
       @reconnectInterval = setInterval (->
         socket.socket.connect()
       ), 10*1000

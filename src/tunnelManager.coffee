@@ -42,7 +42,7 @@ class TunnelManager extends events.EventEmitter
       console.log "[#{name} stderr] " + data
       if match = assignedPortRegex.exec data
         @emit 'trace', "Found match", match
-        port = match[1]
+        port = parseInt(match[1], 10)
         @emit 'debug', "Found port #{port} for #{name}"
         tunnel.remote = port
         callback null, tunnel
