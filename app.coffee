@@ -1,13 +1,15 @@
 {Dementor} = require('./src/dementor')
 {HttpClient} = require('./src/httpClient')
 {Settings} = require './madeye-common/common'
+TunnelManager = require './src/tunnelManager'
 util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
 exec = require("child_process").exec
 _s = require 'underscore.string'
-LogListener = require './src/logListener'
+{LogListener} = require './madeye-common/common'
+constants = require './src/constants'
 
 dementor = null
 debug = false
@@ -62,7 +64,8 @@ run = ->
 ###
 execute = (options) ->
   httpClient = new HttpClient Settings.azkabanHost
-  socket = io.connect Settings.azkabanUrl,
+  socket = io.connect Settings.azkabanUrl
+  tunnelManager = new TunnelManager
 
   debug = options.debug
   logLevel = switch
@@ -76,19 +79,20 @@ execute = (options) ->
 
   if options.term
     ttyServer = new tty.Server
-    ttyServer.listen 8081, "localhost"
+    ttyServer.listen constants.TERMINAL_PORT, "localhost"
 
   httpClient = new HttpClient Settings.azkabanUrl
   listener.log 'debug', "Connecting to socketUrl #{Settings.socketUrl}"
   socket = io.connect Settings.socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
-  
+
   #TODO: Refactor dementor to take options
   dementor = new Dementor
     directory: options.directory
     httpClient: httpClient
     socket: socket
+    tunnelManager: tunnelManager
     clean: options.clean
     ignorefile: options.ignorefile
     tunnel: options.tunnel
@@ -102,6 +106,7 @@ execute = (options) ->
   listener.listen dementor.projectFiles, 'projectFiles'
   listener.listen dementor.fileTree, 'fileTree'
   listener.listen httpClient, 'httpClient'
+  listener.listen tunnelManager, 'tunnelManager'
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
@@ -146,7 +151,7 @@ shutdownGracefully = (returnVal=0) ->
   dementor.shutdown ->
     console.log "Closed out connections."
     process.exit returnVal
- 
+
   setTimeout ->
     console.error "Could not close connections in time, shutting down harder."
     process.exit(returnVal || 1)

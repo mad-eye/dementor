@@ -104,6 +104,9 @@ class ProjectFiles extends events.EventEmitter
     return {} unless fs.existsSync @projectsDbPath()
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
+  getProjectId: ->
+    return @projectIds()[@directory]
+
 
   shouldInclude: (path) ->
     not @ignoreRules.shouldIgnore path

@@ -176,9 +176,9 @@ describe "Dementor", ->
         directory: projectPath
         httpClient: defaultHttpClient
         socket: mockSocket
-      dementor.on 'CONNECTED', ->
+      dementor.on 'connect', ->
         dementor.shutdown done
-      dementor.on 'DISCONNECT', ->
+      dementor.on 'disconnect', ->
         socketClosed = true
       dementor.enable()
 
@@ -245,7 +245,7 @@ describe "Dementor", ->
         directory: projectPath,
         httpClient: defaultHttpClient
         socket: mockSocket
-      dementor.on 'READ_FILETREE', ->
+      dementor.on 'read filetree', ->
         done()
       dementor.enable()
 
@@ -300,7 +300,7 @@ describe "Dementor", ->
         directory: projectPath
         httpClient: defaultHttpClient
         socket: mockSocket
-      dementor.on 'WATCHING_FILETREE', ->
+      dementor.on 'watching filetree', ->
         done()
       dementor.enable()
 
