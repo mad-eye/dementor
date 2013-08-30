@@ -26,7 +26,8 @@ class TunnelManager extends events.EventEmitter
     ssh_args = [
       #"-v", #TODO: Allow -v option on debug level logging?
       "-tt",
-      "-i #{ID_FILE_PATH}",
+      "-i",
+      ID_FILE_PATH,
       "-N",
       "-R #{options.remote}:127.0.0.1:#{options.local}",
       "-o StrictHostKeyChecking=no",
