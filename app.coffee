@@ -8,7 +8,7 @@ io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
 exec = require("child_process").exec
 _s = require 'underscore.string'
-LogListener = require './src/logListener'
+{LogListener} = require './madeye-common/common'
 constants = require './src/constants'
 
 dementor = null
