@@ -89,12 +89,6 @@ class Dementor extends events.EventEmitter
 
 
         @httpClient.request {method: method, action:action, json: json}, (result) =>
-          if result.project.tunnels?.length
-            for tunnel in result.project.tunnels
-              TunnelManager.startTunnel(name, localPort, remotePort)
-              
-              
-
           return @handleError result.error if result.error
           @handleWarning result.warning
           @projectId = result.project._id
