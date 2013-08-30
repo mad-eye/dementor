@@ -39,9 +39,8 @@ class TunnelManager extends events.EventEmitter
 
     proc.stderr.on 'data', (data) =>
       data = '' + data
-      console.log "[#{name} stderr] " + data
+      @emit 'trace', "[#{name} stderr] " + data
       if match = assignedPortRegex.exec data
-        @emit 'trace', "Found match", match
         port = parseInt(match[1], 10)
         @emit 'debug', "Found port #{port} for #{name}"
         tunnel.remote = port
@@ -49,11 +48,10 @@ class TunnelManager extends events.EventEmitter
 
 
     proc.stdout.on 'data', (data) ->
-      console.log "[#{name} stdout] " + data
-      #TODO: Get the assigned port number, add it to tunnel, do callback
+      @emit 'trace', "[#{name} stdout] " + data
 
     proc.on 'close', (code) =>
-      @emit 'debug', "ssh for tunnel #{name} ended with code #{code}"
+      @emit 'trace', "ssh for tunnel #{name} ended with code #{code}"
       if @shuttingDown
         delete @tunnels[name]
       else

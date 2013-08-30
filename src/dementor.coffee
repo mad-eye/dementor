@@ -30,7 +30,7 @@ class Dementor extends events.EventEmitter
     @attach socket
 
     @projectFiles = new ProjectFiles(@directory, options.ignorefile)
-    @projectId = @projectFiles.projectIds()[@directory] unless options.clean
+    @projectId = @projectFiles.getProjectId() unless options.clean
     @fileTree = new FileTree
     @version = require('../package.json').version
     @serverOps = {}
@@ -66,6 +66,7 @@ class Dementor extends events.EventEmitter
 
     @_readFileTree (err, files) =>
       return @handleError err if err
+      @emit 'read filetree'
 
       #TODO: Run this in parallel
       @_setupTunnels (err, tunnels) =>
@@ -102,9 +103,9 @@ class Dementor extends events.EventEmitter
   shutdown: (callback) ->
     @emit 'trace', "Shutting down."
     #XXX: Does TunnelManager.shutdown need a callback?
-    @tunnelManager.shutdown()
+    @tunnelManager?.shutdown()
     if @socket? and @socket.connected
-      @.on 'DISCONNECT', callback if callback
+      @.on 'disconnect', callback if callback
       @socket.disconnect()
     else
       callback?()
@@ -211,6 +212,7 @@ class Dementor extends events.EventEmitter
 
     @projectFiles.watchFileTree()
     @emit 'trace', 'Watching file tree.'
+    @emit 'watching filetree'
 
 
   #####
@@ -225,6 +227,7 @@ class Dementor extends events.EventEmitter
 
     socket.on 'connect', =>
       @emit 'trace', "Socket connected"
+      @emit 'connect'
       clearInterval @reconnectInterval
       @reconnectInterval = null
       @socket.emit messageAction.HANDSHAKE, @projectId, (err) =>
@@ -238,6 +241,7 @@ class Dementor extends events.EventEmitter
 
     socket.on 'disconnect', =>
       @emit 'trace', "Socket disconnected"
+      @emit 'disconnect'
       @reconnectInterval = setInterval (->
         socket.socket.connect()
       ), 10*1000
