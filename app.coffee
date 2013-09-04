@@ -13,7 +13,10 @@ constants = require './src/constants'
 
 dementor = null
 debug = false
-tty = require 'tty.js'
+try
+  tty = require 'tty.js'
+catch e
+  #No tty.js, so no terminal for you!
 
 getMeteorPid = (meteorPort, callback)->
   cmd = """lsof -n -i4TCP:#{meteorPort} | grep LISTEN | awk '{print $2}'"""
@@ -33,7 +36,6 @@ run = ->
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
     .option('-d --debug', 'Show debug output (may be noisy)')
 
-    .option('-t --term', 'Share terminal in MadEye session (premium feature)')
 
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
@@ -44,6 +46,9 @@ run = ->
       console.log "  Give the returned url to your friends, and you can edit the project"
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
+  if tty
+    program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
+
   program.parse(process.argv)
   execute
     directory:process.cwd()
