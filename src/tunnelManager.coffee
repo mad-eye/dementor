@@ -1,10 +1,13 @@
 events = require 'events'
+net = require 'net'
 {spawn, exec} = require 'child_process'
 fs = require 'fs'
 util = require 'util'
 _path = require 'path'
+constants = require './constants'
 
 ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
+remoteAddr = '0.0.0.0' #FIXME: This accepts all IPV4 connections.  Generalize.
 
 class TunnelManager extends events.EventEmitter
   constructor: (@shareServer) ->
@@ -47,7 +50,7 @@ class TunnelManager extends events.EventEmitter
       clearInterval @reconnectIntervals[tunnel.name]
       delete @reconnectIntervals[tunnel.name]
       @emit 'trace', "Requesting forwarding for remote port #{tunnel.remotePort}"
-      connection.forwardIn '', tunnel.remotePort, (err, remotePort) =>
+      connection.forwardIn remoteAddr, tunnel.remotePort, (err, remotePort) =>
         if err
           @emit 'warn', "Error opening tunnel #{tunnel.name}:", err
         else
@@ -56,11 +59,11 @@ class TunnelManager extends events.EventEmitter
           @emit 'debug', "Remote forwarding port: #{remotePort}"
         callback? err, remotePort
     connection.on 'error', (err) =>
-      @emit 'error', err
+      @emit 'warn', "Tunnel #{tunnel.name} had error:", err
     connection.on 'end', =>
       @emit 'debug', "Tunnel #{tunnel.name} ending"
     connection.on 'close', (hadError) =>
-      @emit 'debug', "Tunnel #{tunnel.name} closing", @shuttingDown
+      @emit 'debug', "Tunnel #{tunnel.name} closing"
       if hadError
         @emit 'warn', "Closing had error:", hadError
       unless @shuttingDown
@@ -74,19 +77,29 @@ class TunnelManager extends events.EventEmitter
 
     connection.on 'tcp connection', (info, accept, reject) =>
       @emit 'trace', "tcp incoming connection:", util.inspect info
-
       stream = accept()
-      stream.on 'data', (data) =>
-        @emit 'trace', "[#{tunnel.name}]", data
-      stream.on 'end', =>
-        @emit 'trace', "[#{tunnel.name}] EOF"
-      stream.on 'error', (err) =>
-        @emit 'warn', "[#{tunnel.name}] error:", err
-      stream.on 'close', (hadErr) =>
-        @emit 'trace', "[#{tunnel.name}] closed, with error:", hadErr
-
+      @_handleIncomingStream stream, tunnel.name
 
     connection.connect @connectionOptions
+
+  _handleIncomingStream: (stream, name) ->
+    stream.on 'data', (data) =>
+      @emit 'trace', "[#{name}] Data received"
+    stream.on 'end', =>
+      @emit 'trace', "[#{name}] EOF"
+    stream.on 'error', (err) =>
+      @emit 'warn', "[#{name}] error:", err
+    stream.on 'close', (hadErr) =>
+      @emit 'trace', "[#{name}] closed", (if hadErr then "with error")
+
+    @emit 'trace', "Pausing stream"
+    stream.pause()
+    @emit 'trace', "Forwarding to localhost:#{constants.TERMINAL_PORT}"
+    socket = net.connect constants.TERMINAL_PORT, 'localhost', =>
+      stream.pipe socket
+      socket.pipe stream
+      stream.resume()
+      @emit 'trace', "Resuming stream"
 
   shutdown: (callback) ->
     @emit 'trace', 'Shutting down TunnelManager'
