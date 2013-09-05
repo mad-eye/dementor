@@ -1,69 +1,100 @@
 events = require 'events'
 {spawn, exec} = require 'child_process'
 fs = require 'fs'
+util = require 'util'
 _path = require 'path'
 
 ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
-assignedPortRegex = /Allocated port (\d+) for remote forward/
 
 class TunnelManager extends events.EventEmitter
-  constructor: ->
+  constructor: (@shareServer) ->
     @emit 'trace', 'Constructing TunnelManager'
+    @shuttingDown = false
+    @tunnels = {}
+    @Connection = require 'ssh2'
+    @connections = {}
+    @reconnectIntervals = {}
+
+    @connectionOptions =
+      host: @shareServer
+      port: 22
+      username: 'ubuntu'
+      privateKey: require('fs').readFileSync(ID_FILE_PATH)
+
     #npm installs this with the wrong permissions.
     fs.chmodSync ID_FILE_PATH, "400"
-    @tunnels = {}
-    @processes = {}
-    @shuttingDown = false
-    @shareServer = process.env.MADEYE_SHARE_SERVER or "share.madeye.io"
+
 
   #callback: (err, tunnel) ->
   startTunnel: (options, callback)->
-    @emit 'debug', "Starting tunnel #{options.name} for local port #{options.local}"
-    options.remote ?= 0
+    @emit 'debug', "Starting tunnel #{options.name} for local port #{options.localPort}"
+    options.remotePort ?= 0
     name = options.name
-    tunnel = name: name, local: options.local
+    @tunnels[name] = tunnel = name: name, localPort: options.localPort, remotePort: options.remotePort
+    @_openConnection tunnel, (err, remotePort) =>
+      return callback err if err
+      tunnel.remotePort = remotePort if remotePort?
+      callback null, tunnel
 
-    ssh_args = [
-      #"-v", #TODO: Allow -v option on debug level logging?
-      "-tt",
-      "-i",
-      ID_FILE_PATH,
-      "-N",
-      "-R #{options.remote}:127.0.0.1:#{options.local}",
-      "-o StrictHostKeyChecking=no",
-      "ubuntu@#{@shareServer}"
-    ]
-    @emit 'trace', "ssh " + ssh_args.join(" ")
+  #callback: (err, remotePort) ->
+  _openConnection: (tunnel, callback) ->
+    #Useful flag to disable known hosts checking: -oStrictHostKeyChecking=no
+    @connections[tunnel.name] = connection = new @Connection
+    connection.on 'connect', =>
+      @emit 'debug', "Connected to #{@connectionOptions.host}"
+    connection.on 'ready', =>
+      @emit 'trace', "Tunnel #{tunnel.name} ready"
+      clearInterval @reconnectIntervals[tunnel.name]
+      delete @reconnectIntervals[tunnel.name]
+      @emit 'trace', "Requesting forwarding for remote port #{tunnel.remotePort}"
+      connection.forwardIn '', tunnel.remotePort, (err, remotePort) =>
+        if err
+          @emit 'warn', "Error opening tunnel #{tunnel.name}:", err
+        else
+          #remotePort isn't populated if we supplied it with a port.
+          remotePort ?= tunnel.remotePort
+          @emit 'debug', "Remote forwarding port: #{remotePort}"
+        callback? err, remotePort
+    connection.on 'error', (err) =>
+      @emit 'error', err
+    connection.on 'end', =>
+      @emit 'debug', "Tunnel #{tunnel.name} ending"
+    connection.on 'close', (hadError) =>
+      @emit 'debug', "Tunnel #{tunnel.name} closing", @shuttingDown
+      if hadError
+        @emit 'warn', "Closing had error:", hadError
+      unless @shuttingDown
+        @emit 'trace', "Setting up reconnection interval for #{tunnel.name}"
+        @reconnectIntervals[tunnel.name] = setInterval =>
+          @emit 'trace', "Trying to reopen tunnel #{tunnel.name}"
+          @_openConnection tunnel, (err) =>
+            #Need to conncetion.close() here?
+            @emit 'debug', "Tunnel #{tunnel.name} reconnected"
+        , 10*1000
 
-    @processes[name] = proc = spawn "ssh", ssh_args
+    connection.on 'tcp connection', (info, accept, reject) =>
+      @emit 'trace', "tcp incoming connection:", util.inspect info
 
-    proc.stderr.on 'data', (data) =>
-      data = '' + data
-      @emit 'trace', "[#{name} stderr] " + data
-      if match = assignedPortRegex.exec data
-        port = parseInt(match[1], 10)
-        @emit 'debug', "Found port #{port} for #{name}"
-        tunnel.remote = port
-        callback null, tunnel
-
-
-    proc.stdout.on 'data', (data) ->
-      @emit 'trace', "[#{name} stdout] " + data
-
-    proc.on 'close', (code) =>
-      @emit 'trace', "ssh for tunnel #{name} ended with code #{code}"
-      if @shuttingDown
-        delete @tunnels[name]
-      else
-        @emit 'error', "Tunnel #{name} closed with code #{code}"
-        #TODO: reconnect
+      stream = accept()
+      stream.on 'data', (data) =>
+        @emit 'trace', "[#{tunnel.name}]", data
+      stream.on 'end', =>
+        @emit 'trace', "[#{tunnel.name}] EOF"
+      stream.on 'error', (err) =>
+        @emit 'warn', "[#{tunnel.name}] error:", err
+      stream.on 'close', (hadErr) =>
+        @emit 'trace', "[#{tunnel.name}] closed, with error:", hadErr
 
 
-  shutdown: ->
+    connection.connect @connectionOptions
+
+  shutdown: (callback) ->
     @emit 'trace', 'Shutting down TunnelManager'
     @shuttingDown = true
-    for name, proc in @processes
+    for name, connection in @connections
       @emit 'trace', "Killing tunnel #{name}"
-      proc.process.kill()
+      connection.end()
+    process.nextTick (callback ? ->)
 
 module.exports = TunnelManager
+

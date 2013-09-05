@@ -13,7 +13,6 @@ exec = require("child_process").exec
 {TERMINAL_PORT, FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
-  #TODO turn this into object of options
   constructor: (options)->
     @directory = options.directory
     @projectName = _path.basename @directory
@@ -143,13 +142,13 @@ class Dementor extends events.EventEmitter
       #tasks['app'] = (cb) =>
         #tunnel =
           #name: "app"
-          #local: @tunnel
+          #localPort: @tunnel
         #@tunnelManager.startTunnel tunnel, cb
     if @terminal
       tasks['terminal'] = (cb) =>
         tunnel =
           name: "terminal"
-          local: TERMINAL_PORT
+          localPort: TERMINAL_PORT
         @tunnelManager.startTunnel tunnel, cb
 
     async.parallel tasks, callback
