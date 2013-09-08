@@ -1,8 +1,5 @@
-#! /usr/bin/env node
+#! /bin/sh
 
-process.env.MADEYE_APOGEE_URL="https://madeye.io"
-process.env.MADEYE_AZKABAN_URL="http://api.madeye.io:4004"
-process.env.MADEYE_SOCKET_URL="http://madeye.io:4004"
-
-require("coffee-script");
-require("../app").run();
+export MADEYE_BASE_HOST="madeye.io"
+BASEDIR=$(dirname $0)
+node $BASEDIR/madeye.js
