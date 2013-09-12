@@ -28,8 +28,17 @@ class DdpClient extends EventEmitter
 
   shutdown: (callback) ->
     @emit 'debug', 'Shutting down ddpClient'
-    @ddpClient.close()
-    process.nextTick callback if callback
+    if @projectId
+      @ddpClient.call 'closeProject', [@projectId], (err) =>
+        if err
+          @emit 'warn', "Error closing project:", err
+        else
+          @emit 'debug', "Closed project"
+        @ddpClient.close()
+        process.nextTick callback if callback
+    else
+      @ddpClient.close()
+      process.nextTick callback if callback
 
   _initialize: ->
     return if @initialized

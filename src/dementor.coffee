@@ -88,10 +88,7 @@ class Dementor extends events.EventEmitter
 
   shutdown: (callback) ->
     @emit 'trace', "Shutting down."
-    if @socket? and @socket.connected
-      @.on 'DISCONNECT', callback if callback
-      @socket.disconnect()
-    else
+    @ddpClient.shutdown ->
       callback?()
 
   addMetric: (type, metric={}) ->
