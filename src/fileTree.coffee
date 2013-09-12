@@ -18,7 +18,7 @@ class FileTree extends EventEmitter
 
   addFile: (file) ->
     return unless file
-    @filesById[file._id] = file
+    @filesById[file._id] = file if file._id
     @filesByPath[file.path] = file
     @emit 'trace', "Added file #{file.path}"
     removed = removeItemFromArray file.path, @dirsPending

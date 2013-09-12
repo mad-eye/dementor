@@ -7,6 +7,7 @@ events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
+async = require 'async'
 
 class Dementor extends events.EventEmitter
   constructor: (options) ->
@@ -16,6 +17,7 @@ class Dementor extends events.EventEmitter
     @projectId = @projectFiles.projectIds()[options.directory] unless options.clean
 
     @httpClient = options.httpClient
+    @ddpClient = options.ddpClient
     @fileTree = new FileTree
     @attach options.socket
     @version = require('../package.json').version
@@ -35,50 +37,54 @@ class Dementor extends events.EventEmitter
 
   handleWarning: (msg) ->
     return unless msg?
-    metric =
-      level : 'warn'
-      message : msg
-      timestamp : new Date()
-      projectId : @projectId
-    @socket.emit messageAction.METRIC, metric
     @emit 'message-warning', msg
 
   enable: ->
+    #=> and @ aren't worked with async here for some reason
+    self = this
+    async.parallel [
+      (cb) ->
+        self.ddpClient.connect (err) ->
+          return cb err if err
+          self.registerProject cb
+    , (cb) ->
+        self.readFileTree cb
+    #, (cb) ->
+      ##Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
+      #self.socket.socket.connect cb
+    ], (err) ->
+      self.watchProject()
+
+  readFileTree: (callback) ->
     @projectFiles.readFileTree (err, files) =>
-      return @handleError err if err
+      return callback err if err
       unless files?
-        error = message: "No files found!"
-        return @handleError error
+        err = message: "No files found!"
+        return callback err
       @emit 'debug', "Found #{files.length} files"
       if files.length > FILE_HARD_LIMIT
-        return @handleError ERROR_TOO_MANY_FILES
+        return callback ERROR_TOO_MANY_FILES
       else if files.length > FILE_SOFT_LIMIT
         @handleWarning WARNING_MANY_FILES
-      @addMetric 'READ_FILETREE'
-      action = method = null
-      if @projectId
-        action = "project/#{@projectId}"
-        method = 'PUT'
-      else
-        action = "project"
-        method = 'POST'
-      json =
-        projectName: @projectName
-        files: files
-        version: @version
-        nodeVersion: process.version
+      @fileTree.addFiles files
+      @emit 'trace', 'Read filetree'
+      callback()
 
-      @httpClient.request {method: method, action:action, json: json}, (result) =>
-        return @handleError result.error if result.error
-        @handleWarning result.warning
-        @projectId = result.project._id
-        @fileTree.projectId = @projectId
-        @projectFiles.saveProjectId @projectId
-        @fileTree.addFiles result.files
-        @addMetric 'enabled'
-        #Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
-        @socket.socket.connect =>
-          @watchProject()
+  #callback: (err) ->
+  registerProject: (callback) ->
+    params =
+      projectId: @projectId
+      projectName: @projectName
+      version: @version
+      nodeVersion: process.version
+    @ddpClient.registerProject params, (err, projectId, warning) =>
+      return callback err if err
+      if warning
+        @emit 'message-warning', warning
+      @projectId = projectId
+      @emit 'enabled'
+      callback()
+
 
   shutdown: (callback) ->
     @emit 'trace', "Shutting down."

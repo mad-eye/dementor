@@ -1,11 +1,12 @@
 {Dementor} = require('./src/dementor')
+DdpClient = require './src/ddpClient'
 {HttpClient} = require('./src/httpClient')
 {Settings} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
-LogListener = require './src/logListener'
+{LogListener} = require './madeye-common/common'
 
 dementor = null
 debug = false
@@ -45,8 +46,16 @@ run = ->
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
+  ddpClient = new DdpClient
+    host: Settings.ddpHost
+    port: Settings.ddpPort
+  listener.listen ddpClient, 'ddpClient'
+  ddpClient.on 'message-warning', (msg) ->
+    console.warn clc.bold('Warning:'), msg
+
   dementor = new Dementor
     directory: process.cwd()
+    ddpClient: ddpClient
     httpClient: httpClient
     socket: socket
     clean: program.clean

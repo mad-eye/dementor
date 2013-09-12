@@ -1,0 +1,112 @@
+{EventEmitter} = require 'events'
+_ = require 'underscore'
+DDPClient = require "ddp"
+
+DEFAULT_OPTIONS =
+  host: "localhost",
+  port: 3000,
+  auto_reconnect: true,
+  auto_reconnect_timer: 500
+
+makeIdSelector = (id) ->
+  {"_id":{"$type":"oid","$value":id}}
+
+class DdpClient extends EventEmitter
+  constructor: (options) ->
+    options = _.extend DEFAULT_OPTIONS, options
+    @ddpClient = new DDPClient options
+    @initialized = false
+
+  connect: (callback) ->
+    @emit 'trace', 'DDP connecting'
+    @ddpClient.connect (error) =>
+      @emit 'error', error if error
+      unless error
+        @emit 'debug', 'DDP connected'
+        @emit 'connected'
+      @_initialize()
+      callback?(error)
+
+  shutdown: (callback) ->
+    @emit 'debug', 'Shutting down ddpClient'
+    @ddpClient.close()
+    process.nextTick callback if callback
+
+  _initialize: ->
+    return if @initialized
+    @initialized = true
+    @ddpClient.on 'message', (msg) =>
+      @emit 'trace', 'Ddp message: ' + msg
+    @ddpClient.on 'socket-close', (code, message) =>
+      @emit 'debug', "DDP closed: [#{code}] #{message}"
+    @ddpClient.on 'socket-error', (error) =>
+      @emit 'error', error
+    #@subscribe 'projects', @projectId
+    #@subscribe 'files', @projectId
+    #@listenForCommands()
+    #@listenForFiles()
+    
+  subscribe: (collectionName, args...) ->
+    @ddpClient.subscribe collectionName, args, =>
+      @emit 'debug', "Subscribed to #{collectionName}"
+
+  registerProject: (params, callback) ->
+    @emit 'trace', "Registering project with params", params
+    @ddpClient.call 'registerProject', [params], (err, projectId, warning) =>
+      return callback err if err
+      @emit 'debug', "Registered project and got id #{projectId}"
+      callback null, projectId, warning
+      
+    
+  listenForCommands: ->
+    @ddpClient.on 'message', (message) =>
+      msg = JSON.parse message
+      return unless msg.collection == 'commands'
+      if msg.msg == 'added'
+        @emit 'command', msg.fields.command
+        @remove 'commands', msg.id
+      else
+        console.log "Command message:", msg
+        
+    @subscribe 'commands', @projectId
+
+  listenForFiles: ->
+    @ddpClient.on 'message', (message) =>
+      msg = JSON.parse message
+      return unless msg.collection == 'files'
+      switch msg.msg
+        when 'added'
+          file = msg.fields
+          file._id = msg.id
+          @emit 'added', file
+        when 'removed'
+          @emit 'removed', msg.id
+        when 'changed'
+          @emit 'changed', msg.id, msg.fields, msg.cleared
+
+  remove: (collectionName, id) ->
+    @emit 'debug', "Removing file #{id}"
+    #@ddpClient.call "/#{collectionName}/remove", [makeIdSelector(id)], (err, result) =>
+    @ddpClient.call "/#{collectionName}/remove", [id], (err, result) =>
+      @emit 'error', err if err
+      #@emit 'debug', "Remove #{collectionName} returned" unless err
+
+  insert: (collectionName, doc) ->
+    @emit 'debug', "Inserting file #{JSON.stringify doc}"
+    @ddpClient.call "/#{collectionName}/insert", [doc], (err, result) =>
+      @emit 'error', err if err
+      #@emit 'debug', "Insert #{collectionName} returned" unless err
+
+  update: (collectionName, id, modifier) ->
+    @emit 'debug', "Updating file #{id}"
+    #@ddpClient.call "/#{collectionName}/update", [makeIdSelector(id)], (err, result) =>
+    @ddpClient.call "/#{collectionName}/update", [{_id:id}, modifier], (err, result) =>
+      @emit 'error', err if err
+      #@emit 'debug', "Update #{collectionName} returned" unless err
+
+module.exports = DdpClient
+
+#{"msg":"method","method":"/stuffs/remove","params":[{"_id":{"$type":"oid","$value":"51e854f41600d88e81000003"}}],"id":"2"}"]
+
+#["{\"msg\":\"method\",\"method\":\"/projectStatus/update\",\"params\":[{\"_id\":\"BjGioZGExJJAtYL8R\"},{\"$set\":{\"filePath\":\"z/y/x/p.txt\"}}],\"id\":\"7\"}"]
+
