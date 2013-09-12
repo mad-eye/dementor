@@ -5,10 +5,11 @@ uuid = require 'node-uuid'
 {standardizePath, localizePath} = require './projectFiles'
 
 class FileTree extends EventEmitter
-  constructor: ->
+  constructor: (@ddpClient) ->
     @filesById = {}
     @filesByPath = {}
     @dirsPending = []
+    @setupDdpClient()
 
   getFiles: -> _.values @filesById
 
@@ -16,25 +17,47 @@ class FileTree extends EventEmitter
 
   findByPath: (path) -> @filesByPath[path]
 
-  addFile: (file) ->
+  addDdpFile: (file) ->
     return unless file
     @filesById[file._id] = file if file._id
     @filesByPath[file.path] = file
-    @emit 'trace', "Added file #{file.path}"
-    removed = removeItemFromArray file.path, @dirsPending
-    @emit 'trace', "Removed #{file.path} from pending dirs." if removed
+    @emit 'trace', "Added ddp file #{file.path}"
+    #removed = removeItemFromArray file.path, @dirsPending
+    #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
-  addFiles: (files) ->
+  addFsFile: (file) ->
+    @emit 'trace', "Adding fs file:", file
+    return unless file
+    existingFile = @filesByPath[file.path]
+    if existingFile
+      @updateFile existingFile, file
+    else
+      @ddpClient.addFile file
+    #removed = removeItemFromArray file.path, @dirsPending
+    #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
+
+  updateFile: (existingFile, newFile) ->
+    @emit 'trace', "Updating file #{newFile.path}"
+    #right now do nothing
+    return
+
+  addInitialFiles: (files) ->
     return unless files
-    @addFile file for file in files
+    for file in files
+      @addFsFile file
+    #TODO: Remove ddp files that aren't in initial files
+
+  #addFiles: (files) ->
+    #return unless files
+    #@addFile file for file in files
 
   remove: (fileId) ->
     file = @filesById[fileId]
     delete @filesById[fileId]
     delete @filesByPath[file.path]
     @emit 'trace', "Removed file #{file.path}"
-    removed = removeItemFromArray file.path, @dirsPending
-    @emit 'trace', "Removed #{file.path} from pending dirs." if removed
+    #removed = removeItemFromArray file.path, @dirsPending
+    #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
   change: (fileId, fields={}, cleared=[]) ->
     file = @filesById[fileId]
@@ -62,6 +85,18 @@ class FileTree extends EventEmitter
           @emit 'trace', "#{path} is in dirsPending, ignoring."
 
     return _.values(newFileMap)
+
+  setupDdpClient: ->
+    return unless @ddpClient
+    @ddpClient.on 'added', (file) =>
+      @addDdpFile file
+    @ddpClient.on 'removed', (fileId) =>
+      @emit 'info', "Would remove file #{fileId}"
+    @ddpClient.on 'changed', (fileId, fields, cleared) =>
+      @emit 'info', "Would change file #{fileId}:", fields, cleared
+    @ddpClient.on 'subscribed', (collectionName) =>
+      @complete = true if collectionName == 'files'
+      @emit 'trace', "Subscription has #{_.size @filesById} files"
 
 #Helper functions
 

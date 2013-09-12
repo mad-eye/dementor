@@ -23,7 +23,6 @@ class DdpClient extends EventEmitter
       @emit 'error', error if error
       unless error
         @emit 'debug', 'DDP connected'
-        @emit 'connected'
       @_initialize()
       callback?(error)
 
@@ -41,23 +40,28 @@ class DdpClient extends EventEmitter
       @emit 'debug', "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
       @emit 'error', error
-    #@subscribe 'projects', @projectId
-    #@subscribe 'files', @projectId
+    @listenForFiles()
     #@listenForCommands()
-    #@listenForFiles()
     
   subscribe: (collectionName, args...) ->
+    @emit 'trace', "Subscribing to #{collectionName} with args", args
     @ddpClient.subscribe collectionName, args, =>
       @emit 'debug', "Subscribed to #{collectionName}"
+      @emit 'subscribed', collectionName
 
   registerProject: (params, callback) ->
     @emit 'trace', "Registering project with params", params
     @ddpClient.call 'registerProject', [params], (err, projectId, warning) =>
       return callback err if err
       @emit 'debug', "Registered project and got id #{projectId}"
+      @projectId = projectId
       callback null, projectId, warning
       
-    
+  addFile: (file) ->
+    file.projectId = @projectId
+    @ddpClient.call 'addFile', [file], (err) =>
+      @emit 'trace', "Added file #{file.path}"
+
   listenForCommands: ->
     @ddpClient.on 'message', (message) =>
       msg = JSON.parse message

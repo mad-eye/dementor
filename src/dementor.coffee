@@ -18,7 +18,7 @@ class Dementor extends events.EventEmitter
 
     @httpClient = options.httpClient
     @ddpClient = options.ddpClient
-    @fileTree = new FileTree
+    @fileTree = new FileTree @ddpClient
     @attach options.socket
     @version = require('../package.json').version
     @serverOps = {}
@@ -40,21 +40,24 @@ class Dementor extends events.EventEmitter
     @emit 'message-warning', msg
 
   enable: ->
-    #=> and @ aren't worked with async here for some reason
-    self = this
-    async.parallel [
-      (cb) ->
-        self.ddpClient.connect (err) ->
+    async.parallel {
+      ddp: (cb) =>
+        @ddpClient.connect (err) =>
           return cb err if err
-          self.registerProject cb
-    , (cb) ->
-        self.readFileTree cb
-    #, (cb) ->
-      ##Hack.  The "socket" is actually a SocketNamespace.  Thus we need to access the namespace's socket
-      #self.socket.socket.connect cb
-    ], (err) ->
-      self.watchProject()
+          @registerProject (err) =>
+            return cb err if err
+            @ddpClient.subscribe 'files', @projectId
+            @ddpClient.on 'subscribed', (collectionName) =>
+              cb() if collectionName == 'files'
+      files: (cb) =>
+        @readFileTree (err, files) ->
+          cb err, files
+    }, (err, results) =>
+      return @handleError err if err
+      @fileTree.addInitialFiles results.files
+      #self.watchProject()
 
+  #callback: (err, files) ->
   readFileTree: (callback) ->
     @projectFiles.readFileTree (err, files) =>
       return callback err if err
@@ -66,9 +69,8 @@ class Dementor extends events.EventEmitter
         return callback ERROR_TOO_MANY_FILES
       else if files.length > FILE_SOFT_LIMIT
         @handleWarning WARNING_MANY_FILES
-      @fileTree.addFiles files
       @emit 'trace', 'Read filetree'
-      callback()
+      callback null, files
 
   #callback: (err) ->
   registerProject: (callback) ->
