@@ -9,13 +9,15 @@ _path = require 'path'
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 
 class Dementor extends events.EventEmitter
-  constructor: (@directory, @httpClient, socket, clean=false, ignorefile) ->
-    @emit 'trace', "Constructing with directory #{@directory}"
-    @projectFiles = new ProjectFiles(@directory, ignorefile)
-    @projectName = _path.basename directory
-    @projectId = @projectFiles.projectIds()[@directory] unless clean
+  constructor: (options) ->
+    @emit 'trace', "Constructing with directory #{options.directory}"
+    @projectFiles = new ProjectFiles(options.directory, options.ignorefile)
+    @projectName = _path.basename options.directory
+    @projectId = @projectFiles.projectIds()[options.directory] unless options.clean
+
+    @httpClient = options.httpClient
     @fileTree = new FileTree
-    @attach socket
+    @attach options.socket
     @version = require('../package.json').version
     @serverOps = {}
 

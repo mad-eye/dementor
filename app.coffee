@@ -45,7 +45,12 @@ run = ->
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
-  dementor = new Dementor process.cwd(), httpClient, socket, program.clean, program.ignorefile
+  dementor = new Dementor
+    directory: process.cwd()
+    httpClient: httpClient
+    socket: socket
+    clean: program.clean
+    ignoreFile: program.ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   listener.listen dementor, 'dementor'
