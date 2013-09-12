@@ -43,11 +43,16 @@ class DdpClient extends EventEmitter
     @listenForFiles()
     #@listenForCommands()
     
-  subscribe: (collectionName, args...) ->
+  subscribe: (collectionName, args..., callback) ->
+    if callback and 'function' != typeof callback
+      args ?= []
+      args.push callback
+      callback = null
     @emit 'trace', "Subscribing to #{collectionName} with args", args
     @ddpClient.subscribe collectionName, args, =>
       @emit 'debug', "Subscribed to #{collectionName}"
       @emit 'subscribed', collectionName
+      callback?()
 
   registerProject: (params, callback) ->
     @emit 'trace', "Registering project with params", params
@@ -60,7 +65,18 @@ class DdpClient extends EventEmitter
   addFile: (file) ->
     file.projectId = @projectId
     @ddpClient.call 'addFile', [file], (err) =>
-      @emit 'trace', "Added file #{file.path}"
+      if err
+        @emit 'warn', "Error in adding file:", err
+      else
+        @emit 'trace', "Added file #{file.path}"
+
+  removeFile: (fileId) ->
+    @emit 'trace', "Calling removeFile", fileId
+    @ddpClient.call 'removeFile', [fileId], (err) =>
+      if err
+        @emit 'warn', "Error in removing file:", err
+      else
+        @emit 'trace', "Removed file #{fileId}"
 
   listenForCommands: ->
     @ddpClient.on 'message', (message) =>

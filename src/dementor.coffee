@@ -46,9 +46,7 @@ class Dementor extends events.EventEmitter
           return cb err if err
           @registerProject (err) =>
             return cb err if err
-            @ddpClient.subscribe 'files', @projectId
-            @ddpClient.on 'subscribed', (collectionName) =>
-              cb() if collectionName == 'files'
+            @ddpClient.subscribe 'files', @projectId, cb
       files: (cb) =>
         @readFileTree (err, files) ->
           cb err, files

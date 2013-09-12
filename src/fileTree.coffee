@@ -17,6 +17,7 @@ class FileTree extends EventEmitter
 
   findByPath: (path) -> @filesByPath[path]
 
+  #Add a file that comes via ddp
   addDdpFile: (file) ->
     return unless file
     @filesById[file._id] = file if file._id
@@ -25,6 +26,7 @@ class FileTree extends EventEmitter
     #removed = removeItemFromArray file.path, @dirsPending
     #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
+  #Add a file that we find on the file system
   addFsFile: (file) ->
     @emit 'trace', "Adding fs file:", file
     return unless file
@@ -38,18 +40,22 @@ class FileTree extends EventEmitter
 
   updateFile: (existingFile, newFile) ->
     @emit 'trace', "Updating file #{newFile.path}"
-    #right now do nothing
+    #TODO: Check mtimes, modified status, etc
     return
 
   addInitialFiles: (files) ->
     return unless files
+    existingFilePaths = _.keys @filesByPath
+    filePathsAdded = []
     for file in files
       @addFsFile file
-    #TODO: Remove ddp files that aren't in initial files
-
-  #addFiles: (files) ->
-    #return unless files
-    #@addFile file for file in files
+      filePathsAdded.push file.path
+    orphanedPaths = _.difference existingFilePaths, filePathsAdded
+    @emit 'trace', "Found orphaned files", orphanedPaths
+    for path in orphanedPaths
+      orphan = @filesByPath[path]
+      #TODO: Check for modifications/etc
+      @ddpClient.removeFile orphan._id
 
   remove: (fileId) ->
     file = @filesById[fileId]
