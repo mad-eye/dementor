@@ -28,7 +28,7 @@ class FileTree extends EventEmitter
 
   #Add a file that we find on the file system
   addFsFile: (file) ->
-    @emit 'trace', "Adding fs file:", file
+    #@emit 'trace', "Adding fs file:", file
     return unless file
     existingFile = @filesByPath[file.path]
     if existingFile

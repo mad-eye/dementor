@@ -3,6 +3,7 @@ FileTree = require './fileTree'
 {HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
+{crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
@@ -18,6 +19,7 @@ class Dementor extends events.EventEmitter
 
     @httpClient = options.httpClient
     @ddpClient = options.ddpClient
+    @setupDdpClient()
     @fileTree = new FileTree @ddpClient
     @attach options.socket
     @version = require('../package.json').version
@@ -153,6 +155,38 @@ class Dementor extends events.EventEmitter
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'
     @emit 'trace', 'Watching file tree.'
+
+  ## DDP CLIENT SETUP
+  setupDdpClient: ->
+    @ddpClient.on 'command', (command, data) =>
+      @emit 'trace', "Command received:", data
+      switch command
+        when 'request file'
+          fileId = data.fileId
+          #TODO: Send this to and handle this on apogee
+          #unless fileId then callback errors.new 'MISSING_PARAM'; return
+          path = @fileTree.findById(fileId)?.path
+          @emit 'trace', "Remote request for #{path}"
+          @projectFiles.readFile path, (err, contents) =>
+            cleanContents = cleanupLineEndings contents
+            checksum = crc32 contents
+            warning = null
+            unless cleanContents == contents
+              lineEndingType = findLineEndingType contents
+              warning =
+                title: "Inconsistent line endings"
+                message: "We've converted them all into #{lineEndingType}."
+            
+            @ddpClient.sendFileContents err,
+              commandId: data.commandId
+              fileId: fileId
+              contents: contents
+              checksum: checksum
+              warning: warning
+
+
+
+
 
 
   #####

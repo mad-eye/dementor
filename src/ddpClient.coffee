@@ -1,6 +1,7 @@
 {EventEmitter} = require 'events'
 _ = require 'underscore'
 DDPClient = require "ddp"
+{normalizePath} = require '../madeye-common/common'
 
 DEFAULT_OPTIONS =
   host: "localhost",
@@ -17,10 +18,11 @@ class DdpClient extends EventEmitter
     @ddpClient = new DDPClient options
     @initialized = false
 
+  #FIXME: This hangs when apogee is down -- set timeout and report error?
   connect: (callback) ->
     @emit 'trace', 'DDP connecting'
     @ddpClient.connect (error) =>
-      @emit 'error', error if error
+      @emit 'error', "Connection error:", error if error
       unless error
         @emit 'debug', 'DDP connected'
       @_initialize()
@@ -29,6 +31,8 @@ class DdpClient extends EventEmitter
   shutdown: (callback) ->
     @emit 'debug', 'Shutting down ddpClient'
     if @projectId
+      #This hangs if the connection is down and the socket is trying to reconnect.
+      #TODO: Make connected status and check that.
       @ddpClient.call 'closeProject', [@projectId], (err) =>
         if err
           @emit 'warn', "Error closing project:", err
@@ -42,15 +46,17 @@ class DdpClient extends EventEmitter
 
   _initialize: ->
     return if @initialized
+    @emit 'trace', 'Initializing ddp'
     @initialized = true
     @ddpClient.on 'message', (msg) =>
       @emit 'trace', 'Ddp message: ' + msg
     @ddpClient.on 'socket-close', (code, message) =>
       @emit 'debug', "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
-      @emit 'error', error
+      #Get this when apogee goes down: {"code":"ECONNREFUSED","errno":"ECONNREFUSED","syscall":"connect"}
+      #TODO: Be more quiet about that error, maybe set internal state.
+      @emit 'warn', "Socket error:", error
     @listenForFiles()
-    #@listenForCommands()
     
   subscribe: (collectionName, args..., callback) ->
     if callback and 'function' != typeof callback
@@ -64,15 +70,18 @@ class DdpClient extends EventEmitter
       callback?()
 
   registerProject: (params, callback) ->
+    #Don't trigger this on reconnect.
+    return if @projectId
     @emit 'trace', "Registering project with params", params
     @ddpClient.call 'registerProject', [params], (err, projectId, warning) =>
       return callback err if err
       @emit 'debug', "Registered project and got id #{projectId}"
       @projectId = projectId
       callback null, projectId, warning
+      @listenForCommands()
       
   addFile: (file) ->
-    file.projectId = @projectId
+    @cleanFile file
     @ddpClient.call 'addFile', [file], (err) =>
       if err
         @emit 'warn', "Error in adding file:", err
@@ -87,15 +96,18 @@ class DdpClient extends EventEmitter
       else
         @emit 'trace', "Removed file #{fileId}"
 
+  cleanFile: (file) ->
+    file.projectId = @projectId
+    file.orderingPath = normalizePath file.path
+
   listenForCommands: ->
     @ddpClient.on 'message', (message) =>
       msg = JSON.parse message
       return unless msg.collection == 'commands'
+      data = msg.fields
       if msg.msg == 'added'
-        @emit 'command', msg.fields.command
-        @remove 'commands', msg.id
-      else
-        console.log "Command message:", msg
+        data.commandId = msg.id
+        @emit 'command', msg.fields.command, data
         
     @subscribe 'commands', @projectId
 
@@ -113,24 +125,47 @@ class DdpClient extends EventEmitter
         when 'changed'
           @emit 'changed', msg.id, msg.fields, msg.cleared
 
+  reportError: (err) ->
+    @ddpClient.call 'reportError', [err, projectId]
+
+  #Modifier is the changed fields
+  updateFile: (fileId, modifier) ->
+    modifier = {$set:modifier}
+    @ddpClient.call 'updateFile', [fileId, modifier], (err) =>
+      if err
+        @emit 'warn', "Error updating file:", err
+      else
+        @emit 'trace', "Updating file #{fileId}"
+
+  #data = {commandId, fileId, contents}
+  sendFileContents: (error, data) ->
+    @updateFile data.fileId, {checksum:data.checksum}
+
+    @ddpClient.call 'commandReceived', [error, data], (err) =>
+      if err
+        @emit 'warn', "Error sending file contents:", err
+      else
+        @emit 'trace', "Sent file contents for #{data.fileId}"
+
+
   remove: (collectionName, id) ->
-    @emit 'debug', "Removing file #{id}"
+    @emit 'debug', "Removing #{collectionName} #{id}"
     #@ddpClient.call "/#{collectionName}/remove", [makeIdSelector(id)], (err, result) =>
     @ddpClient.call "/#{collectionName}/remove", [id], (err, result) =>
-      @emit 'error', err if err
+      @emit 'error', 'remove error:', err if err
       #@emit 'debug', "Remove #{collectionName} returned" unless err
 
   insert: (collectionName, doc) ->
-    @emit 'debug', "Inserting file #{JSON.stringify doc}"
+    @emit 'debug', "Inserting #{collectionName} #{JSON.stringify doc}"
     @ddpClient.call "/#{collectionName}/insert", [doc], (err, result) =>
-      @emit 'error', err if err
+      @emit 'error', 'insert error:', err if err
       #@emit 'debug', "Insert #{collectionName} returned" unless err
 
   update: (collectionName, id, modifier) ->
-    @emit 'debug', "Updating file #{id}"
+    @emit 'debug', "Updating #{collectionName} #{id}"
     #@ddpClient.call "/#{collectionName}/update", [makeIdSelector(id)], (err, result) =>
     @ddpClient.call "/#{collectionName}/update", [{_id:id}, modifier], (err, result) =>
-      @emit 'error', err if err
+      @emit 'error', 'update error:', err if err
       #@emit 'debug', "Update #{collectionName} returned" unless err
 
 module.exports = DdpClient
