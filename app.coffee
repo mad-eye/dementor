@@ -35,8 +35,7 @@ run = ->
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
     .option('-d --debug', 'Show debug output (may be noisy)')
-
-
+    .option('--madeyeUrl [url]', 'url to point to (instead of madeye.io)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
     .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
@@ -87,9 +86,18 @@ execute = (options) ->
       cwd: process.cwd()
     ttyServer.listen constants.TERMINAL_PORT, "localhost"
 
-  httpClient = new HttpClient Settings.azkabanUrl
-  listener.log 'debug', "Connecting to socketUrl #{Settings.socketUrl}"
-  socket = io.connect Settings.socketUrl,
+  if options.madeyeUrl
+    apogeeUrl = options.madeyeUrl
+    azkabanUrl = "#{options.madeyeUrl}/api"
+    socketUrl = options.madeyeUrl
+  else
+    apogeeUrl = Settings.apogeeUrl
+    azkabanUrl = Settings.azkabanUrl
+    socketUrl = Settings.socketUrl
+
+  httpClient = new HttpClient azkabanUrl
+  listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
+  socket = io.connect socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
 
@@ -115,8 +123,8 @@ execute = (options) ->
   listener.listen tunnelManager, 'tunnelManager'
 
   dementor.once 'enabled', ->
-    apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
-    hangoutUrl = "#{Settings.azkabanUrl}/hangout/#{dementor.projectId}"
+    apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
+    hangoutUrl = "#{azkabanUrl}/hangout/#{dementor.projectId}"
 
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
