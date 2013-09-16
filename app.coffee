@@ -21,6 +21,7 @@ run = ->
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
     .option('-d --debug', 'Show debug output (may be noisy)')
+    .option('--madeyeUrl [url]', 'url to point to (instead of madeye.io)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
@@ -39,9 +40,18 @@ run = ->
     onError: (err) ->
       shutdown(err.code ? 1)
 
-  httpClient = new HttpClient Settings.azkabanUrl
-  listener.log 'debug', "Connecting to socketUrl #{Settings.socketUrl}"
-  socket = io.connect Settings.socketUrl,
+  if program.madeyeUrl
+    apogeeUrl = program.madeyeUrl
+    azkabanUrl = "#{program.madeyeUrl}/api"
+    socketUrl = program.madeyeUrl
+  else
+    apogeeUrl = Settings.apogeeUrl
+    azkabanUrl = Settings.azkabanUrl
+    socketUrl = Settings.socketUrl
+
+  httpClient = new HttpClient azkabanUrl
+  listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
+  socket = io.connect socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
@@ -54,8 +64,8 @@ run = ->
   listener.listen httpClient, 'httpClient'
 
   dementor.once 'enabled', ->
-    apogeeUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
-    hangoutUrl = "#{Settings.azkabanUrl}/hangout/#{dementor.projectId}"
+    apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
+    hangoutUrl = "#{azkabanUrl}/hangout/#{dementor.projectId}"
 
     util.puts "View your project at " + clc.bold apogeeUrl
     util.puts "Use Google Hangout at " + clc.bold hangoutUrl
