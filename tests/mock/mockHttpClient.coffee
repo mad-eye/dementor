@@ -25,8 +25,7 @@ class MockHttpClient
     if typeof params == 'function'
       callback = params
       params = {}
-    result = @router options, params
-    callback result
+    @router options, params, callback
 
 
 exports.MockHttpClient = MockHttpClient
