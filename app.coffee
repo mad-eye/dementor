@@ -57,6 +57,7 @@ run = ->
     debug: program.debug
     trace: program.trace
     term: program.term
+    madeyeUrl: program.madeyeUrl
 
 ###
 #options:

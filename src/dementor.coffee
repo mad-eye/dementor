@@ -36,6 +36,7 @@ class Dementor extends events.EventEmitter
 
   handleError: (err, silent=false) ->
     return unless err
+    @emit 'trace', 'Found error:', err
     message = err.message ? err
     metric =
       level : 'error'
@@ -87,8 +88,8 @@ class Dementor extends events.EventEmitter
           nodeVersion: process.version
           tunnels: tunnels
 
-        @httpClient.request {method: method, action:action, json: json}, (result) =>
-          return @handleError result.error if result.error
+        @httpClient.request {method: method, action:action, json: json}, (err, result) =>
+          return @handleError err if err
           @handleWarning result.warning
           @projectId = result.project._id
           @fileTree.projectId = @projectId
@@ -242,6 +243,7 @@ class Dementor extends events.EventEmitter
       ), 10*1000
 
     socket.on 'error', (reason) =>
+      @emit 'debug', "Error in socket, with reason:", reason
       @handleError reason
 
     #callback: (err, body) =>, errors are encoded as {error:}

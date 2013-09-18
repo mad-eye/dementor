@@ -31,8 +31,7 @@ class HttpClient extends events.EventEmitter
     options.method = 'GET'
     @request options, params, callback
 
-  #callback : (body) ->
-  #errors are encoded as body={error:}
+  #callback : (err, body) ->
   request: (options, params, callback) ->
 #    options.rejectUnauthorized = false
     if typeof params == 'function'
@@ -46,11 +45,14 @@ class HttpClient extends events.EventEmitter
     request options, (err, res, body) ->
       if err
         @emit 'debug', "#{options.method} #{options.uri} returned error"
-        err = wrapError err
-        body = {error:err}
+        return callback wrapError err
       else
         @emit 'trace', "#{options.method} #{options.uri} returned #{res.statusCode}"
         body = JSON.parse(body) if typeof body == 'string'
-      callback(body)
+        if body.error
+          @emit 'debug', "#{options.method} #{options.uri} returned error in body:", body.error
+          return callback body.error
+        else
+          callback null, body
 
 exports.HttpClient = HttpClient
