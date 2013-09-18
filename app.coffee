@@ -70,7 +70,7 @@ run = ->
 execute = (options) ->
   httpClient = new HttpClient Settings.azkabanHost
   socket = io.connect Settings.azkabanUrl
-  tunnelManager = new TunnelManager
+  tunnelManager = new TunnelManager Settings.shareServer
 
   debug = options.debug
   logLevel = switch

@@ -17,7 +17,8 @@ _path = require 'path'
 
 homeDir = fileUtils.homeDir
 
-defaultHttpClient = new MockHttpClient (options, params) ->
+#callback: (err, result) ->
+defaultHttpClient = new MockHttpClient (options, params, callback) ->
   match = /project(\/[\w-]+)?/.exec options.action
   if match
     projectId = match[1]?.substring(1)
@@ -27,18 +28,18 @@ defaultHttpClient = new MockHttpClient (options, params) ->
       projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
-      return {project: {_id:uuid.v4(), name:projectName}, files:files }
+      callback null, {project: {_id:uuid.v4(), name:projectName}, files:files }
     else if options.method == 'PUT'
       return {error: "ProjectID should be specified"} unless projectId?
       return errors.new errorType.OUT_OF_DATE unless options.json?.version?
       projectName = options.json?['projectName']
       files = options.json?['files']
       file._id = uuid.v4() for file in files if files
-      return {project: {_id:projectId, name:projectName}, files:files }
+      callback null, {project: {_id:projectId, name:projectName}, files:files }
     else
-      return {error: "Wrong method: #{options.method}"}
+      callback "Wrong method: #{options.method}"
   else
-    return {error: "Wrong action: #{options.action}"}
+    callback "Wrong action: #{options.action}"
 
 describe "Dementor", ->
   before ->
@@ -113,11 +114,11 @@ describe "Dementor", ->
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "outdatedNodeJsTest-#{uuid.v4()}", fileMap
         warningMsg = "its not right!"
-        httpClient = new MockHttpClient (options, params) ->
+        httpClient = new MockHttpClient (options, params, callback) ->
           assert.equal options.json?['nodeVersion'], process.version
           projectName = options.json?['projectName']
           files = options.json?['files']
-          return {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
+          callback null, {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
             
         dementor = new Dementor
           directory: projectPath
