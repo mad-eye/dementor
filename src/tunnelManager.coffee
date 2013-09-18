@@ -10,7 +10,7 @@ ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
 remoteAddr = '0.0.0.0' #FIXME: This accepts all IPV4 connections.  Generalize.
 
 class TunnelManager extends events.EventEmitter
-  constructor: (@shareServer) ->
+  constructor: (@shareHost) ->
     @emit 'trace', 'Constructing TunnelManager'
     @shuttingDown = false
     @tunnels = {}
@@ -19,7 +19,7 @@ class TunnelManager extends events.EventEmitter
     @reconnectIntervals = {}
 
     @connectionOptions =
-      host: @shareServer
+      host: @shareHost
       port: 22
       username: 'ubuntu'
       privateKey: require('fs').readFileSync(ID_FILE_PATH)

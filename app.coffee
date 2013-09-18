@@ -30,7 +30,6 @@ run = ->
 
   pkg = require './package.json'
 
-  #TODO add tunnel as option
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
@@ -68,11 +67,18 @@ run = ->
 # shareOutput: bool
 ###
 execute = (options) ->
-  httpClient = new HttpClient Settings.azkabanHost
-  socket = io.connect Settings.azkabanUrl
-  tunnelManager = new TunnelManager Settings.shareServer
+  if options.madeyeUrl
+    apogeeUrl = options.madeyeUrl
+    azkabanUrl = "#{options.madeyeUrl}/api"
+    socketUrl = options.madeyeUrl
+  else
+    apogeeUrl = Settings.apogeeUrl
+    azkabanUrl = Settings.azkabanUrl
+    socketUrl = Settings.socketUrl
 
-  debug = options.debug
+  #XXX: Need to handle custom case differently?
+  shareHost = Settings.shareHost
+
   logLevel = switch
     when options.trace then 'trace'
     when options.debug then 'debug'
@@ -87,20 +93,18 @@ execute = (options) ->
       cwd: process.cwd()
     ttyServer.listen constants.TERMINAL_PORT, "localhost"
 
-  if options.madeyeUrl
-    apogeeUrl = options.madeyeUrl
-    azkabanUrl = "#{options.madeyeUrl}/api"
-    socketUrl = options.madeyeUrl
-  else
-    apogeeUrl = Settings.apogeeUrl
-    azkabanUrl = Settings.azkabanUrl
-    socketUrl = Settings.socketUrl
 
   httpClient = new HttpClient azkabanUrl
+  listener.listen httpClient, 'httpClient'
+
   listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
   socket = io.connect socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
+
+  tunnelManager = new TunnelManager shareHost
+  listener.listen tunnelManager, 'tunnelManager'
+
 
   #TODO: Refactor dementor to take options
   dementor = new Dementor
@@ -115,13 +119,11 @@ execute = (options) ->
     captureViaDebugger: options.captureViaDebugger
     term: options.term
 
-  util.puts "Enabling MadEye in " + clc.bold process.cwd()
-
   listener.listen dementor, 'dementor'
   listener.listen dementor.projectFiles, 'projectFiles'
   listener.listen dementor.fileTree, 'fileTree'
-  listener.listen httpClient, 'httpClient'
-  listener.listen tunnelManager, 'tunnelManager'
+
+  util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
