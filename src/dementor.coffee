@@ -111,11 +111,7 @@ class Dementor extends events.EventEmitter
       callback?()
 
   addMetric: (type, metric={}) ->
-    metric.level ?= 'debug'
-    metric.message = type
-    metric.timestamp = new Date()
-    metric.projectId = @projectId
-    @socket.emit messageAction.METRIC, metric
+    #TODO: Remove this stub when we've integrated interview-term.
     @emit type
  
   #####
