@@ -41,7 +41,7 @@ class HttpClient extends events.EventEmitter
     options.qs = querystring.stringify params if options.method == 'GET'
     delete options['action']
     @emit 'debug', "#{options.method} #{options.uri}"
-    @emit 'trace', options
+    #@emit 'trace', options
     request options, (err, res, body) ->
       if err
         @emit 'debug', "#{options.method} #{options.uri} returned error"
