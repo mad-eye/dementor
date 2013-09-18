@@ -57,6 +57,7 @@ run = ->
     debug: program.debug
     trace: program.trace
     term: program.term
+    madeyeUrl: program.madeyeUrl
 
 ###
 #options:
@@ -86,10 +87,10 @@ execute = (options) ->
       cwd: process.cwd()
     ttyServer.listen constants.TERMINAL_PORT, "localhost"
 
-  if program.madeyeUrl
-    apogeeUrl = program.madeyeUrl
-    azkabanUrl = "#{program.madeyeUrl}/api"
-    socketUrl = program.madeyeUrl
+  if options.madeyeUrl
+    apogeeUrl = options.madeyeUrl
+    azkabanUrl = "#{options.madeyeUrl}/api"
+    socketUrl = options.madeyeUrl
   else
     apogeeUrl = Settings.apogeeUrl
     azkabanUrl = Settings.azkabanUrl
