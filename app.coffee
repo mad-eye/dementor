@@ -56,6 +56,7 @@ run = ->
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
   
+  #TODO: Handle custom url case.
   ddpClient = new DdpClient
     host: Settings.ddpHost
     port: Settings.ddpPort
@@ -95,7 +96,7 @@ run = ->
   process.on 'uncaughtException', (err)->
     if err.code == "ENOENT"
       #Silence the error for now
-      #console.log "File does not exist #{err.path}"
+      listener.debug "File does not exist #{err.path}"
       0
     else
       throw err

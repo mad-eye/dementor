@@ -99,7 +99,12 @@ class FileTree extends EventEmitter
     @ddpClient.on 'removed', (fileId) =>
       @emit 'info', "Would remove file #{fileId}"
     @ddpClient.on 'changed', (fileId, fields, cleared) =>
-      @emit 'info', "Would change file #{fileId}:", fields, cleared
+      file = @filesById[fileId]
+      @emit 'trace', "Updating fields for #{file.path}:", fields if fields
+      _.extend file, fields if fields
+      @emit 'trace', "Clearing fields for #{file.path}:", cleared if cleared
+      delete file[field] for field in cleared if cleared
+      @emit 'debug', "Updated file", file
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
       @emit 'trace', "Subscription has #{_.size @filesById} files"

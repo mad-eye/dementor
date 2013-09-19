@@ -4,10 +4,11 @@ DDPClient = require "ddp"
 {normalizePath} = require '../madeye-common/common'
 
 DEFAULT_OPTIONS =
-  host: "localhost",
-  port: 3000,
-  auto_reconnect: true,
+  host: "localhost"
+  port: 3000
+  auto_reconnect: true
   auto_reconnect_timer: 500
+  use_ejson: true
 
 makeIdSelector = (id) ->
   {"_id":{"$type":"oid","$value":id}}
@@ -129,12 +130,14 @@ class DdpClient extends EventEmitter
       return unless msg.collection == 'files'
       switch msg.msg
         when 'added'
+          #eg {"msg":"added","collection":"files","id":"7772ea62-9673-43bd-86ee-9d64f497a21b","fields":{"path":"foo/frotz","isDir":true,"projectId":"c17973a5-ec8d-4282-b5f9-30ef3d3741bb","orderingPath":"foo frotz","modified_locally":false,"removed":false,"modified":false,"mtime":1355185662000,"isLink":false,"__v":0}}
           file = msg.fields
           file._id = msg.id
           @emit 'added', file
         when 'removed'
           @emit 'removed', msg.id
         when 'changed'
+          #eg {"msg":"changed","collection":"files","id":"57204c04-4d73-474b-8c25-259b38c06dce","fields":{"modified":false}}
           @emit 'changed', msg.id, msg.fields, msg.cleared
 
   reportError: (err) ->
