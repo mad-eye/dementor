@@ -18,7 +18,7 @@ class Dementor extends events.EventEmitter
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
-    @fileTree = new FileTree @ddpClient
+    @fileTree = new FileTree @ddpClient, this
     #@attach options.socket
     @version = require('../package.json').version
     @serverOps = {}
@@ -179,29 +179,20 @@ class Dementor extends events.EventEmitter
             @emit 'warn', "Request file failed: missing file #{fileId}"
             return errorCallback errors.new('NO_FILE'), data.commandId
           @emit 'trace', "Remote request for #{path}"
-          @projectFiles.readFile path, (err, contents) =>
+          @retrieveContents path, (err, results) =>
             if err
-              @emit 'warn', "Error request file #{path}:", err
-              return errorCallback wrapError(err), data.commandId
-            cleanContents = cleanupLineEndings contents
-            checksum = crc32 cleanContents
-            warning = null
-            unless cleanContents == contents
-              lineEndingType = findLineEndingType contents
-              warning =
-                title: "Inconsistent line endings"
-                message: "We've converted them all into #{lineEndingType}."
+              return errorCallback err, data.commandId
             
             @ddpClient.updateFile fileId,
-              loadChecksum: checksum
-              fsChecksum: checksum
+              loadChecksum: results.checksum
+              fsChecksum: results.checksum
               lastOpened: Date.now()
 
             @ddpClient.commandReceived null,
               commandId: data.commandId
               fileId: fileId
-              contents: cleanContents
-              warning: warning
+              contents: results.contents
+              warning: results.warning
 
         when 'save file'
           fileId = data.fileId
@@ -227,5 +218,21 @@ class Dementor extends events.EventEmitter
               loadChecksum: checksum
               fsChecksum: checksum
             @ddpClient.commandReceived null, commandId:data.commandId
+
+  #callback: (err, {contents, checksum, warning}) ->
+  retrieveContents: (path, callback) ->
+    @projectFiles.readFile path, (err, contents) =>
+      if err
+        @emit 'warn', "Error retrieving contents for file #{path}:", err
+        return callback wrapError(err), data.commandId
+      cleanContents = cleanupLineEndings contents
+      checksum = crc32 cleanContents
+      warning = null
+      unless cleanContents == contents
+        lineEndingType = findLineEndingType contents
+        warning =
+          title: "Inconsistent line endings"
+          message: "We've converted them all into #{lineEndingType}."
+      callback null, {contents:cleanContents, checksum, warning}
 
 exports.Dementor = Dementor

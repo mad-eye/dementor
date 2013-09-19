@@ -1,17 +1,186 @@
 FileTree = require("../../src/fileTree")
-assert = require "assert"
 _path = require "path"
 uuid = require "node-uuid"
 _ = require 'underscore'
 {assert} = require 'chai'
+{EventEmitter} = require 'events'
+sinon = require 'sinon'
+{LogListener} = require '../../madeye-common/common'
+
+listener = new LogListener logLevel: 'trace'
+
+class MockDdpClient extends EventEmitter
+  constructor: (services) ->
+    _.extend this, services
+
 
 describe "FileTree", ->
 
-  describe "constructor", ->
-    it "accepts a null rawFiles argument", ->
-      #Shouldn't throw an error
-      tree = new FileTree
+  describe 'addDdpFile', ->
+    tree = null
+    ddpClient = null
+    file =
+      _id: uuid.v4()
+      path: 'a/ways/down/to.txt'
+    before ->
+      ddpClient = new MockDdpClient
+      tree = new FileTree ddpClient
+      tree.addDdpFile file
 
+    it 'should populate filesById', ->
+      assert.equal tree.filesById[file._id], file
+
+    it 'should populate filesByPath', ->
+      assert.equal tree.filesByPath[file.path], file
+
+    it 'should not error on null file', ->
+      tree.addDdpFile null
+
+    it 'should replace files on second add', ->
+      file2 =
+        _id: file._id
+        path: file.path
+        a: 2
+      tree.addDdpFile file2
+      assert.equal tree.filesById[file._id], file2
+      assert.equal tree.filesByPath[file.path], file2
+
+  describe 'addFsFile', ->
+    tree = null
+    ddpClient = null
+    ago = Date.now()
+    later = ago + 1000
+
+    before ->
+      ddpClient = new MockDdpClient
+        addFile: sinon.spy()
+        updateFile: sinon.spy()
+      tree = new FileTree ddpClient
+
+    it 'should not error on null file', ->
+      tree.addFsFile null
+
+    it 'should ddp addFile on a new file', ->
+      file =
+        path: 'a/q/tooo.py'
+        mtime: ago
+      tree.addFsFile file
+      assert.isTrue ddpClient.addFile.called
+      assert.isTrue ddpClient.addFile.calledWith file
+
+    describe 'over existing file', ->
+      dementor = null
+      beforeEach ->
+        ddpClient = new MockDdpClient
+          addFile: sinon.spy()
+          updateFile: sinon.spy()
+          updateFileContents: sinon.spy()
+        dementor = {retrieveContents: sinon.stub()}
+        tree = new FileTree ddpClient, dementor
+        listener.listen tree, 'tree'
+
+      it "should do nothing if new file's mtime is not newer", ->
+        file =
+          _id: uuid.v4()
+          path: 'a/ways/down/to.txt'
+          mtime: ago
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: ago
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called
+        assert.isFalse ddpClient.updateFile.called
+
+      it "should should only update mtime if file is not opened", ->
+        file =
+          _id: uuid.v4()
+          path: 'a/ways/down/to.txt'
+          mtime: ago
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: later
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called
+        assert.isTrue ddpClient.updateFile.called
+        [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual updateFields, {mtime: later}
+
+      it "should should update mtime, fsChecksum if file is opened not modified", ->
+        file =
+          _id: uuid.v4()
+          path: 'a/ways/down/to.txt'
+          mtime: ago
+          lastOpened: ago
+          fsChecksum: 1235
+          loadChecksum: 1235
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: later
+
+        contentResults =
+          contents : 'asd8asdfjafd'
+          checksum : 9987066
+        dementor.retrieveContents.callsArgWith 1, null, contentResults
+
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called,
+          "shouldn't call addFile"
+
+        assert.isTrue ddpClient.updateFile.called,
+          "should call updateFile"
+        [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual updateFields,
+          mtime: later
+          fsChecksum: contentResults.checksum
+          loadChecksum: contentResults.checksum
+
+        assert.isTrue ddpClient.updateFileContents.called,
+          "should call updateFileContents"
+        [fileId, contents] = ddpClient.updateFileContents.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual contents, contentResults.contents
+
+      it "should update loadChecksum and call updateFileContents if modified", ->
+        file =
+          _id: uuid.v4()
+          path: 'a/ways/down/to.txt'
+          mtime: ago
+          lastOpened: ago
+          fsChecksum: 1235
+          loadChecksum: 1235
+          modified: true
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: later
+
+        contentResults =
+          contents : 'asdfsdfafd'
+          checksum : 99870
+        dementor.retrieveContents.callsArgWith 1, null, contentResults
+
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called,
+          "shouldn't call addFile"
+
+        assert.isTrue ddpClient.updateFile.called,
+          "should call updateFile"
+        [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual updateFields,
+          mtime: later
+          fsChecksum: contentResults.checksum
+
+        assert.isFalse ddpClient.updateFileContents.called,
+          "shouldn't call updateFileContents"
+
+
+###
   describe "addFiles", ->
     it "accepts a null rawFiles argument", ->
       #Shouldn't throw an error
@@ -93,3 +262,5 @@ describe "FileTree", ->
       files1 = tree.completeParentFiles [file1]
       files2 = tree.completeParentFiles [file2]
       assert.equal files2.length, 1
+
+###

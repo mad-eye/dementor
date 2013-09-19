@@ -154,7 +154,14 @@ class DdpClient extends EventEmitter
       if err
         @emit 'warn', "Error updating file:", err
       else
-        @emit 'trace', "Updating file #{fileId}"
+        @emit 'trace', "Updated file #{fileId}"
+
+  updateFileContents: (fileId, contents) ->
+    @ddpClient.call 'updateFileContents', [fileId, contents], (err) =>
+      if err
+        @emit 'warn', "Error updating file contents:", err
+      else
+        @emit 'trace', "Updated file contents #{fileId}"
 
   remove: (collectionName, id) ->
     @emit 'debug', "Removing #{collectionName} #{id}"

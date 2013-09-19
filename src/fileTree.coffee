@@ -5,7 +5,7 @@ uuid = require 'node-uuid'
 {standardizePath, localizePath} = require './projectFiles'
 
 class FileTree extends EventEmitter
-  constructor: (@ddpClient) ->
+  constructor: (@ddpClient, @dementor) ->
     @filesById = {}
     @filesByPath = {}
     @dirsPending = []
@@ -32,16 +32,41 @@ class FileTree extends EventEmitter
     return unless file
     existingFile = @filesByPath[file.path]
     if existingFile
-      @updateFile existingFile, file
+      @_updateFile existingFile, file
     else
       @ddpClient.addFile file
     #removed = removeItemFromArray file.path, @dirsPending
     #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
-  updateFile: (existingFile, newFile) ->
-    @emit 'trace', "Updating file #{newFile.path}"
-    #TODO: Check mtimes, modified status, etc
-    return
+  _updateFile: (existingFile, newFile) ->
+    return unless newFile.mtime > existingFile.mtime
+    @emit 'trace', "updating existing file:", existingFile
+    fileId = existingFile._id
+    unless existingFile.lastOpened
+      @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
+      @ddpClient.updateFile fileId, mtime: newFile.mtime
+      return
+
+    console.log "drc:", @dementor.retrieveContents
+    @dementor.retrieveContents fileId, (err, {contents, checksum, warning}) =>
+      console.log "retrieveContents:", err, contents, checksum, warning
+      if err
+        @emit 'error', "Error retrieving contents:", err
+        return
+      #TODO: Handle warning
+      @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
+      if existingFile.modified
+        #Don't overwrite people's work
+        @ddpClient.updateFile fileId,
+          mtime: newFile.mtime
+          fsChecksum: checksum
+      else
+        #Give the people the new content
+        @ddpClient.updateFile fileId,
+          mtime: newFile.mtime
+          fsChecksum: checksum
+          loadChecksum: checksum
+        @ddpClient.updateFileContents fileId, contents
 
   addInitialFiles: (files) ->
     return unless files
