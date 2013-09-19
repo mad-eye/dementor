@@ -144,9 +144,8 @@ class DdpClient extends EventEmitter
     @ddpClient.call 'reportError', [err, projectId]
 
   #data: {commandId, fields...:}
-  #callback: (err) ->
-  commandReceived: (err, data, callback) ->
-    @ddpClient.call 'commandReceived', [err, data], callback
+  commandReceived: (err, data) ->
+    @ddpClient.call 'commandReceived', [err, data]
 
   #Modifier is the changed fields
   updateFile: (fileId, modifier) ->
@@ -156,21 +155,6 @@ class DdpClient extends EventEmitter
         @emit 'warn', "Error updating file:", err
       else
         @emit 'trace', "Updating file #{fileId}"
-
-  #data = {commandId, fileId, contents}
-  sendFileContents: (error, data) ->
-    @updateFile data.fileId,
-      lastOpened: data.lastOpened
-      fsChecksum: data.fsChecksum
-      loadChecksum: data.loadChecksum
-    @commandReceived error, data, (err) =>
-      if err
-        @emit 'warn', "Error sending file contents:", err
-      else
-        @emit 'trace', "Sent file contents for #{data.fileId}"
-    
-
-
 
   remove: (collectionName, id) ->
     @emit 'debug', "Removing #{collectionName} #{id}"

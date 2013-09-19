@@ -192,13 +192,15 @@ class Dementor extends events.EventEmitter
                 title: "Inconsistent line endings"
                 message: "We've converted them all into #{lineEndingType}."
             
-            @ddpClient.sendFileContents err,
-              commandId: data.commandId
-              fileId: fileId
-              contents: cleanContents
+            @ddpClient.updateFile fileId,
               loadChecksum: checksum
               fsChecksum: checksum
               lastOpened: Date.now()
+
+            @ddpClient.commandReceived null,
+              commandId: data.commandId
+              fileId: fileId
+              contents: cleanContents
               warning: warning
 
         when 'save file'
