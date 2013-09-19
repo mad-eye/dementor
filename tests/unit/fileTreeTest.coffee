@@ -180,49 +180,17 @@ describe "FileTree", ->
           "shouldn't call updateFileContents"
 
 
-###
-  describe "addFiles", ->
-    it "accepts a null rawFiles argument", ->
-      #Shouldn't throw an error
-      tree = new FileTree
-      tree.addFiles null
-
-  describe "addFile", ->
-    tree = null
-    file = _id: uuid.v4(), path: 'my/path', isDir:false
-    before ->
-      tree = new FileTree
-      tree.addFile file
-      
-    it "accepts a null rawFile argument", ->
-      #Shouldn't throw an error
-      tree.addFile null
-
-    it "adds the file to filesById", ->
-      assert.equal tree.filesById[file._id], file
-
-    it "adds the file to filesByPath", ->
-      assert.equal tree.filesByPath[file.path], file
-
-  describe "find", ->
-    tree = null
-    file = _id: uuid.v4(), path: 'my/other/path', isDir:false
-    before ->
-      tree = new FileTree
-      tree.addFile file
-      
-    it "should find by id", ->
-      assert.equal tree.findById(file._id), file
-
-    it "should find by path", ->
-      assert.equal tree.findByPath(file.path), file
+  describe "addInitialFiles", ->
+    it "should add new files"
+    it "should update existing files"
+    it "should remove orphaned files"
 
   describe 'change', ->
     tree = null
     file = _id: uuid.v4(), path: 'a/path', isDir:false, modified:true
     beforeEach ->
       tree = new FileTree
-      tree.addFile file
+      tree.addDdpFile file
 
     it 'should set fields', ->
       tree.change file._id, {'b':2}
@@ -239,6 +207,9 @@ describe "FileTree", ->
       assert.isUndefined tree.findById(file._id).modified
       assert.isUndefined tree.findByPath(file.path).modified
 
+    it "should not touch unmentioned fields"
+
+###
   describe "completeParentFiles", ->
     tree = null
     beforeEach ->
