@@ -1,6 +1,5 @@
 {ProjectFiles, fileEventType} = require './projectFiles'
 FileTree = require './fileTree'
-{HttpClient} = require './httpClient'
 {messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
 {crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
@@ -17,11 +16,10 @@ class Dementor extends events.EventEmitter
     @projectName = _path.basename options.directory
     @projectId = @projectFiles.projectIds()[options.directory] unless options.clean
 
-    @httpClient = options.httpClient
     @ddpClient = options.ddpClient
     @setupDdpClient()
     @fileTree = new FileTree @ddpClient
-    @attach options.socket
+    #@attach options.socket
     @version = require('../package.json').version
     @serverOps = {}
 

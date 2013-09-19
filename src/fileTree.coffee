@@ -117,3 +117,35 @@ removeItemFromArray = (item, array) ->
   return idx != -1
 
 module.exports = FileTree
+
+###
+MODIFIED FLAG/CHECKSUM FLOW
+REQUEST FILE:
+Return contents, set
+  lastOpened: now
+  loadChecksum
+  fsChecksum
+
+ADD INITIAL FILE:
+  return unless newFile.mtime > existingFile.mtime
+  update mtime
+  return unless lastOpened
+  unless modified
+    update loadChecksum, fsChecksum, 
+    send new contents to apogee to update bolide
+  else
+    update fsChecksum
+
+CHANGE FS FILE:
+  return unless lastOpened
+  change fsChecksum
+  send new Contents to apogee to update bolide
+
+APOGEE:
+  modified = editorChecksum != fsChecksum
+  display modifiedOnClient warning if loadChecksum != fsChecksum
+
+
+
+
+###

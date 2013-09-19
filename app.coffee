@@ -50,7 +50,6 @@ run = ->
     azkabanUrl = Settings.azkabanUrl
     socketUrl = Settings.socketUrl
 
-  httpClient = new HttpClient azkabanUrl
   listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
   socket = io.connect socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
@@ -67,7 +66,6 @@ run = ->
   dementor = new Dementor
     directory: process.cwd()
     ddpClient: ddpClient
-    httpClient: httpClient
     socket: socket
     clean: program.clean
     ignoreFile: program.ignorefile
@@ -76,7 +74,6 @@ run = ->
   listener.listen dementor, 'dementor'
   listener.listen dementor.projectFiles, 'projectFiles'
   listener.listen dementor.fileTree, 'fileTree'
-  listener.listen httpClient, 'httpClient'
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
