@@ -84,6 +84,8 @@ run = ->
 
   dementor.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
+  dementor.on 'message-info', (msg) ->
+    console.log msg
 
   dementor.enable()
 

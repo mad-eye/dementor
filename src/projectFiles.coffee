@@ -96,6 +96,8 @@ class ProjectFiles extends events.EventEmitter
     projectIds[@directory] = projectId
     @saveProjectIds projectIds
 
+  getProjectId: ->
+    @projectIds()[@directory]
 
   saveProjectIds: (projects) ->
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
@@ -103,7 +105,6 @@ class ProjectFiles extends events.EventEmitter
   projectIds: ->
     return {} unless fs.existsSync @projectsDbPath()
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
-
 
   shouldInclude: (path) ->
     not @ignoreRules.shouldIgnore path

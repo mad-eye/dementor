@@ -14,7 +14,7 @@ class Dementor extends events.EventEmitter
     @emit 'trace', "Constructing with directory #{options.directory}"
     @projectFiles = new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
-    @projectId = @projectFiles.projectIds()[options.directory] unless options.clean
+    @projectId = @projectFiles.getProjectId() unless options.clean
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
@@ -163,18 +163,28 @@ class Dementor extends events.EventEmitter
 
   ## DDP CLIENT SETUP
   setupDdpClient: ->
+    errorCallback = (err, commandId) ->
+      @ddpClient.commandReceived err, {commandId}
+
     @ddpClient.on 'command', (command, data) =>
       @emit 'trace', "Command received:", data
       switch command
         when 'request file'
           fileId = data.fileId
-          #TODO: Send this to and handle this on apogee
-          #unless fileId then callback errors.new 'MISSING_PARAM'; return
+          unless fileId
+            @emit 'warn', "Request file failed: missing fileId"
+            return errorCallback errors.new('MISSING_PARAM'), data.commandId
           path = @fileTree.findById(fileId)?.path
+          unless path
+            @emit 'warn', "Request file failed: missing file #{fileId}"
+            return errorCallback errors.new('NO_FILE'), data.commandId
           @emit 'trace', "Remote request for #{path}"
           @projectFiles.readFile path, (err, contents) =>
+            if err
+              @emit 'warn', "Error request file #{path}:", err
+              return errorCallback wrapError(err), data.commandId
             cleanContents = cleanupLineEndings contents
-            checksum = crc32 contents
+            checksum = crc32 cleanContents
             warning = null
             unless cleanContents == contents
               lineEndingType = findLineEndingType contents
@@ -185,11 +195,37 @@ class Dementor extends events.EventEmitter
             @ddpClient.sendFileContents err,
               commandId: data.commandId
               fileId: fileId
-              contents: contents
+              contents: cleanContents
               loadChecksum: checksum
               fsChecksum: checksum
               lastOpened: Date.now()
               warning: warning
+
+        when 'save file'
+          fileId = data.fileId
+          contents = data.contents
+          unless fileId && contents?
+            @emit 'warn', "Save file failed: missing fileId or contents"
+            return errorCallback errors.new('MISSING_PARAM'), data.commandId
+          path = @fileTree.findById(fileId)?.path
+          unless path
+            @emit 'warn', "Save file failed: missing file #{fileId}"
+            return errorCallback errors.new('NO_FILE'), data.commandId
+          @emit 'debug', "Saving file #{path} from remote contents."
+          #TODO: Re-enable this to prevent duplicate events
+          #XXX: But want this to update mtime -- maybe handle event smarter?
+          #@serverOps[fileId] = action: messageAction.SAVE_LOCAL_FILE, timestamp: new Date
+          @projectFiles.writeFile path, contents, (err) =>
+            if err
+              @emit 'warn', "Error saving file #{path}:", err
+              return errorCallback wrapError(err), data.commandId
+            checksum = crc32 contents
+            @emit 'message-info', "Saving file " + clc.bold path
+            @ddpClient.updateFile fileId,
+              loadChecksum: checksum
+              fsChecksum: checksum
+            @ddpClient.commandReceived null, commandId:data.commandId
+
 
 
 
