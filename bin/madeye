@@ -1,5 +1,4 @@
-#! /bin/sh
+#!/usr/bin/env node
 
-export MADEYE_BASE_HOST="madeye.io"
-BASEDIR=$(dirname $0)
-node $BASEDIR/madeye.js
+process.env.MADEYE_BASE_URL="https://madeye.io"
+require("./madeye.js");
