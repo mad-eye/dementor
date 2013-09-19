@@ -44,18 +44,24 @@ class Dementor extends events.EventEmitter
   enable: ->
     async.parallel {
       ddp: (cb) =>
-        @ddpClient.connect (err) =>
-          return cb err if err
+        #connect callback gets called each time a (re)connection is established
+        #to avoid calling cb multiple times, trigger once
+        #error event will handle error case.
+        @ddpClient.connect()
+        @ddpClient.once 'connected', =>
           @registerProject (err) =>
             return cb err if err
+            #need to be subscribed before adding fs files
             @ddpClient.subscribe 'files', @projectId, cb
+            #don't need to wait for this callback
+            @ddpClient.subscribe 'commands', @projectId
       files: (cb) =>
         @readFileTree (err, files) ->
           cb err, files
     }, (err, results) =>
       return @handleError err if err
       @fileTree.addInitialFiles results.files
-      #self.watchProject()
+      #@watchProject()
 
   #callback: (err, files) ->
   readFileTree: (callback) ->

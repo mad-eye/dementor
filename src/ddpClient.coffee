@@ -17,16 +17,19 @@ class DdpClient extends EventEmitter
     options = _.extend DEFAULT_OPTIONS, options
     @ddpClient = new DDPClient options
     @initialized = false
+    @state = 'closed'
 
   #FIXME: This hangs when apogee is down -- set timeout and report error?
-  connect: (callback) ->
+  #This will emit a 'connected' event on each connection.
+  connect: ->
+    @state = 'connecting'
     @emit 'trace', 'DDP connecting'
     @ddpClient.connect (error) =>
-      @emit 'error', "Connection error:", error if error
+      @emit 'error', "Ddp error while connecting:", error if error
       unless error
+        @emit 'connected'
         @emit 'debug', 'DDP connected'
       @_initialize()
-      callback?(error)
 
   shutdown: (callback) ->
     @emit 'debug', 'Shutting down ddpClient'
@@ -51,12 +54,20 @@ class DdpClient extends EventEmitter
     @ddpClient.on 'message', (msg) =>
       @emit 'trace', 'Ddp message: ' + msg
     @ddpClient.on 'socket-close', (code, message) =>
+      @state = 'closed'
       @emit 'debug', "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
       #Get this when apogee goes down: {"code":"ECONNREFUSED","errno":"ECONNREFUSED","syscall":"connect"}
       #TODO: Be more quiet about that error, maybe set internal state.
-      @emit 'warn', "Socket error:", error
+      if @state != 'connected' and error.code == 'ECONNREFUSED'
+        @emit 'trace', "Socket error while not connected:", error
+      else
+        @emit 'warn', "Socket error:", error
+    @ddpClient.on 'connected', =>
+      @state = 'connected'
+      @emit 'trace', "ddpClient connected"
     @listenForFiles()
+    @listenForCommands()
     
   subscribe: (collectionName, args..., callback) ->
     if callback and 'function' != typeof callback
@@ -77,8 +88,11 @@ class DdpClient extends EventEmitter
       return callback err if err
       @emit 'debug', "Registered project and got id #{projectId}"
       @projectId = projectId
+      #Resubscribe on reconnection
+      @ddpClient.on 'connected', =>
+        @subscribe 'files', @projectId
+        @subscribe 'commands', @projectId
       callback null, projectId, warning
-      @listenForCommands()
       
   addFile: (file) ->
     @cleanFile file
@@ -108,8 +122,6 @@ class DdpClient extends EventEmitter
       if msg.msg == 'added'
         data.commandId = msg.id
         @emit 'command', msg.fields.command, data
-        
-    @subscribe 'commands', @projectId
 
   listenForFiles: ->
     @ddpClient.on 'message', (message) =>
