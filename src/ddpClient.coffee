@@ -154,7 +154,10 @@ class DdpClient extends EventEmitter
 
   #data = {commandId, fileId, contents}
   sendFileContents: (error, data) ->
-    @updateFile data.fileId, {checksum:data.checksum}
+    @updateFile data.fileId,
+      lastOpened: data.lastOpened
+      fsChecksum: data.fsChecksum
+      loadChecksum: data.loadChecksum
 
     @ddpClient.call 'commandReceived', [error, data], (err) =>
       if err

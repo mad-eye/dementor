@@ -88,6 +88,7 @@ class Dementor extends events.EventEmitter
       if warning
         @emit 'message-warning', warning
       @projectId = projectId
+      @projectFiles.saveProjectId projectId
       @emit 'enabled'
       callback()
 
@@ -185,7 +186,9 @@ class Dementor extends events.EventEmitter
               commandId: data.commandId
               fileId: fileId
               contents: contents
-              checksum: checksum
+              loadChecksum: checksum
+              fsChecksum: checksum
+              lastOpened: Date.now()
               warning: warning
 
 

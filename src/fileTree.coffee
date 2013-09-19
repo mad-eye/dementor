@@ -120,9 +120,16 @@ module.exports = FileTree
 
 ###
 MODIFIED FLAG/CHECKSUM FLOW
+---------------------------
+
 REQUEST FILE:
 Return contents, set
   lastOpened: now
+  loadChecksum
+  fsChecksum
+
+SAVE FILE:
+Save contents, set
   loadChecksum
   fsChecksum
 
@@ -144,8 +151,5 @@ CHANGE FS FILE:
 APOGEE:
   modified = editorChecksum != fsChecksum
   display modifiedOnClient warning if loadChecksum != fsChecksum
-
-
-
 
 ###
