@@ -5,10 +5,10 @@ _ = require 'underscore'
 {assert} = require 'chai'
 {EventEmitter} = require 'events'
 sinon = require 'sinon'
-{LogListener} = require '../../madeye-common/common'
+{Logger} = require '../../madeye-common/common'
 MockDdpClient = require '../mock/mockDdpClient'
 
-listener = new LogListener logLevel: 'trace'
+Logger.setLevel 'trace'
 
 
 describe "FileTree", ->
@@ -74,7 +74,7 @@ describe "FileTree", ->
           updateFileContents: sinon.spy()
         dementor = {retrieveContents: sinon.stub()}
         tree = new FileTree ddpClient, dementor
-        listener.listen tree, 'tree'
+        Logger.listen tree, 'tree'
 
       it "should do nothing if new file's mtime is not newer", ->
         file =

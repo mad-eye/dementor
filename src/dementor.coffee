@@ -58,6 +58,7 @@ class Dementor extends events.EventEmitter
           cb err, files
     }, (err, results) =>
       return @handleError err if err
+      @emit 'trace', 'Initial enable done, now adding files'
       @fileTree.addInitialFiles results.files
       @watchProject()
 

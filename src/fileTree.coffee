@@ -3,9 +3,11 @@ _path = require 'path'
 uuid = require 'node-uuid'
 {EventEmitter} = require 'events'
 {standardizePath, localizePath} = require './projectFiles'
+console.error "################## REQUIRING FILETREE"
 
 class FileTree extends EventEmitter
   constructor: (@ddpClient, @dementor) ->
+    console.error "################## FILETREE"
     @filesById = {}
     @filesByPath = {}
     @dirsPending = []
@@ -76,6 +78,7 @@ class FileTree extends EventEmitter
       filePathsAdded.push file.path
     orphanedPaths = _.difference existingFilePaths, filePathsAdded
     @removeFsFile path for path in orphanedPaths
+    @emit 'added initial files'
 
   removeDdpFile: (fileId) ->
     file = @filesById[fileId]

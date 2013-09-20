@@ -280,7 +280,7 @@ describe 'ProjectFiles', ->
     beforeEach ->
       resetHome()
       projectFiles.removeAllListeners 'stop'
-      projectFiles.removeAllListeners messageAction.LOCAL_FILES_ADDED
+      projectFiles.removeAllListeners 'file added'
 
     makeFile = (fileName) ->
       filePath = _path.join projectDir, fileName
@@ -308,8 +308,7 @@ describe 'ProjectFiles', ->
     it "should notice when i add a file", (done) ->
       fileName = 'file.txt'
       filePath = makeFile fileName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
-        file = data.files[0]
+      projectFiles.on 'file added', (file) ->
         assert.equal file.path, fileName
         assert.equal file.isDir, false
         done()
@@ -321,7 +320,7 @@ describe 'ProjectFiles', ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = 'file.txt~'
       filePath = makeFile fileName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+      projectFiles.on 'file added', (data) ->
         assert.fail "Should not notice file."
       projectFiles.on 'stop', (data) ->
         done()
@@ -333,7 +332,7 @@ describe 'ProjectFiles', ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = '.file.txt.swp'
       filePath = makeFile fileName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+      projectFiles.on 'file added', (data) ->
         assert.fail "Should not notice file."
       projectFiles.on 'stop', (data) ->
         done()
@@ -357,7 +356,7 @@ describe 'ProjectFiles', ->
       #linkName = 'brokenLink'
       #linkPath = _path.join projectDir, linkName
       #fs.symlinkSync filePath, linkPath
-      #projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+      #projectFiles.on 'file added', (data) ->
         #assert.fail "Should not notice file."
       #projectFiles.on 'stop', (data) ->
         #done()

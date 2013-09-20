@@ -6,7 +6,7 @@ util = require 'util'
 clc = require 'cli-color'
 io = require 'socket.io-client'
 {errorType} = require './madeye-common/common'
-{LogListener} = require './madeye-common/common'
+{Logger} = require './madeye-common/common'
 
 dementor = null
 debug = false
@@ -36,10 +36,10 @@ run = ->
     when program.trace then 'trace'
     when program.debug then 'debug'
     else 'info'
-  listener = new LogListener
-    logLevel: logLevel
-    onError: (err) ->
+  Logger.setLevel logLevel
+  Logger.onError (err) ->
       shutdown(err.code ? 1)
+  log = new Logger name:'app'
 
   if program.madeyeUrl
     apogeeUrl = program.madeyeUrl
@@ -50,7 +50,7 @@ run = ->
     azkabanUrl = Settings.azkabanUrl
     socketUrl = Settings.socketUrl
 
-  listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
+  log.debug "Connecting to socketUrl #{socketUrl}"
   socket = io.connect socketUrl,
     'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
     'auto connect': false
@@ -59,7 +59,7 @@ run = ->
   ddpClient = new DdpClient
     host: Settings.ddpHost
     port: Settings.ddpPort
-  listener.listen ddpClient, 'ddpClient'
+  Logger.listen ddpClient, 'ddpClient'
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
@@ -71,9 +71,9 @@ run = ->
     ignoreFile: program.ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
-  listener.listen dementor, 'dementor'
-  listener.listen dementor.projectFiles, 'projectFiles'
-  listener.listen dementor.fileTree, 'fileTree'
+  Logger.listen dementor, 'dementor'
+  Logger.listen dementor.projectFiles, 'projectFiles'
+  Logger.listen dementor.fileTree, 'fileTree'
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
@@ -95,7 +95,7 @@ run = ->
   process.on 'uncaughtException', (err)->
     if err.code == "ENOENT"
       #Silence the error for now
-      listener.debug "File does not exist #{err.path}"
+      log.debug "File does not exist #{err.path}"
       0
     else
       throw err

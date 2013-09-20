@@ -19,6 +19,7 @@ class DdpClient extends EventEmitter
     @ddpClient = new DDPClient options
     @initialized = false
     @state = 'closed'
+    @_initialize()
 
   #FIXME: This hangs when apogee is down -- set timeout and report error?
   #This will emit a 'connected' event on each connection.
@@ -30,13 +31,11 @@ class DdpClient extends EventEmitter
       unless error
         @emit 'connected'
         @emit 'debug', 'DDP connected'
-      @_initialize()
 
   shutdown: (callback) ->
     @emit 'debug', 'Shutting down ddpClient'
     if @projectId
-      #This hangs if the connection is down and the socket is trying to reconnect.
-      #TODO: Make connected status and check that.
+      #FIXME: This hangs if the connection is down and the socket is trying to reconnect.
       @ddpClient.call 'closeProject', [@projectId], (err) =>
         if err
           @emit 'warn', "Error closing project:", err
@@ -50,8 +49,8 @@ class DdpClient extends EventEmitter
 
   _initialize: ->
     return if @initialized
-    @emit 'trace', 'Initializing ddp'
     @initialized = true
+    @emit 'trace', 'Initializing ddp'
     @ddpClient.on 'message', (msg) =>
       @emit 'trace', 'Ddp message: ' + msg
     @ddpClient.on 'socket-close', (code, message) =>

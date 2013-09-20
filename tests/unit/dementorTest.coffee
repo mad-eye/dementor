@@ -12,7 +12,9 @@ MockDdpClient = require '../mock/mockDdpClient'
 {messageMaker, messageAction} = require '../../madeye-common/common'
 {errors, errorType} = require '../../madeye-common/common'
 sinon = require 'sinon'
+{Logger} = require '../../madeye-common/common'
 
+Logger.setLevel 'trace'
 
 #TODO: Reduce redundancy with better before/etc hooks.
 
@@ -66,36 +68,56 @@ describe "Dementor", ->
 
     describe "when not registered", ->
       targetFileTree = null
+      newProjectId = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
+        newProjectId = uuid.v4()
 
         ddpClient = new MockDdpClient
-          connect: sinon.stub()
+          connect: ->
+            process.nextTick => @emit 'connected'
           registerProject: sinon.stub()
           subscribe: sinon.stub()
+          addFile: (file) ->
+            file._id = uuid.v4()
+            @emit 'added', file
+        ddpClient.registerProject.callsArgWith 1, null, newProjectId
+        ddpClient.subscribe.withArgs('files').callsArg 2
+        sinon.stub ddpClient, 'addFile'
+
         dementor = new Dementor
-          directory:projectPath
+          directory: projectPath
           ddpClient: ddpClient
-        dementor.on 'enabled', ->
+        Logger.listen dementor, 'dementor'
+        Logger.listen dementor.fileTree, 'fileTree'
+        dementor.fileTree.on 'added initial files', ->
           done()
         dementor.enable()
 
-      it "should register the project if not already registered", ->
-        assert.ok dementor.projectId
-        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
+      it "should call ddpClient.registerProject", ->
+        params = ddpClient.registerProject.args[0][0]
+        assert.ok !params.projectId
 
+      it 'should set new projectId', ->
+        assert.equal dementor.projectId, newProjectId
+
+      it 'should save new projectId', ->
+        assert.equal dementor.projectFiles.projectIds()[projectPath], newProjectId
+
+      ###
       it "should populate file tree with files (and ids)", ->
         assert.ok dementor.fileTree
         files = dementor.fileTree.getFiles()
         assert.equal files.length, targetFileTree.getFiles().length
         for file in files
           assert.ok file.isDir?
-          assert.ok file.path?
+          assert.ok file.path
           assert.ok file._id
-          
-    describe "with outdated NodeJs", ->
+      ###
+    ###
+    describe "with outdated NodeJs"
       targetFileTree = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
@@ -113,8 +135,8 @@ describe "Dementor", ->
           assert.equal msg, warningMsg
           done()
         dementor.enable()
-      
-
+    ###
+###
     describe "when already registered", ->
       targetFileTree = projectId = null
       before (done) ->
@@ -331,3 +353,5 @@ describe "Dementor", ->
           done()
 
       dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]
+###
+
