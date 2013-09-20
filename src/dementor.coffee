@@ -211,7 +211,8 @@ class Dementor extends events.EventEmitter
           @projectFiles.writeFile path, contents, (err) =>
             if err
               @emit 'warn', "Error saving file #{path}:", err
-              return errorCallback wrapError(err), data.commandId
+              #TODO: Wrap error into JSON object
+              return errorCallback err, data.commandId
             checksum = crc32 contents
             @emit 'message-info', "Saving file " + clc.bold path
             @ddpClient.updateFile fileId,
@@ -224,7 +225,8 @@ class Dementor extends events.EventEmitter
     @projectFiles.readFile path, (err, contents) =>
       if err
         @emit 'warn', "Error retrieving contents for file #{path}:", err
-        return callback wrapError(err), data.commandId
+        #TODO: Wrap error into JSON object
+        return callback err
       cleanContents = cleanupLineEndings contents
       checksum = crc32 cleanContents
       warning = null

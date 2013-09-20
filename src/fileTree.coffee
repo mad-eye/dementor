@@ -47,8 +47,7 @@ class FileTree extends EventEmitter
       @ddpClient.updateFile fileId, mtime: newFile.mtime
       return
 
-    console.log "drc:", @dementor.retrieveContents
-    @dementor.retrieveContents fileId, (err, {contents, checksum, warning}) =>
+    @dementor.retrieveContents newFile.path, (err, {contents, checksum, warning}) =>
       console.log "retrieveContents:", err, contents, checksum, warning
       if err
         @emit 'error', "Error retrieving contents:", err
