@@ -206,6 +206,64 @@ describe "FileTree", ->
 
     it "should not touch unmentioned fields"
 
+  describe 'removeDdpFile', ->
+    tree = null
+    ddpClient = null
+    file =
+      _id: uuid.v4()
+      path: 'b/ways/n/to.txt'
+    before ->
+      ddpClient = new MockDdpClient
+      tree = new FileTree ddpClient
+      tree.addDdpFile file
+      tree.removeDdpFile file._id
+
+    it 'should clear filesById', ->
+      assert.ok !tree.filesById[file._id]
+
+    it 'should clear filesByPath', ->
+      assert.ok !tree.filesByPath[file.path]
+
+    it 'should not error on null file', ->
+      tree.removeDdpFile null
+
+  describe 'removeFsFile', ->
+    tree = null
+    ddpClient = null
+    modifiedFile =
+      _id: uuid.v4()
+      path: 'b/ways/n/to.txt'
+      modified: true
+
+    unmodifiedFile =
+      _id: uuid.v4()
+      path: 'more/an/pw'
+
+    beforeEach ->
+      ddpClient = new MockDdpClient
+        updateFile: sinon.spy()
+        removeFile: sinon.spy()
+      tree = new FileTree ddpClient
+      tree.addDdpFile modifiedFile
+      tree.addDdpFile unmodifiedFile
+
+    it 'should remove file if unmodified', ->
+      tree.removeFsFile unmodifiedFile.path
+      assert.isTrue ddpClient.removeFile.called
+      assert.isTrue ddpClient.removeFile.calledWith unmodifiedFile._id
+      assert.isFalse ddpClient.updateFile.called
+
+    it 'should set deletedInFs=true if modified', ->
+      tree.removeFsFile modifiedFile.path
+      assert.isFalse ddpClient.removeFile.called
+      assert.isTrue ddpClient.updateFile.called
+      assert.isTrue ddpClient.updateFile.calledWith \
+        modifiedFile._id, {deletedInFs:true}
+
+    it 'should not error out if file path is unknown', ->
+      tree.removeFsFile uuid.v4()
+
+
 ###
   describe "completeParentFiles", ->
     tree = null

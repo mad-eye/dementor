@@ -79,6 +79,7 @@ class FileTree extends EventEmitter
 
   removeDdpFile: (fileId) ->
     file = @filesById[fileId]
+    return unless file
     delete @filesById[fileId]
     delete @filesByPath[file.path]
     @emit 'trace', "Removed ddp file #{file.path}"
@@ -87,6 +88,9 @@ class FileTree extends EventEmitter
 
   removeFsFile: (path) ->
     file = @filesByPath[path]
+    unless file
+      @emit 'debug', "Trying to remove file unknown to ddp:", path
+      return
     unless file.modified
       @ddpClient.removeFile file._id
       @emit 'trace', "Removed file #{file.path}"
