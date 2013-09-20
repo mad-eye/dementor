@@ -59,11 +59,28 @@ describe "FileTree", ->
 
     it 'should ddp addFile on a new file', ->
       file =
-        path: 'a/q/tooo.py'
+        path: 'tooo.py'
         mtime: ago
       tree.addFsFile file
       assert.isTrue ddpClient.addFile.called
       assert.isTrue ddpClient.addFile.calledWith file
+
+    describe 'adds parent dirs', ->
+      beforeEach ->
+        ddpClient = new MockDdpClient
+          addFile: (file) ->
+            file._id = uuid.v4()
+            @emit 'added', file
+        tree = new FileTree ddpClient
+        Logger.listen tree, 'XXX tree'
+
+      it 'should add the parent dirs of a file', ->
+        file =
+          path: 'one/two/' + uuid.v4()
+          isDir: false
+        tree.addFsFile file
+
+
 
     describe 'over existing file', ->
       dementor = null
@@ -79,7 +96,7 @@ describe "FileTree", ->
       it "should do nothing if new file's mtime is not newer", ->
         file =
           _id: uuid.v4()
-          path: 'a/ways/down/to.txt'
+          path: 'to.txt'
           mtime: ago
         tree.addDdpFile file
         newFile =
@@ -92,7 +109,7 @@ describe "FileTree", ->
       it "should should only update mtime if file is not opened", ->
         file =
           _id: uuid.v4()
-          path: 'a/ways/down/to.txt'
+          path: uuid.v4()
           mtime: ago
         tree.addDdpFile file
         newFile =
@@ -108,7 +125,7 @@ describe "FileTree", ->
       it "should should update mtime, fsChecksum if file is opened not modified", ->
         file =
           _id: uuid.v4()
-          path: 'a/ways/down/to.txt'
+          path: uuid.v4()
           mtime: ago
           lastOpened: ago
           fsChecksum: 1235
@@ -145,7 +162,7 @@ describe "FileTree", ->
       it "should update loadChecksum and call updateFileContents if modified", ->
         file =
           _id: uuid.v4()
-          path: 'a/ways/down/to.txt'
+          path: uuid.v4()
           mtime: ago
           lastOpened: ago
           fsChecksum: 1235
@@ -211,7 +228,7 @@ describe "FileTree", ->
     ddpClient = null
     file =
       _id: uuid.v4()
-      path: 'b/ways/n/to.txt'
+      path: uuid.v4()
     before ->
       ddpClient = new MockDdpClient
       tree = new FileTree ddpClient
@@ -232,12 +249,12 @@ describe "FileTree", ->
     ddpClient = null
     modifiedFile =
       _id: uuid.v4()
-      path: 'b/ways/n/to.txt'
+      path: uuid.v4()
       modified: true
 
     unmodifiedFile =
       _id: uuid.v4()
-      path: 'more/an/pw'
+      path: uuid.v4()
 
     beforeEach ->
       ddpClient = new MockDdpClient

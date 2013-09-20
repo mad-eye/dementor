@@ -11,7 +11,7 @@ class FileTree extends EventEmitter
     @filesById = {}
     @filesByPath = {}
     @dirsPending = []
-    @setupDdpClient()
+    @_listenToDdpClient()
 
   getFiles: -> _.values @filesById
 
@@ -25,8 +25,8 @@ class FileTree extends EventEmitter
     @filesById[file._id] = file if file._id
     @filesByPath[file.path] = file
     @emit 'trace', "Added ddp file #{file.path}"
-    #removed = removeItemFromArray file.path, @dirsPending
-    #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
+    removed = removeItemFromArray file.path, @dirsPending
+    @emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
   #Add a file that we find on the file system
   addFsFile: (file) ->
@@ -36,9 +36,8 @@ class FileTree extends EventEmitter
     if existingFile
       @_updateFile existingFile, file
     else
+      @_addParentDirs file
       @ddpClient.addFile file
-    #removed = removeItemFromArray file.path, @dirsPending
-    #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
   _updateFile: (existingFile, newFile) ->
     return unless newFile.mtime > existingFile.mtime
@@ -86,8 +85,6 @@ class FileTree extends EventEmitter
     delete @filesById[fileId]
     delete @filesByPath[file.path]
     @emit 'trace', "Removed ddp file #{file.path}"
-    #removed = removeItemFromArray file.path, @dirsPending
-    #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
   removeFsFile: (path) ->
     file = @filesByPath[path]
@@ -107,28 +104,19 @@ class FileTree extends EventEmitter
     delete file[key] for key in cleared
 
   #Add missing parent dirs to files
-  completeParentFiles: (files) ->
-    newFileMap = {}
-    newFileMap[file.path] = file for file in files
-
-    for file in files
+  _addParentDirs: (file) ->
+    path = file.path
+    loop
       #Need to localize path seps for _path.dirname to work
-      path = localizePath file.path
-      loop
-        path = _path.dirname path
-        break if path == '.' or path == '/' or !path?
-        break if path of newFileMap
-        continue if @filesByPath[path]
-        unless path in @dirsPending
-          newFileMap[path] = {path: path, isDir: true}
-          @dirsPending.push standardizePath path
-          @emit 'trace', "Adding #{path} to dirsPending."
-        else
-          @emit 'trace', "#{path} is in dirsPending, ignoring."
+      path = standardizePath _path.dirname localizePath path
+      break if path == '.' or path == '/' or !path?
+      break if path in @dirsPending
+      break if path of @filesByPath
+      @addFsFile {path: path, isDir: true}
+      @dirsPending.push path
+      @emit 'trace', "Adding #{path} to dirsPending."
 
-    return _.values(newFileMap)
-
-  setupDdpClient: ->
+  _listenToDdpClient: ->
     return unless @ddpClient
     @ddpClient.on 'added', (file) =>
       @addDdpFile file

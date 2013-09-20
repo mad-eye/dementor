@@ -287,8 +287,14 @@ describe 'ProjectFiles', ->
       fs.writeFileSync filePath, 'touched'
       return _path.resolve filePath
 
+    makeDir = (dirName) ->
+      dirPath = _path.join projectDir, dirName
+      fs.mkdir dirPath
+      return _path.resolve dirPath
+
     ###
     #FIXME: Very strange error sometimes on this test
+    #It is caused somehow by deleted/recreating the test dir.
     1) ProjectFiles watchFileTree should notice when i add a file:
       
       actual expected
@@ -340,9 +346,8 @@ describe 'ProjectFiles', ->
       watcher.emit 'add', filePath
       projectFiles.emit 'stop'
 
-    #TODO: Once we have the new filewatcher
     it "should notice when I add a directory"
-      
+
     it "should notice when i delete a file"
 
     it "should notice when i change a file"
