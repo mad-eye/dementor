@@ -7,38 +7,16 @@ _path = require 'path'
 {Dementor} = require '../../src/dementor'
 {ProjectFiles} = require '../../src/projectFiles'
 {fileUtils} = require '../util/fileUtils'
-{MockHttpClient} = require '../mock/mockHttpClient'
+MockDdpClient = require '../mock/mockDdpClient'
 {MockSocket} = require '../../madeye-common/common'
 {messageMaker, messageAction} = require '../../madeye-common/common'
 {errors, errorType} = require '../../madeye-common/common'
+sinon = require 'sinon'
 
 
 #TODO: Reduce redundancy with better before/etc hooks.
 
 homeDir = fileUtils.homeDir
-
-defaultHttpClient = new MockHttpClient (options, params) ->
-  match = /project(\/[\w-]+)?/.exec options.action
-  if match
-    projectId = match[1]?.substring(1)
-    if options.method == 'POST'
-      return {error: "ProjectID should not be specified"} if projectId?
-      return errors.new errorType.OUT_OF_DATE unless options.json?.version?
-      projectName = options.json?['projectName']
-      files = options.json?['files']
-      file._id = uuid.v4() for file in files if files
-      return {project: {_id:uuid.v4(), name:projectName}, files:files }
-    else if options.method == 'PUT'
-      return {error: "ProjectID should be specified"} unless projectId?
-      return errors.new errorType.OUT_OF_DATE unless options.json?.version?
-      projectName = options.json?['projectName']
-      files = options.json?['files']
-      file._id = uuid.v4() for file in files if files
-      return {project: {_id:projectId, name:projectName}, files:files }
-    else
-      return {error: "Wrong method: #{options.method}"}
-  else
-    return {error: "Wrong action: #{options.action}"}
 
 describe "Dementor", ->
   before ->
@@ -62,22 +40,29 @@ describe "Dementor", ->
       projects[projectPath] = projectId
       projectFiles.saveProjectIds projects
 
-      dementor = new Dementor projectPath
+      dementor = new Dementor
+        directory:projectPath
+        ddpClient: new MockDdpClient
       assert.equal dementor.projectId, projectId
 
     it "should have null projectId if not previously registered", ->
       projectPath = fileUtils.createProject "nothinghere"
-      dementor = new Dementor projectPath
+      dementor = new Dementor
+        directory:projectPath
+        ddpClient: new MockDdpClient
       assert.equal dementor.projectId, null
 
     it "should set dementor.version", ->
       projectPath = fileUtils.createProject "version"
-      dementor = new Dementor projectPath
+      dementor = new Dementor
+        directory:projectPath
+        ddpClient: new MockDdpClient
       assert.equal dementor.version, (require '../../package.json').version
 
   describe "enable", ->
     dementor = null
     projectPath = null
+    ddpClient = null
 
     describe "when not registered", ->
       targetFileTree = null
@@ -85,7 +70,14 @@ describe "Dementor", ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+
+        ddpClient = new MockDdpClient
+          connect: sinon.stub()
+          registerProject: sinon.stub()
+          subscribe: sinon.stub()
+        dementor = new Dementor
+          directory:projectPath
+          ddpClient: ddpClient
         dementor.on 'enabled', ->
           done()
         dementor.enable()

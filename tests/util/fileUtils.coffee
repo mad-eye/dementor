@@ -67,7 +67,7 @@ class FileUtils
       }
       return rawFile
     for key, value of fileMap
-      fileTree.addFile makeRawFile _path.join(root, key), value
+      fileTree.addDdpFile makeRawFile _path.join(root, key), value
       unless typeof value == "string"
         @constructFileTree(value, _path.join(root, key), fileTree)
     return fileTree

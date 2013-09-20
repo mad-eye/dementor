@@ -6,12 +6,9 @@ _ = require 'underscore'
 {EventEmitter} = require 'events'
 sinon = require 'sinon'
 {LogListener} = require '../../madeye-common/common'
+MockDdpClient = require '../mock/mockDdpClient'
 
 listener = new LogListener logLevel: 'trace'
-
-class MockDdpClient extends EventEmitter
-  constructor: (services) ->
-    _.extend this, services
 
 
 describe "FileTree", ->
