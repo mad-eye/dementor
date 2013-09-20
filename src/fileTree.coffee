@@ -75,19 +75,24 @@ class FileTree extends EventEmitter
       @addFsFile file
       filePathsAdded.push file.path
     orphanedPaths = _.difference existingFilePaths, filePathsAdded
-    @emit 'trace', "Found orphaned files", orphanedPaths
-    for path in orphanedPaths
-      orphan = @filesByPath[path]
-      #TODO: Check for modifications/etc
-      @ddpClient.removeFile orphan._id
+    @removeFsFile path for path in orphanedPaths
 
-  remove: (fileId) ->
+  removeDdpFile: (fileId) ->
     file = @filesById[fileId]
     delete @filesById[fileId]
     delete @filesByPath[file.path]
-    @emit 'trace', "Removed file #{file.path}"
+    @emit 'trace', "Removed ddp file #{file.path}"
     #removed = removeItemFromArray file.path, @dirsPending
     #@emit 'trace', "Removed #{file.path} from pending dirs." if removed
+
+  removeFsFile: (path) ->
+    file = @filesByPath[path]
+    unless file.modified
+      @ddpClient.removeFile file._id
+      @emit 'trace', "Removed file #{file.path}"
+    else
+      @ddpClient.updateFile file._id, {deletedInFs:true}
+      @emit 'trace', "Marked file #{file.path} as deleted in filesystem"
 
   change: (fileId, fields={}, cleared=[]) ->
     file = @filesById[fileId]
@@ -121,7 +126,7 @@ class FileTree extends EventEmitter
     @ddpClient.on 'added', (file) =>
       @addDdpFile file
     @ddpClient.on 'removed', (fileId) =>
-      @emit 'info', "Would remove file #{fileId}"
+      @removeDdpFile fileId
     @ddpClient.on 'changed', (fileId, fields, cleared) =>
       file = @filesById[fileId]
       @emit 'trace', "Updating fields for #{file.path}:", fields if fields
@@ -175,5 +180,19 @@ CHANGE FS FILE:
 APOGEE:
   modified = editorChecksum != fsChecksum
   display modifiedOnClient warning if loadChecksum != fsChecksum
+
+DELETE FS FILE:
+  unless modified
+    delete file
+  else
+    set deleteInFs=true
+
+APOGEE:
+  file deleted
+    if file not in editor do nothing (it will disappear)
+    if file in editor, navigate user to another file, display warning
+  file with deleteInFs==true
+    if in editor, display "Deleted on FS" warning
+    if not in editor, do nothing (mark in file tree somehow?)
 
 ###

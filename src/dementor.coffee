@@ -59,7 +59,7 @@ class Dementor extends events.EventEmitter
     }, (err, results) =>
       return @handleError err if err
       @fileTree.addInitialFiles results.files
-      #@watchProject()
+      @watchProject()
 
   #callback: (err, files) ->
   readFileTree: (callback) ->
@@ -108,16 +108,18 @@ class Dementor extends events.EventEmitter
   # XXX: When files are modified because of server messages, they will fire events.  We should ignore those.
 
   watchProject: ->
-    @projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) =>
-      data.projectId = @projectId
-      data.files = @fileTree.completeParentFiles data.files
-      @socket.emit messageAction.LOCAL_FILES_ADDED, data, (err, files) =>
-        return @handleError err if err
-        @fileTree.addFiles files
+    @projectFiles.on 'file added', (file) =>
+      file.projectId = @projectId
+      #TODO: Do we need to add parent dirs, or will this happen automatically?
+      #data.files = @fileTree.completeParentFiles data.files
+      @fileTree.addFsFile file
 
-    @projectFiles.on messageAction.LOCAL_FILE_SAVED, (data) =>
-      data.projectId = @projectId
-      data.file = @fileTree.findByPath(data.path)
+    @projectFiles.on 'file changed', (file) =>
+      file.projectId = @projectId
+      #Just add it, fileTree will notice it exists and handle it
+      @fileTree.addFsFile file
+
+      ### Do we still need this?
       serverOp = @serverOps[data.file._id]
       if serverOp && serverOp.action == messageAction.SAVE_LOCAL_FILE
         delete @serverOps[data.file._id]
@@ -130,32 +132,10 @@ class Dementor extends events.EventEmitter
             level: 'info'
             fileId: data.file._id
             serverOp: serverOp
+      ###
 
-      @socket.emit messageAction.LOCAL_FILE_SAVED, data, (err, response) =>
-        return @handleError err if err
-        if response?.action == messageAction.WARNING
-          @handleWarning response.message
-
-    @projectFiles.on messageAction.LOCAL_FILES_REMOVED, (data) =>
-      data.projectId = @projectId
-      data.files = []
-      for path in data.paths
-        file = @fileTree.findByPath(path)
-        #FIXME: This was happening in production.  Write tests for it.
-        unless file?
-          @handleWarning "#{errorType.MISSING_PARAM}: filePath #{data.paths[0]} not found in fileTree", true
-          continue
-        data.files.push file
-      return unless data.files.length > 0
-      @socket.emit messageAction.LOCAL_FILES_REMOVED, data, (err, response) =>
-        return @handleError err if err
-        if response?.action == messageAction.WARNING
-          @handleWarning response.message
-          #XXX: Going to cause problems if a file is not deleted due to warning.
-          #But need to not delete it from the tree in order to resave it.
-          #Need to rethink the separation of fs files and mongo files.
-        else
-          @fileTree.remove file._id for file in data.files
+    @projectFiles.on 'file removed', (path) =>
+      @fileTree.removeFsFile path
 
     @projectFiles.watchFileTree()
     @addMetric 'WATCHING_FILETREE'
@@ -169,6 +149,7 @@ class Dementor extends events.EventEmitter
     @ddpClient.on 'command', (command, data) =>
       @emit 'trace', "Command received:", data
       switch command
+
         when 'request file'
           fileId = data.fileId
           unless fileId

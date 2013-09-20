@@ -133,19 +133,18 @@ class ProjectFiles extends events.EventEmitter
       @makeFileData path, (err, file) =>
         return @emit 'error', err if err
         return unless file
-        @emit messageAction.LOCAL_FILES_ADDED, files: [file]
+        @emit 'file added', file
 
     @watcher.on "change", (path, stats) =>
-      relativePath = @cleanPath path
-      return unless @shouldInclude relativePath
-      fs.readFile path, "utf-8", (err, contents) =>
-        if err then @emit 'error', err; return
-        @emit messageAction.LOCAL_FILE_SAVED, {path: relativePath, contents: contents}
+      @makeFileData path, (err, file) =>
+        return @emit 'error', err if err
+        return unless file
+        @emit 'file changed', file
 
     @watcher.on "unlink", (path) =>
       relativePath = @cleanPath path
       return unless @shouldInclude relativePath
-      @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
+      @emit 'file removed', relativePath
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
