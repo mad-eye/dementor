@@ -9,6 +9,7 @@ async = require 'async'
 {messageAction} = require '../madeye-common/common'
 IgnoreRules = require './ignoreRules'
 {Logger} = require '../madeye-common/common'
+{crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
 
 #Info Events:
 #  'error', message:, file?:

@@ -2,13 +2,13 @@
 FileTree = require './fileTree'
 {messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
-{crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 async = require 'async'
 {Logger} = require '../madeye-common/common'
+{crc32} = require '../madeye-common/common'
 
 class Dementor extends events.EventEmitter
   constructor: (options) ->
