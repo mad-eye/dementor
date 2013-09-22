@@ -138,7 +138,7 @@ describe "Dementor", ->
           done()
         dementor.enable()
     ###
-###
+
     describe "when already registered", ->
       targetFileTree = projectId = null
       before (done) ->
@@ -146,29 +146,56 @@ describe "Dementor", ->
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "alreadyEnableTest-#{randomString()}", fileMap
         projectId = randomString()
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+
+        ddpClient = new MockDdpClient
+          connect: ->
+            process.nextTick => @emit 'connected'
+          registerProject: sinon.stub()
+          subscribe: sinon.stub()
+          addFile: (file) ->
+            file._id = randomString()
+            process.nextTick =>
+              @emit 'added', file
+        ddpClient.registerProject.callsArgWith 1, null, projectId
+        ddpClient.subscribe.withArgs('files').callsArg 2
+
+        #Make a dementor to save project files
+        #This one doesn't have projectId set right, so have to make a new one
+        dementor = new Dementor
+          directory: projectPath
+          ddpClient: ddpClient
         dementor.projectFiles.saveProjectId projectId
 
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
-        dementor.on 'enabled', ->
+        dementor = new Dementor
+          directory: projectPath
+          ddpClient: ddpClient
+        dementor.fileTree.on 'added initial files', ->
           done()
         dementor.enable()
+
+      it "should call ddpClient.registerProject with projectId", ->
+        params = ddpClient.registerProject.args[0][0]
+        assert.equal params.projectId, projectId
 
       it "should update project files if already registered", ->
         assert.ok dementor.projectId
         assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
         assert.equal dementor.projectId, projectId, "Dementor's projectId differs from original."
 
-      it "should populate file tree with files (and ids)", ->
-        assert.ok dementor.fileTree
-        files = dementor.fileTree.getFiles()
-        assert.equal files.length, targetFileTree.getFiles().length
-        for file in files
-          assert.ok file.isDir?
-          assert.ok file.path?
-          assert.ok file._id
+      it "should populate file tree with files (and ids)", (done) ->
+        #Give the async bits time to process.
+        setTimeout ->
+          assert.ok dementor.fileTree
+          files = dementor.fileTree.getFiles()
+          assert.equal files.length, targetFileTree.getFiles().length
+          for file in files
+            assert.ok file.isDir?
+            assert.ok file.path
+            assert.ok file._id
+          done()
+        , 100
 
-
+###
   describe "shutdown", ->
     dementor = mockSocket = null
     socketClosed = false
