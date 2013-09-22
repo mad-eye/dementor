@@ -93,10 +93,11 @@ describe "Dementor", ->
         Logger.listen dementor, 'dementor'
         Logger.listen dementor.fileTree, 'fileTree'
         dementor.fileTree.on 'added initial files', ->
+          debugger
           done()
         dementor.enable()
 
-      it "should call ddpClient.registerProject", ->
+      it "should call ddpClient.registerProject without projectId", ->
         params = ddpClient.registerProject.args[0][0]
         assert.ok !params.projectId
 
@@ -106,8 +107,8 @@ describe "Dementor", ->
       it 'should save new projectId', ->
         assert.equal dementor.projectFiles.projectIds()[projectPath], newProjectId
 
-      ###
-      it "should populate file tree with files (and ids)", ->
+      it "should populate file tree with files (and ids) fweep", ->
+        debugger
         assert.ok dementor.fileTree
         files = dementor.fileTree.getFiles()
         assert.equal files.length, targetFileTree.getFiles().length
@@ -115,7 +116,6 @@ describe "Dementor", ->
           assert.ok file.isDir?
           assert.ok file.path
           assert.ok file._id
-      ###
     ###
     describe "with outdated NodeJs"
       targetFileTree = null
@@ -129,7 +129,7 @@ describe "Dementor", ->
           projectName = options.json?['projectName']
           files = options.json?['files']
           return {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
-            
+
         dementor = new Dementor projectPath, httpClient, new MockSocket
         dementor.on 'warn', (msg) ->
           assert.equal msg, warningMsg

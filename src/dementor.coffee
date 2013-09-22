@@ -8,9 +8,11 @@ clc = require 'cli-color'
 _path = require 'path'
 {FILE_HARD_LIMIT, FILE_SOFT_LIMIT, ERROR_TOO_MANY_FILES, WARNING_MANY_FILES} = require './constants'
 async = require 'async'
+{Logger} = require '../madeye-common/common'
 
 class Dementor extends events.EventEmitter
   constructor: (options) ->
+    Logger.listen @, 'dementor'
     @emit 'trace', "Constructing with directory #{options.directory}"
     @projectFiles = new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
@@ -18,8 +20,7 @@ class Dementor extends events.EventEmitter
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
-    @fileTree = new FileTree @ddpClient, this
-    #@attach options.socket
+    @fileTree = new FileTree @ddpClient, @projectFiles
     @version = require('../package.json').version
     @serverOps = {}
 
@@ -161,7 +162,7 @@ class Dementor extends events.EventEmitter
             @emit 'warn', "Request file failed: missing file #{fileId}"
             return errorCallback errors.new('NO_FILE'), data.commandId
           @emit 'trace', "Remote request for #{path}"
-          @retrieveContents path, (err, results) =>
+          @projectFiles.retrieveContents path, (err, results) =>
             if err
               return errorCallback err, data.commandId
             
@@ -202,21 +203,5 @@ class Dementor extends events.EventEmitter
               fsChecksum: checksum
             @ddpClient.commandReceived null, commandId:data.commandId
 
-  #callback: (err, {contents, checksum, warning}) ->
-  retrieveContents: (path, callback) ->
-    @projectFiles.readFile path, (err, contents) =>
-      if err
-        @emit 'warn', "Error retrieving contents for file #{path}:", err
-        #TODO: Wrap error into JSON object
-        return callback err
-      cleanContents = cleanupLineEndings contents
-      checksum = crc32 cleanContents
-      warning = null
-      unless cleanContents == contents
-        lineEndingType = findLineEndingType contents
-        warning =
-          title: "Inconsistent line endings"
-          message: "We've converted them all into #{lineEndingType}."
-      callback null, {contents:cleanContents, checksum, warning}
 
 exports.Dementor = Dementor

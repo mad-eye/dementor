@@ -8,6 +8,7 @@ events = require 'events'
 async = require 'async'
 {messageAction} = require '../madeye-common/common'
 IgnoreRules = require './ignoreRules'
+{Logger} = require '../madeye-common/common'
 
 #Info Events:
 #  'error', message:, file?:
@@ -33,6 +34,7 @@ IgnoreRules = require './ignoreRules'
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory, ignorepath) ->
+    Logger.listen @, 'projectFiles'
     @fileWatcher = require 'chokidar'
     @loadIgnoreRules ignorepath
 
@@ -157,6 +159,7 @@ class ProjectFiles extends events.EventEmitter
       callback error
 
   #callback: (error, fileData) ->
+  #fileData will be null if file is ignored
   makeFileData: (path, callback) ->
     cleanPath = @cleanPath path
     return callback null unless @shouldInclude cleanPath
@@ -168,6 +171,22 @@ class ProjectFiles extends events.EventEmitter
         isLink: stat.isSymbolicLink()
         mtime: stat.mtime.getTime()
       }
+
+  #callback: (err, {contents, checksum, warning}) ->
+  retrieveContents: (path, callback) ->
+    @readFile path, (err, contents) =>
+      if err
+        @emit 'warn', "Error retrieving contents for file #{path}:", err
+        return callback @wrapError err
+      cleanContents = cleanupLineEndings contents
+      checksum = crc32 cleanContents
+      warning = null
+      unless cleanContents == contents
+        lineEndingType = findLineEndingType contents
+        warning =
+          title: "Inconsistent line endings"
+          message: "We've converted them all into #{lineEndingType}."
+      callback null, {contents:cleanContents, checksum, warning}
 
   #callback: (error, files) ->
   readdirRecursive : (relDir='', callback) ->

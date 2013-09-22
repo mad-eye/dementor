@@ -83,14 +83,14 @@ describe "FileTree", ->
 
 
     describe 'over existing file', ->
-      dementor = null
+      projectFiles = null
       beforeEach ->
         ddpClient = new MockDdpClient
           addFile: sinon.spy()
           updateFile: sinon.spy()
           updateFileContents: sinon.spy()
-        dementor = {retrieveContents: sinon.stub()}
-        tree = new FileTree ddpClient, dementor
+        projectFiles = {retrieveContents: sinon.stub()}
+        tree = new FileTree ddpClient, projectFiles
         Logger.listen tree, 'tree'
 
       it "should do nothing if new file's mtime is not newer", ->
@@ -138,7 +138,7 @@ describe "FileTree", ->
         contentResults =
           contents : 'asd8asdfjafd'
           checksum : 9987066
-        dementor.retrieveContents.callsArgWith 1, null, contentResults
+        projectFiles.retrieveContents.callsArgWith 1, null, contentResults
 
         tree.addFsFile newFile
         assert.isFalse ddpClient.addFile.called,
@@ -176,7 +176,7 @@ describe "FileTree", ->
         contentResults =
           contents : 'asdfsdfafd'
           checksum : 99870
-        dementor.retrieveContents.callsArgWith 1, null, contentResults
+        projectFiles.retrieveContents.callsArgWith 1, null, contentResults
 
         tree.addFsFile newFile
         assert.isFalse ddpClient.addFile.called,
@@ -199,25 +199,26 @@ describe "FileTree", ->
     it "should update existing files"
     it "should remove orphaned files"
 
-  describe 'change', ->
+  describe 'on ddp file change', ->
     tree = null
+    ddpClient = new MockDdpClient
     file = _id: uuid.v4(), path: 'a/path', isDir:false, modified:true
     beforeEach ->
-      tree = new FileTree
+      tree = new FileTree ddpClient
       tree.addDdpFile file
 
     it 'should set fields', ->
-      tree.change file._id, {'b':2}
+      ddpClient.emit 'changed', file._id, {'b':2}
       assert.equal tree.findById(file._id).b, 2
       assert.equal tree.findByPath(file.path).b, 2
 
     it 'should overwrite fields', ->
-      tree.change file._id, {isDir:true}
+      ddpClient.emit 'changed', file._id, {isDir:true}
       assert.equal tree.findById(file._id).isDir, true
       assert.equal tree.findByPath(file.path).isDir, true
 
     it 'should delete cleared fields', ->
-      tree.change file._id, null, ['modified']
+      ddpClient.emit 'changed', file._id, null, ['modified']
       assert.isUndefined tree.findById(file._id).modified
       assert.isUndefined tree.findByPath(file.path).modified
 

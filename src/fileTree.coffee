@@ -3,14 +3,14 @@ _path = require 'path'
 uuid = require 'node-uuid'
 {EventEmitter} = require 'events'
 {standardizePath, localizePath} = require './projectFiles'
-console.error "################## REQUIRING FILETREE"
+{Logger} = require '../madeye-common/common'
 
 class FileTree extends EventEmitter
-  constructor: (@ddpClient, @dementor) ->
-    console.error "################## FILETREE"
+  constructor: (@ddpClient, @projectFiles) ->
+    Logger.listen @, 'fileTree'
     @filesById = {}
     @filesByPath = {}
-    @dirsPending = []
+    @filesPending = []
     @_listenToDdpClient()
 
   getFiles: -> _.values @filesById
@@ -25,18 +25,18 @@ class FileTree extends EventEmitter
     @filesById[file._id] = file if file._id
     @filesByPath[file.path] = file
     @emit 'trace', "Added ddp file #{file.path}"
-    removed = removeItemFromArray file.path, @dirsPending
+    removed = removeItemFromArray file.path, @filesPending
     @emit 'trace', "Removed #{file.path} from pending dirs." if removed
 
   #Add a file that we find on the file system
   addFsFile: (file) ->
-    #@emit 'trace', "Adding fs file:", file
+    @emit 'trace', "Adding fs file:", file
     return unless file
+    return if file.path in @filesPending
     existingFile = @filesByPath[file.path]
     if existingFile
       @_updateFile existingFile, file
     else
-      @_addParentDirs file
       @ddpClient.addFile file
 
   _updateFile: (existingFile, newFile) ->
@@ -48,7 +48,7 @@ class FileTree extends EventEmitter
       @ddpClient.updateFile fileId, mtime: newFile.mtime
       return
 
-    @dementor.retrieveContents newFile.path, (err, {contents, checksum, warning}) =>
+    @projectFiles.retrieveContents newFile.path, (err, {contents, checksum, warning}) =>
       console.log "retrieveContents:", err, contents, checksum, warning
       if err
         @emit 'error', "Error retrieving contents:", err
@@ -68,6 +68,25 @@ class FileTree extends EventEmitter
           loadChecksum: checksum
         @ddpClient.updateFileContents fileId, contents
 
+  #Add missing parent dirs to files
+  _addParentDirs: (file) ->
+    path = file.path
+    loop
+      #Need to localize path seps for _path.dirname to work
+      path = standardizePath _path.dirname localizePath path
+      break if path == '.' or path == '/' or !path?
+      #We assume if a dir is already handled, all of its parents are
+      break if path in @filesPending
+      break if path of @filesByPath
+      @filesPending.push path
+      @emit 'trace', "Adding #{path} to dirsPending."
+      @projectFiles.makeFileData path, (err, filedata) =>
+        if err
+          @emit 'warn', "Error making fileData for #{path}:", err
+          return
+        return unless filedata
+        @addFsFile filedata
+ 
   addInitialFiles: (files) ->
     return unless files
     existingFilePaths = _.keys @filesByPath
@@ -78,6 +97,13 @@ class FileTree extends EventEmitter
     orphanedPaths = _.difference existingFilePaths, filePathsAdded
     @removeFsFile path for path in orphanedPaths
     @emit 'added initial files'
+
+  #we are assuming that the watcher does not notice dirs, so complete
+  #missing parent dirs
+  addWatchedFile: (file) ->
+    return unless file
+    @addFsFile file
+    @_addParentDirs file
 
   removeDdpFile: (fileId) ->
     file = @filesById[fileId]
@@ -98,23 +124,13 @@ class FileTree extends EventEmitter
       @ddpClient.updateFile file._id, {deletedInFs:true}
       @emit 'trace', "Marked file #{file.path} as deleted in filesystem"
 
-  change: (fileId, fields={}, cleared=[]) ->
+  _changeDdpFile: (fileId, fields={}, cleared=[]) ->
     file = @filesById[fileId]
-    _.extend file, fields
-    delete file[key] for key in cleared
-
-  #Add missing parent dirs to files
-  _addParentDirs: (file) ->
-    path = file.path
-    loop
-      #Need to localize path seps for _path.dirname to work
-      path = standardizePath _path.dirname localizePath path
-      break if path == '.' or path == '/' or !path?
-      break if path in @dirsPending
-      break if path of @filesByPath
-      @addFsFile {path: path, isDir: true}
-      @dirsPending.push path
-      @emit 'trace', "Adding #{path} to dirsPending."
+    @emit 'trace', "Updating fields for #{file.path}:", fields if fields
+    _.extend file, fields if fields
+    @emit 'trace', "Clearing fields for #{file.path}:", cleared if cleared
+    delete file[field] for field in cleared if cleared
+    @emit 'debug', "Updated file", file
 
   _listenToDdpClient: ->
     return unless @ddpClient
@@ -123,12 +139,7 @@ class FileTree extends EventEmitter
     @ddpClient.on 'removed', (fileId) =>
       @removeDdpFile fileId
     @ddpClient.on 'changed', (fileId, fields, cleared) =>
-      file = @filesById[fileId]
-      @emit 'trace', "Updating fields for #{file.path}:", fields if fields
-      _.extend file, fields if fields
-      @emit 'trace', "Clearing fields for #{file.path}:", cleared if cleared
-      delete file[field] for field in cleared if cleared
-      @emit 'debug', "Updated file", file
+      @_changeDdpFile fileId, fields, cleared
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
       @emit 'trace', "Subscription has #{_.size @filesById} files"

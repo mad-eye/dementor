@@ -6,6 +6,8 @@ while [ $# -gt 0 ]
 do
     case "$1" in
         -w)  WATCH=--watch;;
+        -d)  DEBUG=--debug;;
+        -D)  DEBUG=--debug-brk;;
         -g)  GREP="-g $2"; shift;;
         --)	shift; break;;
         -*)
@@ -17,4 +19,4 @@ do
     shift
 done
 
-find tests -name '*Test.coffee' -print0 | xargs -0 bin/mochac $WATCH $GREP 
+find tests -name '*Test.coffee' -print0 | xargs -0 bin/mochac $DEBUG $WATCH $GREP 

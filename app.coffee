@@ -71,10 +71,6 @@ run = ->
     ignoreFile: program.ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
-  Logger.listen dementor, 'dementor'
-  Logger.listen dementor.projectFiles, 'projectFiles'
-  Logger.listen dementor.fileTree, 'fileTree'
-
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
     hangoutUrl = "#{azkabanUrl}/hangout/#{dementor.projectId}"
