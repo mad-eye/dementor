@@ -33,6 +33,7 @@ class FileTree extends EventEmitter
     @emit 'trace', "Adding fs file:", file
     return unless file
     existingFile = @filesByPath[file.path]
+    @emit 'trace', "File #{file.path} already exists:", existingFile?
     if existingFile
       @_updateFile existingFile, file
     else
@@ -48,7 +49,6 @@ class FileTree extends EventEmitter
       return
 
     @projectFiles.retrieveContents newFile.path, (err, {contents, checksum, warning}) =>
-      console.log "retrieveContents:", err, contents, checksum, warning
       if err
         @emit 'error', "Error retrieving contents:", err
         return

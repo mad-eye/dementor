@@ -2,6 +2,7 @@
 
 set -e
 
+LOGLEVEL="info"
 while [ $# -gt 0 ]
 do
     case "$1" in
@@ -9,6 +10,7 @@ do
         -d)  DEBUG=--debug;;
         -D)  DEBUG=--debug-brk;;
         -g)  GREP="-g $2"; shift;;
+        -l)  LOGLEVEL="$2"; shift;;
         --)	shift; break;;
         -*)
             echo >&2 \
@@ -19,4 +21,5 @@ do
     shift
 done
 
+export MADEYE_LOGLEVEL=$LOGLEVEL
 find tests -name '*Test.coffee' -print0 | xargs -0 bin/mochac $DEBUG $WATCH $GREP 
