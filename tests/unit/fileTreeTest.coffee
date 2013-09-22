@@ -65,21 +65,6 @@ describe "FileTree", ->
       assert.isTrue ddpClient.addFile.called
       assert.isTrue ddpClient.addFile.calledWith file
 
-    describe 'adds parent dirs', ->
-      beforeEach ->
-        ddpClient = new MockDdpClient
-          addFile: (file) ->
-            file._id = uuid.v4()
-            @emit 'added', file
-        tree = new FileTree ddpClient
-        Logger.listen tree, 'XXX tree'
-
-      it 'should add the parent dirs of a file', ->
-        file =
-          path: 'one/two/' + uuid.v4()
-          isDir: false
-        tree.addFsFile file
-
 
 
     describe 'over existing file', ->
@@ -280,6 +265,66 @@ describe "FileTree", ->
 
     it 'should not error out if file path is unknown', ->
       tree.removeFsFile uuid.v4()
+
+  describe 'addWatchedFile', ->
+    tree = ddpClient = null
+    dirOne =
+      path: 'one'
+      mtime: 123444
+      isDir: true
+      isLink: false
+    dirTwo =
+      path: 'one/two'
+      mtime: 123554
+      isDir: true
+      isLink: false
+    beforeEach ->
+      ddpClient = new MockDdpClient
+        addFile: (file) ->
+          file._id = uuid.v4()
+          process.nextTick =>
+            @emit 'added', file
+      projectFiles = makeFileData: (path, callback) ->
+        process.nextTick ->
+          callback null, dirOne if path == dirOne.path
+          callback null, dirTwo if path == dirTwo.path
+      tree = new FileTree ddpClient, projectFiles
+
+
+    it 'should add the parent dirs of a file', (done) ->
+      file =
+        path: 'one/two/' + uuid.v4()
+        isDir: false
+      tree.addWatchedFile file
+      #Wait for the async fns to finish
+      setTimeout ->
+        files = tree.getFiles()
+        assert.equal files.length, 3
+        assert.isTrue dirOne in files
+        assert.isTrue dirTwo in files
+        assert.isTrue file in files
+        done()
+      , 10
+
+    it 'should add only one dir for two child files', (done) ->
+      file1 =
+        path: 'one/' + uuid.v4()
+        isDir: false
+      file2 =
+        path: 'one/' + uuid.v4()
+        isDir: false
+      tree.addWatchedFile file1
+      tree.addWatchedFile file2
+      #Wait for the async fns to finish
+      setTimeout ->
+        files = tree.getFiles()
+        assert.equal files.length, 3
+        assert.isTrue dirOne in files
+        assert.isTrue file1 in files
+        assert.isTrue file2 in files
+        done()
+      , 10
+      
 
 
 ###

@@ -32,7 +32,6 @@ class FileTree extends EventEmitter
   addFsFile: (file) ->
     @emit 'trace', "Adding fs file:", file
     return unless file
-    return if file.path in @filesPending
     existingFile = @filesByPath[file.path]
     if existingFile
       @_updateFile existingFile, file

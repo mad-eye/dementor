@@ -107,7 +107,7 @@ describe "Dementor", ->
       it 'should save new projectId', ->
         assert.equal dementor.projectFiles.projectIds()[projectPath], newProjectId
 
-      it "should populate file tree with files (and ids) fweep", ->
+      it "should populate file tree with files (and ids)", ->
         debugger
         assert.ok dementor.fileTree
         files = dementor.fileTree.getFiles()
