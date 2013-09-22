@@ -112,14 +112,12 @@ class Dementor extends events.EventEmitter
   watchProject: ->
     @projectFiles.on 'file added', (file) =>
       file.projectId = @projectId
-      #TODO: Do we need to add parent dirs, or will this happen automatically?
-      #data.files = @fileTree.completeParentFiles data.files
-      @fileTree.addFsFile file
+      @fileTree.addWatchedFile file
 
     @projectFiles.on 'file changed', (file) =>
       file.projectId = @projectId
       #Just add it, fileTree will notice it exists and handle it
-      @fileTree.addFsFile file
+      @fileTree.addWatchedFile file
 
       ### Do we still need this?
       serverOp = @serverOps[data.file._id]

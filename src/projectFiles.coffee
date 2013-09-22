@@ -136,17 +136,20 @@ class ProjectFiles extends events.EventEmitter
       @makeFileData path, (err, file) =>
         return @emit 'error', err if err
         return unless file
+        @emit 'debug', "Local file added:", file.path
         @emit 'file added', file
 
     @watcher.on "change", (path, stats) =>
       @makeFileData path, (err, file) =>
         return @emit 'error', err if err
         return unless file
+        @emit 'debug', "Local file modified:", file.path
         @emit 'file changed', file
 
     @watcher.on "unlink", (path) =>
       relativePath = @cleanPath path
       return unless @shouldInclude relativePath
+      @emit 'debug', "Local file removed:", relativePath
       @emit 'file removed', relativePath
 
   _handleScanError: (error, callback) ->
