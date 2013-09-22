@@ -1,6 +1,5 @@
 _ = require 'underscore'
 _path = require 'path'
-uuid = require 'node-uuid'
 {EventEmitter} = require 'events'
 {standardizePath, localizePath} = require './projectFiles'
 {Logger} = require '../madeye-common/common'
