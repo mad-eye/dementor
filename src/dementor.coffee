@@ -22,7 +22,6 @@ class Dementor extends events.EventEmitter
     @setupDdpClient()
     @fileTree = new FileTree @ddpClient, @projectFiles
     @version = require('../package.json').version
-    @serverOps = {}
 
   handleError: (err, silent=false) ->
     return unless err
@@ -119,21 +118,6 @@ class Dementor extends events.EventEmitter
       #Just add it, fileTree will notice it exists and handle it
       @fileTree.addWatchedFile file
 
-      ### Do we still need this?
-      serverOp = @serverOps[data.file._id]
-      if serverOp && serverOp.action == messageAction.SAVE_LOCAL_FILE
-        delete @serverOps[data.file._id]
-        now = (new Date()).valueOf()
-        #Make sure it's not an old possibly stuck serverOp? 
-        if serverOp.timestamp.valueOf() > now - 10*1000
-          return
-        else
-          @addMetric "SERVER_OP_STUCK",
-            level: 'info'
-            fileId: data.file._id
-            serverOp: serverOp
-      ###
-
     @projectFiles.on 'file removed', (path) =>
       @fileTree.removeFsFile path
 
@@ -186,9 +170,6 @@ class Dementor extends events.EventEmitter
             @emit 'warn', "Save file failed: missing file #{fileId}"
             return errorCallback errors.new('NO_FILE'), data.commandId
           @emit 'debug', "Saving file #{path} from remote contents."
-          #TODO: Re-enable this to prevent duplicate events
-          #XXX: But want this to update mtime -- maybe handle event smarter?
-          #@serverOps[fileId] = action: messageAction.SAVE_LOCAL_FILE, timestamp: new Date
           @projectFiles.writeFile path, contents, (err) =>
             if err
               @emit 'warn', "Error saving file #{path}:", err
