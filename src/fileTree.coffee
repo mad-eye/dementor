@@ -115,6 +115,9 @@ class FileTree extends EventEmitter
     unless file
       @emit 'debug', "Trying to remove file unknown to ddp:", path
       return
+    if file.scratch
+      #dementor doesn't control these
+      return
     unless file.modified
       @ddpClient.removeFile file._id
       @emit 'trace', "Removed file #{file.path}"
