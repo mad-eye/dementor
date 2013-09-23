@@ -5,7 +5,7 @@ wrench = require 'wrench'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
-{errorType, messageAction} = require '../../madeye-common/common'
+{errorType} = require '../../madeye-common/common'
 events = require 'events'
 
 

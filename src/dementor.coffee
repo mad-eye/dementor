@@ -1,6 +1,5 @@
 {ProjectFiles, fileEventType} = require './projectFiles'
 FileTree = require './fileTree'
-{messageMaker, messageAction} = require '../madeye-common/common'
 {errors, errorType} = require '../madeye-common/common'
 events = require 'events'
 clc = require 'cli-color'
