@@ -5,7 +5,6 @@ wrench = require 'wrench'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
-{errorType} = require '../../madeye-common/common'
 events = require 'events'
 
 
@@ -57,7 +56,7 @@ describe 'ProjectFiles', ->
       fileName = 'nofile.txt'
       projectFiles.readFile fileName, (err, body) ->
         assert.ok err
-        assert.equal err.type, errorType.NO_FILE
+        assert.equal err.reason, 'FileNotFound'
         assert.equal body, null
         done()
 
@@ -66,7 +65,7 @@ describe 'ProjectFiles', ->
       fileUtils.mkDir _path.join projectDir, fileName
       projectFiles.readFile fileName, (err, body) ->
         assert.ok err
-        assert.equal err.type, errorType.IS_DIR
+        assert.equal err.reason, 'IsDirectory'
         assert.equal body, null
         done()
 
@@ -102,12 +101,12 @@ describe 'ProjectFiles', ->
   describe 'readFileTree', ->
     projectFiles = null
 
-    it 'should return error if no directory exists', (done) ->
+    it 'should return error if no directory exists fweep', (done) ->
       noRootDir = _path.join homeDir, 'notADir'
       projectFiles = new ProjectFiles noRootDir
       projectFiles.readFileTree (err, results) ->
         assert.ok err
-        assert.equal err.type, errorType.NO_FILE
+        assert.equal err.reason, 'FileNotFound'
         done()
 
     it 'should correctly serialize empty directory', (done) ->

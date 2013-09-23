@@ -17,19 +17,9 @@ IgnoreRules = require './ignoreRules'
 #  'debug', message
 #    
 #File Events:
-#  type: fileEventType
-#  data: #Event specific data
-#  [For ADD]
-#    files: [file,...]
-#  [For REMOVE]
-#    files: [file,...]
-#  [For SAVED]
-#    file:
-#    contents:
-#  [For MOVE]
-#    fileId:
-#    oldPath:
-#    newPath:
+#  'file added', file
+#  'file changed', file
+#  'file removed', filePath
 
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
@@ -48,14 +38,13 @@ class ProjectFiles extends events.EventEmitter
     newError = null
     switch error.code
       when 'ENOENT'
-        newError = errors.new 'NO_FILE', path: error.path
+        newError = errors.new 'FileNotFound', path: error.path
       when 'EISDIR'
-        newError = errors.new 'IS_DIR'
+        newError = errors.new 'IsDirectory'
       when 'EACCES'
-        newError = errors.new 'PERMISSION_DENIED', path: error.path
-        newError.message += newError.path
+        newError = errors.new 'PermissionDenied', path: error.path
       #Fill in other error cases here...
-    #console.error "Found error:", newError ? error
+    @emit 'trace', "Found error:", newError ? error
     return newError ? error
 
   loadIgnoreRules: (ignorepath) ->
@@ -151,15 +140,17 @@ class ProjectFiles extends events.EventEmitter
       @emit 'debug', "Local file removed:", relativePath
       @emit 'file removed', relativePath
 
+    #TODO: Moved
+
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
-      console.log clc.blackBright "Ignoring broken link", error #if process.env.MADEYE_DEBUG
+      @emit 'debug', "Ignoring broken link", error
       callback null
     else if error.code == 'EACCES'
-      console.log clc.blackBright "Permission denied for", error #if process.env.MADEYE_DEBUG
+      @emit 'debug', "Permission denied for", error #if process.env.MADEYE_DEBUG
       callback null
     else
-      callback error
+      callback @wrapError error
 
   #callback: (error, fileData) ->
   #fileData will be null if file is ignored
@@ -202,7 +193,7 @@ class ProjectFiles extends events.EventEmitter
           @emit 'debug', "Permission denied for #{relDir}"
           callback null
         else
-          callback err
+          callback @wrapError err
       else
         async.each fileNames, (fileName, cb) =>
           @makeFileData _path.join(@directory, relDir, fileName), (err, fileData) =>
