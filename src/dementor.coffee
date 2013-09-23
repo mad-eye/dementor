@@ -23,18 +23,6 @@ class Dementor extends events.EventEmitter
     @fileTree = new FileTree @ddpClient, @projectFiles
     @version = require('../package.json').version
 
-  handleError: (err, silent=false) ->
-    return unless err
-    message = err.message ? err
-    metric =
-      level : 'error'
-      type: err.type
-      message: message
-      timestamp : new Date()
-      projectId : @projectId
-    @socket.emit messageAction.METRIC, metric
-    @emit 'error', err unless silent
-
   handleWarning: (msg) ->
     return unless msg?
     @emit 'message-warning', msg
@@ -85,7 +73,7 @@ class Dementor extends events.EventEmitter
       version: @version
       nodeVersion: process.version
     @ddpClient.registerProject params, (err, projectId, warning) =>
-      return callback err if err
+      return @emit 'error', err if err
       if warning
         @emit 'message-warning', warning
       @projectId = projectId
@@ -183,4 +171,4 @@ class Dementor extends events.EventEmitter
             @ddpClient.commandReceived null, commandId:data.commandId
 
 
-exports.Dementor = Dementor
+module.exports = Dementor

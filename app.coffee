@@ -1,12 +1,8 @@
-{Dementor} = require('./src/dementor')
+Dementor = require './src/dementor' 
 DdpClient = require './src/ddpClient'
-{HttpClient} = require('./src/httpClient')
-{Settings} = require './madeye-common/common'
+{Settings, Logger} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
-io = require 'socket.io-client'
-{errorType} = require './madeye-common/common'
-{Logger} = require './madeye-common/common'
 
 dementor = null
 debug = false
@@ -38,35 +34,31 @@ run = ->
     else 'info'
   Logger.setLevel logLevel
   Logger.onError (err) ->
-      shutdown(err.code ? 1)
+    if 'string' == typeof err
+      message = err
+    else
+      message = err.details ? err.message
+    console.error clc.red('ERROR:'), message
+    shutdown(1)
   log = new Logger name:'app'
 
   if program.madeyeUrl
     apogeeUrl = program.madeyeUrl
     azkabanUrl = "#{program.madeyeUrl}/api"
-    socketUrl = program.madeyeUrl
   else
     apogeeUrl = Settings.apogeeUrl
     azkabanUrl = Settings.azkabanUrl
-    socketUrl = Settings.socketUrl
 
-  log.debug "Connecting to socketUrl #{socketUrl}"
-  socket = io.connect socketUrl,
-    'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
-    'auto connect': false
-  
   #TODO: Handle custom url case.
   ddpClient = new DdpClient
     host: Settings.ddpHost
     port: Settings.ddpPort
-  Logger.listen ddpClient, 'ddpClient'
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
   dementor = new Dementor
     directory: process.cwd()
     ddpClient: ddpClient
-    socket: socket
     clean: program.clean
     ignoreFile: program.ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()

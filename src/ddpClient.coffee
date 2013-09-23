@@ -2,6 +2,7 @@
 _ = require 'underscore'
 DDPClient = require "ddp"
 {normalizePath} = require '../madeye-common/common'
+{Logger} = require '../madeye-common/common'
 
 DEFAULT_OPTIONS =
   host: "localhost"
@@ -15,6 +16,7 @@ makeIdSelector = (id) ->
 
 class DdpClient extends EventEmitter
   constructor: (options) ->
+    Logger.listen @, 'ddpClient'
     options = _.extend DEFAULT_OPTIONS, options
     @ddpClient = new DDPClient options
     @initialized = false

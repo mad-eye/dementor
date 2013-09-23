@@ -6,7 +6,7 @@ fs = require 'fs'
 _path = require 'path'
 sinon = require 'sinon'
 
-{Dementor} = require '../../src/dementor'
+Dementor = require '../../src/dementor'
 {ProjectFiles} = require '../../src/projectFiles'
 {fileUtils} = require '../util/fileUtils'
 MockDdpClient = require '../mock/mockDdpClient'
