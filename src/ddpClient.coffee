@@ -141,9 +141,6 @@ class DdpClient extends EventEmitter
           #eg {"msg":"changed","collection":"files","id":"57204c04-4d73-474b-8c25-259b38c06dce","fields":{"modified":false}}
           @emit 'changed', msg.id, msg.fields, msg.cleared
 
-  reportError: (err) ->
-    @ddpClient.call 'reportError', [err, projectId]
-
   #data: {commandId, fields...:}
   commandReceived: (err, data) ->
     @ddpClient.call 'commandReceived', [err, data]
