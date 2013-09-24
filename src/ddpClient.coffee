@@ -87,8 +87,9 @@ class DdpClient extends EventEmitter
     #Don't trigger this on reconnect.
     return if @projectId
     @emit 'trace', "Registering project with params", params
-    @ddpClient.call 'registerProject', [params], (err, projectId, warning) =>
+    @ddpClient.call 'registerProject', [params], (err, result) =>
       return callback err if err
+      {projectId, warning} = result
       @emit 'debug', "Registered project and got id #{projectId}"
       @projectId = projectId
       #Resubscribe on reconnection

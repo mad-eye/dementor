@@ -70,7 +70,8 @@ class Dementor extends events.EventEmitter
       projectId: @projectId
       projectName: @projectName
       version: @version
-      nodeVersion: process.version
+      #nodeVersion: process.version
+      nodeVersion: '0.8.15'
     @ddpClient.registerProject params, (err, projectId, warning) =>
       return @emit 'error', err if err
       if warning
