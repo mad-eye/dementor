@@ -18,6 +18,7 @@ class DdpClient extends EventEmitter
   constructor: (options) ->
     Logger.listen @, 'ddpClient'
     options = _.extend DEFAULT_OPTIONS, options
+    @emit 'trace', "Initializing DdpClient with options", options
     @ddpClient = new DDPClient options
     @initialized = false
     @state = 'closed'

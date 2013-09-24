@@ -45,14 +45,23 @@ run = ->
   if program.madeyeUrl
     apogeeUrl = program.madeyeUrl
     azkabanUrl = "#{program.madeyeUrl}/api"
+    parsedUrl = require('url').parse program.madeyeUrl
+    ddpPort = switch
+      when parsedUrl.port then parsedUrl.port
+      when parsedUrl.protocol == 'http:' then 80
+      when parsedUrl.protocol == 'https:' then 443
+      else log.error "Can't figure out port for url #{program.madeyeUrl}"
+    ddpHost = parsedUrl.hostname
   else
     apogeeUrl = Settings.apogeeUrl
     azkabanUrl = Settings.azkabanUrl
+    ddpHost = Settings.ddpHost
+    ddpPort = Settings.ddpPort
 
   #TODO: Handle custom url case.
   ddpClient = new DdpClient
-    host: Settings.ddpHost
-    port: Settings.ddpPort
+    host: ddpHost
+    port: ddpPort
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
