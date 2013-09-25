@@ -6,8 +6,9 @@ _.str = require 'underscore.string'
 clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
-{messageAction} = require '../madeye-common/common'
 IgnoreRules = require './ignoreRules'
+{Logger} = require '../madeye-common/common'
+{crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
 
 #Info Events:
 #  'error', message:, file?:
@@ -16,23 +17,14 @@ IgnoreRules = require './ignoreRules'
 #  'debug', message
 #    
 #File Events:
-#  type: fileEventType
-#  data: #Event specific data
-#  [For ADD]
-#    files: [file,...]
-#  [For REMOVE]
-#    files: [file,...]
-#  [For SAVED]
-#    file:
-#    contents:
-#  [For MOVE]
-#    fileId:
-#    oldPath:
-#    newPath:
+#  'file added', file
+#  'file changed', file
+#  'file removed', filePath
 
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory, ignorepath) ->
+    Logger.listen @, 'projectFiles'
     @fileWatcher = require 'chokidar'
     @loadIgnoreRules ignorepath
 
@@ -46,14 +38,13 @@ class ProjectFiles extends events.EventEmitter
     newError = null
     switch error.code
       when 'ENOENT'
-        newError = errors.new 'NO_FILE', path: error.path
+        newError = errors.new 'FileNotFound', path: error.path
       when 'EISDIR'
-        newError = errors.new 'IS_DIR'
+        newError = errors.new 'IsDirectory'
       when 'EACCES'
-        newError = errors.new 'PERMISSION_DENIED', path: error.path
-        newError.message += newError.path
+        newError = errors.new 'PermissionDenied', path: error.path
       #Fill in other error cases here...
-    #console.error "Found error:", newError ? error
+    @emit 'trace', "Found error:", newError ? error
     return newError ? error
 
   loadIgnoreRules: (ignorepath) ->
@@ -96,6 +87,8 @@ class ProjectFiles extends events.EventEmitter
     projectIds[@directory] = projectId
     @saveProjectIds projectIds
 
+  getProjectId: ->
+    @projectIds()[@directory]
 
   saveProjectIds: (projects) ->
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
@@ -103,7 +96,6 @@ class ProjectFiles extends events.EventEmitter
   projectIds: ->
     return {} unless fs.existsSync @projectsDbPath()
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
-
 
   shouldInclude: (path) ->
     not @ignoreRules.shouldIgnore path
@@ -132,31 +124,36 @@ class ProjectFiles extends events.EventEmitter
       @makeFileData path, (err, file) =>
         return @emit 'error', err if err
         return unless file
-        @emit messageAction.LOCAL_FILES_ADDED, files: [file]
+        @emit 'debug', "Local file added:", file.path
+        @emit 'file added', file
 
     @watcher.on "change", (path, stats) =>
-      relativePath = @cleanPath path
-      return unless @shouldInclude relativePath
-      fs.readFile path, "utf-8", (err, contents) =>
-        if err then @emit 'error', err; return
-        @emit messageAction.LOCAL_FILE_SAVED, {path: relativePath, contents: contents}
+      @makeFileData path, (err, file) =>
+        return @emit 'error', err if err
+        return unless file
+        @emit 'debug', "Local file modified:", file.path
+        @emit 'file changed', file
 
     @watcher.on "unlink", (path) =>
       relativePath = @cleanPath path
       return unless @shouldInclude relativePath
-      @emit messageAction.LOCAL_FILES_REMOVED, paths: [relativePath]
+      @emit 'debug', "Local file removed:", relativePath
+      @emit 'file removed', relativePath
+
+    #TODO: Moved
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
-      console.log clc.blackBright "Ignoring broken link", error #if process.env.MADEYE_DEBUG
+      @emit 'debug', "Ignoring broken link", error
       callback null
     else if error.code == 'EACCES'
-      console.log clc.blackBright "Permission denied for", error #if process.env.MADEYE_DEBUG
+      @emit 'debug', "Permission denied for", error #if process.env.MADEYE_DEBUG
       callback null
     else
-      callback error
+      callback @wrapError error
 
   #callback: (error, fileData) ->
+  #fileData will be null if file is ignored
   makeFileData: (path, callback) ->
     cleanPath = @cleanPath path
     return callback null unless @shouldInclude cleanPath
@@ -169,6 +166,22 @@ class ProjectFiles extends events.EventEmitter
         mtime: stat.mtime.getTime()
       }
 
+  #callback: (err, {contents, checksum, warning}) ->
+  retrieveContents: (path, callback) ->
+    @readFile path, (err, contents) =>
+      if err
+        @emit 'warn', "Error retrieving contents for file #{path}:", err
+        return callback @wrapError err
+      cleanContents = cleanupLineEndings contents
+      checksum = crc32 cleanContents
+      warning = null
+      unless cleanContents == contents
+        lineEndingType = findLineEndingType contents
+        warning =
+          title: "Inconsistent line endings"
+          message: "We've converted them all into #{lineEndingType}."
+      callback null, {contents:cleanContents, checksum, warning}
+
   #callback: (error, files) ->
   readdirRecursive : (relDir='', callback) ->
     currentDir = _path.join(@directory, relDir)
@@ -180,7 +193,7 @@ class ProjectFiles extends events.EventEmitter
           @emit 'debug', "Permission denied for #{relDir}"
           callback null
         else
-          callback err
+          callback @wrapError err
       else
         async.each fileNames, (fileName, cb) =>
           @makeFileData _path.join(@directory, relDir, fileName), (err, fileData) =>

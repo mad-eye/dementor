@@ -1,11 +1,8 @@
-{Dementor} = require('./src/dementor')
-{HttpClient} = require('./src/httpClient')
-{Settings} = require './madeye-common/common'
+Dementor = require './src/dementor' 
+DdpClient = require './src/ddpClient'
+{Settings, Logger} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
-io = require 'socket.io-client'
-{errorType} = require './madeye-common/common'
-LogListener = require './src/logListener'
 
 dementor = null
 debug = false
@@ -35,33 +32,45 @@ run = ->
     when program.trace then 'trace'
     when program.debug then 'debug'
     else 'info'
-  listener = new LogListener
-    logLevel: logLevel
-    onError: (err) ->
-      shutdown(err.code ? 1)
+  Logger.setLevel logLevel
+  Logger.onError (err) ->
+    if 'string' == typeof err
+      message = err
+    else
+      message = err.details ? err.message
+    console.error clc.red('ERROR:'), message
+    shutdown(1)
+  log = new Logger name:'app'
 
   if program.madeyeUrl
     apogeeUrl = program.madeyeUrl
     azkabanUrl = "#{program.madeyeUrl}/api"
-    socketUrl = program.madeyeUrl
+    parsedUrl = require('url').parse program.madeyeUrl
+    ddpPort = switch
+      when parsedUrl.port then parsedUrl.port
+      when parsedUrl.protocol == 'http:' then 80
+      when parsedUrl.protocol == 'https:' then 443
+      else log.error "Can't figure out port for url #{program.madeyeUrl}"
+    ddpHost = parsedUrl.hostname
   else
     apogeeUrl = Settings.apogeeUrl
     azkabanUrl = Settings.azkabanUrl
-    socketUrl = Settings.socketUrl
+    ddpHost = Settings.ddpHost
+    ddpPort = Settings.ddpPort
 
-  httpClient = new HttpClient azkabanUrl
-  listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
-  socket = io.connect socketUrl,
-    'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
-    'auto connect': false
-  
-  dementor = new Dementor process.cwd(), httpClient, socket, program.clean, program.ignorefile
+  #TODO: Handle custom url case.
+  ddpClient = new DdpClient
+    host: ddpHost
+    port: ddpPort
+  ddpClient.on 'message-warning', (msg) ->
+    console.warn clc.bold('Warning:'), msg
+
+  dementor = new Dementor
+    directory: process.cwd()
+    ddpClient: ddpClient
+    clean: program.clean
+    ignoreFile: program.ignorefile
   util.puts "Enabling MadEye in " + clc.bold process.cwd()
-
-  listener.listen dementor, 'dementor'
-  listener.listen dementor.projectFiles, 'projectFiles'
-  listener.listen dementor.fileTree, 'fileTree'
-  listener.listen httpClient, 'httpClient'
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
@@ -72,6 +81,8 @@ run = ->
 
   dementor.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
+  dementor.on 'message-info', (msg) ->
+    console.log msg
 
   dementor.enable()
 
@@ -81,7 +92,7 @@ run = ->
   process.on 'uncaughtException', (err)->
     if err.code == "ENOENT"
       #Silence the error for now
-      #console.log "File does not exist #{err.path}"
+      log.debug "File does not exist #{err.path}"
       0
     else
       throw err

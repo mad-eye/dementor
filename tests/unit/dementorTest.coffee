@@ -1,44 +1,23 @@
 _ = require 'underscore'
 {assert} = require 'chai'
-uuid = require 'node-uuid'
+hat = require 'hat'
 wrench = require 'wrench'
 fs = require 'fs'
 _path = require 'path'
-{Dementor} = require '../../src/dementor'
+sinon = require 'sinon'
+
+Dementor = require '../../src/dementor'
 {ProjectFiles} = require '../../src/projectFiles'
 {fileUtils} = require '../util/fileUtils'
-{MockHttpClient} = require '../mock/mockHttpClient'
-{MockSocket} = require '../../madeye-common/common'
-{messageMaker, messageAction} = require '../../madeye-common/common'
+MockDdpClient = require '../mock/mockDdpClient'
 {errors, errorType} = require '../../madeye-common/common'
+{Logger} = require '../../madeye-common/common'
 
+randomString = -> hat 32, 16
 
 #TODO: Reduce redundancy with better before/etc hooks.
 
 homeDir = fileUtils.homeDir
-
-defaultHttpClient = new MockHttpClient (options, params) ->
-  match = /project(\/[\w-]+)?/.exec options.action
-  if match
-    projectId = match[1]?.substring(1)
-    if options.method == 'POST'
-      return {error: "ProjectID should not be specified"} if projectId?
-      return errors.new errorType.OUT_OF_DATE unless options.json?.version?
-      projectName = options.json?['projectName']
-      files = options.json?['files']
-      file._id = uuid.v4() for file in files if files
-      return {project: {_id:uuid.v4(), name:projectName}, files:files }
-    else if options.method == 'PUT'
-      return {error: "ProjectID should be specified"} unless projectId?
-      return errors.new errorType.OUT_OF_DATE unless options.json?.version?
-      projectName = options.json?['projectName']
-      files = options.json?['files']
-      file._id = uuid.v4() for file in files if files
-      return {project: {_id:projectId, name:projectName}, files:files }
-    else
-      return {error: "Wrong method: #{options.method}"}
-  else
-    return {error: "Wrong action: #{options.action}"}
 
 describe "Dementor", ->
   before ->
@@ -56,108 +35,171 @@ describe "Dementor", ->
       projectFiles = new ProjectFiles "."
 
     it "should find previously registered projectId", ->
-      projectId = uuid.v4()
+      projectId = randomString()
       projectPath = fileUtils.createProject "polyjuice"
       projects = {}
       projects[projectPath] = projectId
       projectFiles.saveProjectIds projects
 
-      dementor = new Dementor projectPath
+      dementor = new Dementor
+        directory:projectPath
+        ddpClient: new MockDdpClient
       assert.equal dementor.projectId, projectId
 
     it "should have null projectId if not previously registered", ->
       projectPath = fileUtils.createProject "nothinghere"
-      dementor = new Dementor projectPath
+      dementor = new Dementor
+        directory:projectPath
+        ddpClient: new MockDdpClient
       assert.equal dementor.projectId, null
 
     it "should set dementor.version", ->
       projectPath = fileUtils.createProject "version"
-      dementor = new Dementor projectPath
+      dementor = new Dementor
+        directory:projectPath
+        ddpClient: new MockDdpClient
       assert.equal dementor.version, (require '../../package.json').version
 
   describe "enable", ->
     dementor = null
     projectPath = null
+    ddpClient = null
 
     describe "when not registered", ->
       targetFileTree = null
+      newProjectId = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap, "."
-        projectPath = fileUtils.createProject "enableTest-#{uuid.v4()}", fileMap
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
-        dementor.on 'enabled', ->
+        projectPath = fileUtils.createProject "enableTest-#{randomString()}", fileMap
+        newProjectId = randomString()
+
+        ddpClient = new MockDdpClient
+          connect: ->
+            process.nextTick => @emit 'connected'
+          registerProject: sinon.stub()
+          subscribe: sinon.stub()
+          addFile: (file) ->
+            file._id = randomString()
+            process.nextTick =>
+              @emit 'added', file
+        ddpClient.registerProject.callsArgWith 1, null, newProjectId
+        ddpClient.subscribe.withArgs('files').callsArg 2
+
+        dementor = new Dementor
+          directory: projectPath
+          ddpClient: ddpClient
+        dementor.fileTree.on 'added initial files', ->
+          debugger
           done()
         dementor.enable()
 
-      it "should register the project if not already registered", ->
-        assert.ok dementor.projectId
-        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
+      it "should call ddpClient.registerProject without projectId", ->
+        params = ddpClient.registerProject.args[0][0]
+        assert.ok !params.projectId
 
-      it "should populate file tree with files (and ids)", ->
-        assert.ok dementor.fileTree
-        files = dementor.fileTree.getFiles()
-        assert.equal files.length, targetFileTree.getFiles().length
-        for file in files
-          assert.ok file.isDir?
-          assert.ok file.path?
-          assert.ok file._id
-          
-    describe "with outdated NodeJs", ->
+      it 'should set new projectId', ->
+        assert.equal dementor.projectId, newProjectId
+
+      it 'should save new projectId', ->
+        assert.equal dementor.projectFiles.projectIds()[projectPath], newProjectId
+
+      it "should populate file tree with files (and ids)", (done) ->
+        #Give the async bits time to process.
+        setTimeout ->
+          assert.ok dementor.fileTree
+          files = dementor.fileTree.getFiles()
+          assert.equal files.length, targetFileTree.getFiles().length
+          for file in files
+            assert.ok file.isDir?
+            assert.ok file.path
+            assert.ok file._id
+          done()
+        , 100
+
+    ###
+    describe "with outdated NodeJs"
       targetFileTree = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap, "."
-        projectPath = fileUtils.createProject "outdatedNodeJsTest-#{uuid.v4()}", fileMap
+        projectPath = fileUtils.createProject "outdatedNodeJsTest-#{randomString()}", fileMap
         warningMsg = "its not right!"
         httpClient = new MockHttpClient (options, params) ->
           assert.equal options.json?['nodeVersion'], process.version
           projectName = options.json?['projectName']
           files = options.json?['files']
-          return {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
-            
+          return {project: {_id:randomString(), name:projectName}, files:files, warning: warningMsg}
+
         dementor = new Dementor projectPath, httpClient, new MockSocket
         dementor.on 'warn', (msg) ->
           assert.equal msg, warningMsg
           done()
         dementor.enable()
-      
+    ###
 
     describe "when already registered", ->
       targetFileTree = projectId = null
       before (done) ->
         fileMap = fileUtils.defaultFileMap
         targetFileTree = fileUtils.constructFileTree fileMap, "."
-        projectPath = fileUtils.createProject "alreadyEnableTest-#{uuid.v4()}", fileMap
-        projectId = uuid.v4()
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
+        projectPath = fileUtils.createProject "alreadyEnableTest-#{randomString()}", fileMap
+        projectId = randomString()
+
+        ddpClient = new MockDdpClient
+          connect: ->
+            process.nextTick => @emit 'connected'
+          registerProject: sinon.stub()
+          subscribe: sinon.stub()
+          addFile: (file) ->
+            file._id = randomString()
+            process.nextTick =>
+              @emit 'added', file
+        ddpClient.registerProject.callsArgWith 1, null, projectId
+        ddpClient.subscribe.withArgs('files').callsArg 2
+
+        #Make a dementor to save project files
+        #This one doesn't have projectId set right, so have to make a new one
+        dementor = new Dementor
+          directory: projectPath
+          ddpClient: ddpClient
         dementor.projectFiles.saveProjectId projectId
 
-        dementor = new Dementor projectPath, defaultHttpClient, new MockSocket
-        dementor.on 'enabled', ->
+        dementor = new Dementor
+          directory: projectPath
+          ddpClient: ddpClient
+        dementor.fileTree.on 'added initial files', ->
           done()
         dementor.enable()
+
+      it "should call ddpClient.registerProject with projectId", ->
+        params = ddpClient.registerProject.args[0][0]
+        assert.equal params.projectId, projectId
 
       it "should update project files if already registered", ->
         assert.ok dementor.projectId
         assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
         assert.equal dementor.projectId, projectId, "Dementor's projectId differs from original."
 
-      it "should populate file tree with files (and ids)", ->
-        assert.ok dementor.fileTree
-        files = dementor.fileTree.getFiles()
-        assert.equal files.length, targetFileTree.getFiles().length
-        for file in files
-          assert.ok file.isDir?
-          assert.ok file.path?
-          assert.ok file._id
+      it "should populate file tree with files (and ids)", (done) ->
+        #Give the async bits time to process.
+        setTimeout ->
+          assert.ok dementor.fileTree
+          files = dementor.fileTree.getFiles()
+          assert.equal files.length, targetFileTree.getFiles().length
+          for file in files
+            assert.ok file.isDir?
+            assert.ok file.path
+            assert.ok file._id
+          done()
+        , 100
 
-
+###
   describe "shutdown", ->
     dementor = mockSocket = null
     socketClosed = false
     before (done) ->
-      projectPath = fileUtils.createProject "disableTest-#{uuid.v4()}", fileUtils.defaultFileMap
+      projectPath = fileUtils.createProject "disableTest-#{randomString()}", fileUtils.defaultFileMap
 
       mockSocket = new MockSocket
       dementor = new Dementor projectPath, defaultHttpClient, mockSocket
@@ -197,7 +239,7 @@ describe "Dementor", ->
         done()
 
     it "should give correct error message if no file exists", (done) ->
-      data = fileId: uuid.v4()
+      data = fileId: randomString()
       mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.NO_FILE
@@ -206,7 +248,7 @@ describe "Dementor", ->
       
     #Needed to check dementor-created errors
     it 'should return the correct error if fileId parameter is missing', (done) ->
-      mockSocket.trigger messageAction.REQUEST_FILE, uuid.v4(), (err, body) ->
+      mockSocket.trigger messageAction.REQUEST_FILE, randomString(), (err, body) ->
         assert.ok err
         assert.equal err.type, errorType.MISSING_PARAM
         assert.equal body, null
@@ -241,7 +283,7 @@ describe "Dementor", ->
 
     it "should give correct error message if no file exists", (done) ->
       data =
-        fileId: uuid.v4()
+        fileId: randomString()
         contents: fileBody
       mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.ok err
@@ -259,7 +301,7 @@ describe "Dementor", ->
 
     it 'should return the correct error if contents parameter is missing', (done) ->
       data =
-        fileId: uuid.v4()
+        fileId: randomString()
       mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
         assert.ok err
         assert.equal err.type, errorType.MISSING_PARAM
@@ -298,7 +340,7 @@ describe "Dementor", ->
     it 'should send LOCAL_FILE_SAVED message when projectFiles emits one', (done) ->
       path = "a/path"
       contents = "Too readily we admit that the cost of inaction is failure."
-      file = _id:uuid.v4(), path:path, isDir:false
+      file = _id:randomString(), path:path, isDir:false
       dementor.fileTree.addFile file
       mockSocket.onEmit = (action, data, cb) ->
         unless action == messageAction.LOCAL_FILE_SAVED
@@ -315,7 +357,7 @@ describe "Dementor", ->
 
     it 'should send LOCAL_FILES_REMOVED message when projectFiles emits one', (done) ->
       path = "another/path"
-      file = _id:uuid.v4(), path:path, isDir:false
+      file = _id:randomString(), path:path, isDir:false
       dementor.fileTree.addFile file
       mockSocket.onEmit = (action, data, cb) ->
         unless action == messageAction.LOCAL_FILES_REMOVED
@@ -339,3 +381,5 @@ describe "Dementor", ->
           done()
 
       dementor.projectFiles.emit messageAction.LOCAL_FILES_REMOVED, paths:[path]
+###
+

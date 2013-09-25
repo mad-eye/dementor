@@ -58,7 +58,7 @@ class FileUtils
         @writeFiles(_path.join(root, key), value)
 
   @constructFileTree : (fileMap, root, fileTree) ->
-    fileTree ?= new FileTree(null, root)
+    fileTree ?= new FileTree(null, null)
     makeRawFile = (path, value) ->
       rawFile = {
         _id : uuid.v4()
@@ -67,7 +67,7 @@ class FileUtils
       }
       return rawFile
     for key, value of fileMap
-      fileTree.addFile makeRawFile _path.join(root, key), value
+      fileTree.addDdpFile makeRawFile _path.join(root, key), value
       unless typeof value == "string"
         @constructFileTree(value, _path.join(root, key), fileTree)
     return fileTree
