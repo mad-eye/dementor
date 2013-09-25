@@ -42,6 +42,7 @@ run = ->
     shutdown(1)
   log = new Logger name:'app'
 
+  log.trace "Checking madeyeUrl: #{program.madeyeUrl}"
   if program.madeyeUrl
     apogeeUrl = program.madeyeUrl
     azkabanUrl = "#{program.madeyeUrl}/api"
