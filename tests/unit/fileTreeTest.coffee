@@ -8,9 +8,6 @@ sinon = require 'sinon'
 {Logger} = require '../../madeye-common/common'
 MockDdpClient = require '../mock/mockDdpClient'
 
-Logger.setLevel process.env.MADEYE_LOGLEVEL
-
-
 describe "FileTree", ->
 
   describe 'addDdpFile', ->

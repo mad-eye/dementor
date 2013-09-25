@@ -12,7 +12,6 @@ Dementor = require '../../src/dementor'
 MockDdpClient = require '../mock/mockDdpClient'
 {errors, errorType} = require '../../madeye-common/common'
 {Logger} = require '../../madeye-common/common'
-Logger.setLevel process.env.MADEYE_LOGLEVEL
 
 randomString = -> hat 32, 16
 
