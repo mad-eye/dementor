@@ -3,6 +3,7 @@ _ = require 'underscore'
 DDPClient = require "ddp"
 {normalizePath} = require '../madeye-common/common'
 {Logger} = require '../madeye-common/common'
+require('https').globalAgent.options.rejectUnauthorized = false
 
 DEFAULT_OPTIONS =
   host: "localhost"
@@ -65,7 +66,8 @@ class DdpClient extends EventEmitter
       if @state != 'connected' and error.code == 'ECONNREFUSED'
         @emit 'trace', "Socket error while not connected:", error
       else
-        @emit 'warn', "Socket error:", error
+        console.log "STATE IS", @state
+        @emit 'warn', "Socket ERROR:", JSON.stringify(error)
     @ddpClient.on 'connected', =>
       @state = 'connected'
       @emit 'trace', "ddpClient connected"
