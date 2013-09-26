@@ -15,6 +15,7 @@ DEFAULT_OPTIONS =
 makeIdSelector = (id) ->
   {"_id":{"$type":"oid","$value":id}}
 
+#state in [closed, connecting, connected, reconnecting]
 class DdpClient extends EventEmitter
   constructor: (options) ->
     Logger.listen @, 'ddpClient'
@@ -25,7 +26,6 @@ class DdpClient extends EventEmitter
     @state = 'closed'
     @_initialize()
 
-  #FIXME: This hangs when apogee is down -- set timeout and report error?
   #This will emit a 'connected' event on each connection.
   connect: ->
     @state = 'connecting'
@@ -36,20 +36,35 @@ class DdpClient extends EventEmitter
         @emit 'connected'
         @emit 'debug', 'DDP connected'
 
-  shutdown: (callback) ->
+  #TODO: Write tests for these
+  shutdown: (callback=->) ->
     @emit 'debug', 'Shutting down ddpClient'
-    if @projectId
-      #FIXME: This hangs if the connection is down and the socket is trying to reconnect.
+    closeProject = (timeoutHandle) ->
       @ddpClient.call 'closeProject', [@projectId], (err) =>
+        clearTimeout timeoutHandle
         if err
           @emit 'warn', "Error closing project:", err
         else
           @emit 'debug', "Closed project"
         @ddpClient.close()
-        process.nextTick callback if callback
-    else
-      @ddpClient.close()
-      process.nextTick callback if callback
+        process.nextTick callback
+
+    switch @state
+      when 'closed'
+        process.nextTick callback
+      when 'connected'
+        closeProject()
+      when 'connecting'
+        #No project to close
+        @ddpClient.close()
+        process.nextTick callback
+      when 'reconnecting'
+        #Give it a bit to try to close the project, but don't hang.
+        timeoutHandle = setTimeout ->
+          @ddpClient.close()
+          process.nextTick callback
+        , 10*1000
+        closeProject timeoutHandle
 
   _initialize: ->
     return if @initialized
@@ -58,12 +73,15 @@ class DdpClient extends EventEmitter
     @ddpClient.on 'message', (msg) =>
       @emit 'trace', 'Ddp message: ' + msg
     @ddpClient.on 'socket-close', (code, message) =>
-      @state = 'closed'
+      @state = 'reconnecting'
       @emit 'debug', "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
       #Get this when apogee goes down: {"code":"ECONNREFUSED","errno":"ECONNREFUSED","syscall":"connect"}
-      if @state != 'connected' and error.code == 'ECONNREFUSED'
+      if @state == 'reconnecting' and error.code == 'ECONNREFUSED'
         @emit 'trace', "Socket error while not connected:", error
+      else if @state == 'connecting' #We haoven't connected yet
+        @emit 'debug', "Error while connecting:", error
+        @emit 'error', "Unable to connect to server; please try again later."
       else
         @emit 'warn', "Socket error:", error
     @ddpClient.on 'connected', =>

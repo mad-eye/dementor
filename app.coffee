@@ -40,6 +40,9 @@ run = ->
       message = err.details ? err.message
     console.error clc.red('ERROR:'), message
     shutdown(1)
+    #Don't print standard error log output
+    return false
+
   log = new Logger name:'app'
 
   log.trace "Checking madeyeUrl: #{program.madeyeUrl}"
