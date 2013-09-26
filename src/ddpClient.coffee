@@ -39,7 +39,7 @@ class DdpClient extends EventEmitter
   #TODO: Write tests for these
   shutdown: (callback=->) ->
     @emit 'debug', 'Shutting down ddpClient'
-    closeProject = (timeoutHandle) ->
+    closeProject = (timeoutHandle) =>
       @ddpClient.call 'closeProject', [@projectId], (err) =>
         clearTimeout timeoutHandle
         if err
