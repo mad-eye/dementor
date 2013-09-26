@@ -29,10 +29,8 @@ class FileTree extends EventEmitter
 
   #Add a file that we find on the file system
   addFsFile: (file) ->
-    @emit 'trace', "Adding fs file:", file
     return unless file
     existingFile = @filesByPath[file.path]
-    @emit 'trace', "File #{file.path} already exists:", existingFile?
     if existingFile
       @_updateFile existingFile, file
     else
@@ -40,10 +38,9 @@ class FileTree extends EventEmitter
 
   _updateFile: (existingFile, newFile) ->
     return unless newFile.mtime > existingFile.mtime
-    @emit 'trace', "updating existing file:", existingFile
+    @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
     fileId = existingFile._id
     unless existingFile.lastOpened
-      @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
       @ddpClient.updateFile fileId, mtime: newFile.mtime
       return
 
@@ -52,7 +49,6 @@ class FileTree extends EventEmitter
         @emit 'error', "Error retrieving contents:", err
         return
       #TODO: Handle warning
-      @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
       if existingFile.modified
         #Don't overwrite people's work
         @ddpClient.updateFile fileId,
@@ -131,7 +127,7 @@ class FileTree extends EventEmitter
     _.extend file, fields if fields
     @emit 'trace', "Clearing fields for #{file.path}:", cleared if cleared
     delete file[field] for field in cleared if cleared
-    @emit 'debug', "Updated file", file
+    @emit 'debug', "Updated file", file.path
 
   _listenToDdpClient: ->
     return unless @ddpClient
