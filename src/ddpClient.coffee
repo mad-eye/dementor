@@ -62,12 +62,10 @@ class DdpClient extends EventEmitter
       @emit 'debug', "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
       #Get this when apogee goes down: {"code":"ECONNREFUSED","errno":"ECONNREFUSED","syscall":"connect"}
-      #TODO: Be more quiet about that error, maybe set internal state.
       if @state != 'connected' and error.code == 'ECONNREFUSED'
         @emit 'trace', "Socket error while not connected:", error
       else
-        console.log "STATE IS", @state
-        @emit 'warn', "Socket ERROR:", JSON.stringify(error)
+        @emit 'warn', "Socket error:", error
     @ddpClient.on 'connected', =>
       @state = 'connected'
       @emit 'trace', "ddpClient connected"
