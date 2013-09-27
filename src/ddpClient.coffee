@@ -60,7 +60,7 @@ class DdpClient extends EventEmitter
         process.nextTick callback
       when 'reconnecting'
         #Give it a bit to try to close the project, but don't hang.
-        timeoutHandle = setTimeout ->
+        timeoutHandle = setTimeout =>
           @ddpClient.close()
           process.nextTick callback
         , 10*1000
@@ -89,6 +89,15 @@ class DdpClient extends EventEmitter
       @emit 'trace', "ddpClient connected"
     @listenForFiles()
     @listenForCommands()
+    @_startHeartbeat()
+
+  _startHeartbeat: ->
+    @heartbeatInterval = setInterval =>
+      @emit 'trace', 'heartbeat'
+      if @state == 'connected' and @projectId
+        @emit 'trace', 'sending heartbeat'
+        @ddpClient.call 'dementorHeartbeat', [@projectId]
+    , 4*1000
     
   subscribe: (collectionName, args..., callback) ->
     if callback and 'function' != typeof callback
@@ -104,6 +113,7 @@ class DdpClient extends EventEmitter
   registerProject: (params, callback) ->
     #Don't trigger this on reconnect.
     return if @projectId
+    params.dementor = true
     @emit 'trace', "Registering project with params", params
     @ddpClient.call 'registerProject', [params], (err, result) =>
       return callback err if err
