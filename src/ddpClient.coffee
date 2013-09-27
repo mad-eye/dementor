@@ -93,9 +93,7 @@ class DdpClient extends EventEmitter
 
   _startHeartbeat: ->
     @heartbeatInterval = setInterval =>
-      @emit 'trace', 'heartbeat'
       if @state == 'connected' and @projectId
-        @emit 'trace', 'sending heartbeat'
         @ddpClient.call 'dementorHeartbeat', [@projectId]
     , 4*1000
     
