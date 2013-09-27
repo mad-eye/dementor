@@ -5,7 +5,6 @@ wrench = require 'wrench'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
-{errorType, messageAction} = require '../../madeye-common/common'
 events = require 'events'
 
 
@@ -57,7 +56,7 @@ describe 'ProjectFiles', ->
       fileName = 'nofile.txt'
       projectFiles.readFile fileName, (err, body) ->
         assert.ok err
-        assert.equal err.type, errorType.NO_FILE
+        assert.equal err.reason, 'FileNotFound'
         assert.equal body, null
         done()
 
@@ -66,7 +65,7 @@ describe 'ProjectFiles', ->
       fileUtils.mkDir _path.join projectDir, fileName
       projectFiles.readFile fileName, (err, body) ->
         assert.ok err
-        assert.equal err.type, errorType.IS_DIR
+        assert.equal err.reason, 'IsDirectory'
         assert.equal body, null
         done()
 
@@ -102,12 +101,12 @@ describe 'ProjectFiles', ->
   describe 'readFileTree', ->
     projectFiles = null
 
-    it 'should return error if no directory exists', (done) ->
+    it 'should return error if no directory exists fweep', (done) ->
       noRootDir = _path.join homeDir, 'notADir'
       projectFiles = new ProjectFiles noRootDir
       projectFiles.readFileTree (err, results) ->
         assert.ok err
-        assert.equal err.type, errorType.NO_FILE
+        assert.equal err.reason, 'FileNotFound'
         done()
 
     it 'should correctly serialize empty directory', (done) ->
@@ -280,15 +279,21 @@ describe 'ProjectFiles', ->
     beforeEach ->
       resetHome()
       projectFiles.removeAllListeners 'stop'
-      projectFiles.removeAllListeners messageAction.LOCAL_FILES_ADDED
+      projectFiles.removeAllListeners 'file added'
 
     makeFile = (fileName) ->
       filePath = _path.join projectDir, fileName
       fs.writeFileSync filePath, 'touched'
       return _path.resolve filePath
 
+    makeDir = (dirName) ->
+      dirPath = _path.join projectDir, dirName
+      fs.mkdir dirPath
+      return _path.resolve dirPath
+
     ###
     #FIXME: Very strange error sometimes on this test
+    #It is caused somehow by deleted/recreating the test dir.
     1) ProjectFiles watchFileTree should notice when i add a file:
       
       actual expected
@@ -308,8 +313,7 @@ describe 'ProjectFiles', ->
     it "should notice when i add a file", (done) ->
       fileName = 'file.txt'
       filePath = makeFile fileName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
-        file = data.files[0]
+      projectFiles.on 'file added', (file) ->
         assert.equal file.path, fileName
         assert.equal file.isDir, false
         done()
@@ -321,7 +325,7 @@ describe 'ProjectFiles', ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = 'file.txt~'
       filePath = makeFile fileName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+      projectFiles.on 'file added', (data) ->
         assert.fail "Should not notice file."
       projectFiles.on 'stop', (data) ->
         done()
@@ -333,7 +337,7 @@ describe 'ProjectFiles', ->
       #TODO include a few other file types here (i.e. garbage.swp)
       fileName = '.file.txt.swp'
       filePath = makeFile fileName
-      projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+      projectFiles.on 'file added', (data) ->
         assert.fail "Should not notice file."
       projectFiles.on 'stop', (data) ->
         done()
@@ -341,9 +345,8 @@ describe 'ProjectFiles', ->
       watcher.emit 'add', filePath
       projectFiles.emit 'stop'
 
-    #TODO: Once we have the new filewatcher
     it "should notice when I add a directory"
-      
+
     it "should notice when i delete a file"
 
     it "should notice when i change a file"
@@ -357,7 +360,7 @@ describe 'ProjectFiles', ->
       #linkName = 'brokenLink'
       #linkPath = _path.join projectDir, linkName
       #fs.symlinkSync filePath, linkPath
-      #projectFiles.on messageAction.LOCAL_FILES_ADDED, (data) ->
+      #projectFiles.on 'file added', (data) ->
         #assert.fail "Should not notice file."
       #projectFiles.on 'stop', (data) ->
         #done()

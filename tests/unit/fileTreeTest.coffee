@@ -1,75 +1,330 @@
 FileTree = require("../../src/fileTree")
-assert = require "assert"
 _path = require "path"
 uuid = require "node-uuid"
 _ = require 'underscore'
 {assert} = require 'chai'
+{EventEmitter} = require 'events'
+sinon = require 'sinon'
+{Logger} = require '../../madeye-common/common'
+MockDdpClient = require '../mock/mockDdpClient'
 
 describe "FileTree", ->
 
-  describe "constructor", ->
-    it "accepts a null rawFiles argument", ->
-      #Shouldn't throw an error
-      tree = new FileTree
-
-  describe "addFiles", ->
-    it "accepts a null rawFiles argument", ->
-      #Shouldn't throw an error
-      tree = new FileTree
-      tree.addFiles null
-
-  describe "addFile", ->
+  describe 'addDdpFile', ->
     tree = null
-    file = _id: uuid.v4(), path: 'my/path', isDir:false
+    ddpClient = null
+    file =
+      _id: uuid.v4()
+      path: 'a/ways/down/to.txt'
     before ->
-      tree = new FileTree
-      tree.addFile file
-      
-    it "accepts a null rawFile argument", ->
-      #Shouldn't throw an error
-      tree.addFile null
+      ddpClient = new MockDdpClient
+      tree = new FileTree ddpClient
+      tree.addDdpFile file
 
-    it "adds the file to filesById", ->
+    it 'should populate filesById', ->
       assert.equal tree.filesById[file._id], file
 
-    it "adds the file to filesByPath", ->
+    it 'should populate filesByPath', ->
       assert.equal tree.filesByPath[file.path], file
 
-  describe "find", ->
+    it 'should not error on null file', ->
+      tree.addDdpFile null
+
+    it 'should replace files on second add', ->
+      file2 =
+        _id: file._id
+        path: file.path
+        a: 2
+      tree.addDdpFile file2
+      assert.equal tree.filesById[file._id], file2
+      assert.equal tree.filesByPath[file.path], file2
+
+  describe 'addFsFile', ->
     tree = null
-    file = _id: uuid.v4(), path: 'my/other/path', isDir:false
+    ddpClient = null
+    ago = Date.now()
+    later = ago + 1000
+
     before ->
-      tree = new FileTree
-      tree.addFile file
-      
-    it "should find by id", ->
-      assert.equal tree.findById(file._id), file
+      ddpClient = new MockDdpClient
+        addFile: sinon.spy()
+        updateFile: sinon.spy()
+      tree = new FileTree ddpClient
 
-    it "should find by path", ->
-      assert.equal tree.findByPath(file.path), file
+    it 'should not error on null file', ->
+      tree.addFsFile null
 
-  describe 'change', ->
+    it 'should ddp addFile on a new file', ->
+      file =
+        path: 'tooo.py'
+        mtime: ago
+      tree.addFsFile file
+      assert.isTrue ddpClient.addFile.called
+      assert.isTrue ddpClient.addFile.calledWith file
+
+
+
+    describe 'over existing file', ->
+      projectFiles = null
+      beforeEach ->
+        ddpClient = new MockDdpClient
+          addFile: sinon.spy()
+          updateFile: sinon.spy()
+          updateFileContents: sinon.spy()
+        projectFiles = {retrieveContents: sinon.stub()}
+        tree = new FileTree ddpClient, projectFiles
+        Logger.listen tree, 'tree'
+
+      it "should do nothing if new file's mtime is not newer", ->
+        file =
+          _id: uuid.v4()
+          path: 'to.txt'
+          mtime: ago
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: ago
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called
+        assert.isFalse ddpClient.updateFile.called
+
+      it "should should only update mtime if file is not opened", ->
+        file =
+          _id: uuid.v4()
+          path: uuid.v4()
+          mtime: ago
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: later
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called
+        assert.isTrue ddpClient.updateFile.called
+        [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual updateFields, {mtime: later}
+
+      it "should should update mtime, fsChecksum if file is opened not modified", ->
+        file =
+          _id: uuid.v4()
+          path: uuid.v4()
+          mtime: ago
+          lastOpened: ago
+          fsChecksum: 1235
+          loadChecksum: 1235
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: later
+
+        contentResults =
+          contents : 'asd8asdfjafd'
+          checksum : 9987066
+        projectFiles.retrieveContents.callsArgWith 1, null, contentResults
+
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called,
+          "shouldn't call addFile"
+
+        assert.isTrue ddpClient.updateFile.called,
+          "should call updateFile"
+        [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual updateFields,
+          mtime: later
+          fsChecksum: contentResults.checksum
+          loadChecksum: contentResults.checksum
+
+        assert.isTrue ddpClient.updateFileContents.called,
+          "should call updateFileContents"
+        [fileId, contents] = ddpClient.updateFileContents.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual contents, contentResults.contents
+
+      it "should update loadChecksum and call updateFileContents if modified", ->
+        file =
+          _id: uuid.v4()
+          path: uuid.v4()
+          mtime: ago
+          lastOpened: ago
+          fsChecksum: 1235
+          loadChecksum: 1235
+          modified: true
+        tree.addDdpFile file
+        newFile =
+          path: file.path
+          mtime: later
+
+        contentResults =
+          contents : 'asdfsdfafd'
+          checksum : 99870
+        projectFiles.retrieveContents.callsArgWith 1, null, contentResults
+
+        tree.addFsFile newFile
+        assert.isFalse ddpClient.addFile.called,
+          "shouldn't call addFile"
+
+        assert.isTrue ddpClient.updateFile.called,
+          "should call updateFile"
+        [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
+        assert.equal fileId, file._id
+        assert.deepEqual updateFields,
+          mtime: later
+          fsChecksum: contentResults.checksum
+
+        assert.isFalse ddpClient.updateFileContents.called,
+          "shouldn't call updateFileContents"
+
+
+  describe "addInitialFiles", ->
+    it "should add new files"
+    it "should update existing files"
+    it "should remove orphaned files"
+
+  describe 'on ddp file change', ->
     tree = null
+    ddpClient = new MockDdpClient
     file = _id: uuid.v4(), path: 'a/path', isDir:false, modified:true
     beforeEach ->
-      tree = new FileTree
-      tree.addFile file
+      tree = new FileTree ddpClient
+      tree.addDdpFile file
 
     it 'should set fields', ->
-      tree.change file._id, {'b':2}
+      ddpClient.emit 'changed', file._id, {'b':2}
       assert.equal tree.findById(file._id).b, 2
       assert.equal tree.findByPath(file.path).b, 2
 
     it 'should overwrite fields', ->
-      tree.change file._id, {isDir:true}
+      ddpClient.emit 'changed', file._id, {isDir:true}
       assert.equal tree.findById(file._id).isDir, true
       assert.equal tree.findByPath(file.path).isDir, true
 
     it 'should delete cleared fields', ->
-      tree.change file._id, null, ['modified']
+      ddpClient.emit 'changed', file._id, null, ['modified']
       assert.isUndefined tree.findById(file._id).modified
       assert.isUndefined tree.findByPath(file.path).modified
 
+    it "should not touch unmentioned fields"
+
+  describe 'removeDdpFile', ->
+    tree = null
+    ddpClient = null
+    file =
+      _id: uuid.v4()
+      path: uuid.v4()
+    before ->
+      ddpClient = new MockDdpClient
+      tree = new FileTree ddpClient
+      tree.addDdpFile file
+      tree.removeDdpFile file._id
+
+    it 'should clear filesById', ->
+      assert.ok !tree.filesById[file._id]
+
+    it 'should clear filesByPath', ->
+      assert.ok !tree.filesByPath[file.path]
+
+    it 'should not error on null file', ->
+      tree.removeDdpFile null
+
+  describe 'removeFsFile', ->
+    tree = null
+    ddpClient = null
+    modifiedFile =
+      _id: uuid.v4()
+      path: uuid.v4()
+      modified: true
+
+    unmodifiedFile =
+      _id: uuid.v4()
+      path: uuid.v4()
+
+    beforeEach ->
+      ddpClient = new MockDdpClient
+        updateFile: sinon.spy()
+        removeFile: sinon.spy()
+      tree = new FileTree ddpClient
+      tree.addDdpFile modifiedFile
+      tree.addDdpFile unmodifiedFile
+
+    it 'should remove file if unmodified', ->
+      tree.removeFsFile unmodifiedFile.path
+      assert.isTrue ddpClient.removeFile.called
+      assert.isTrue ddpClient.removeFile.calledWith unmodifiedFile._id
+      assert.isFalse ddpClient.updateFile.called
+
+    it 'should set deletedInFs=true if modified', ->
+      tree.removeFsFile modifiedFile.path
+      assert.isFalse ddpClient.removeFile.called
+      assert.isTrue ddpClient.updateFile.called
+      assert.isTrue ddpClient.updateFile.calledWith \
+        modifiedFile._id, {deletedInFs:true}
+
+    it 'should not error out if file path is unknown', ->
+      tree.removeFsFile uuid.v4()
+
+  describe 'addWatchedFile', ->
+    tree = ddpClient = null
+    dirOne =
+      path: 'one'
+      mtime: 123444
+      isDir: true
+      isLink: false
+    dirTwo =
+      path: 'one/two'
+      mtime: 123554
+      isDir: true
+      isLink: false
+    beforeEach ->
+      ddpClient = new MockDdpClient
+        addFile: (file) ->
+          file._id = uuid.v4()
+          process.nextTick =>
+            @emit 'added', file
+      projectFiles = makeFileData: (path, callback) ->
+        process.nextTick ->
+          callback null, dirOne if path == dirOne.path
+          callback null, dirTwo if path == dirTwo.path
+      tree = new FileTree ddpClient, projectFiles
+
+
+    it 'should add the parent dirs of a file', (done) ->
+      file =
+        path: 'one/two/' + uuid.v4()
+        isDir: false
+      tree.addWatchedFile file
+      #Wait for the async fns to finish
+      setTimeout ->
+        files = tree.getFiles()
+        assert.equal files.length, 3
+        assert.isTrue dirOne in files
+        assert.isTrue dirTwo in files
+        assert.isTrue file in files
+        done()
+      , 10
+
+    it 'should add only one dir for two child files', (done) ->
+      file1 =
+        path: 'one/' + uuid.v4()
+        isDir: false
+      file2 =
+        path: 'one/' + uuid.v4()
+        isDir: false
+      tree.addWatchedFile file1
+      tree.addWatchedFile file2
+      #Wait for the async fns to finish
+      setTimeout ->
+        files = tree.getFiles()
+        assert.equal files.length, 3
+        assert.isTrue dirOne in files
+        assert.isTrue file1 in files
+        assert.isTrue file2 in files
+        done()
+      , 10
+      
+
+
+###
   describe "completeParentFiles", ->
     tree = null
     beforeEach ->
@@ -93,3 +348,5 @@ describe "FileTree", ->
       files1 = tree.completeParentFiles [file1]
       files2 = tree.completeParentFiles [file2]
       assert.equal files2.length, 1
+
+###

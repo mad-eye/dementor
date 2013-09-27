@@ -22,7 +22,7 @@ describe 'ignoreRules', ->
       assert.isTrue ignoreRules.shouldIgnore 'a'
       assert.isFalse ignoreRules.shouldIgnore 'ab'
       assert.isFalse ignoreRules.shouldIgnore 'ba'
-    it 'should ignore specified directories fweep', ->
+    it 'should ignore specified directories', ->
       ignoreRules = new IgnoreRules 'foo'
       assert.isTrue ignoreRules.shouldIgnore 'foo'
       assert.isTrue ignoreRules.shouldIgnore 'bar/foo'

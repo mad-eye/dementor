@@ -1,14 +1,11 @@
-{Dementor} = require('./src/dementor')
-{HttpClient} = require('./src/httpClient')
-{Settings} = require './madeye-common/common'
+Dementor = require './src/dementor'
+DdpClient = require './src/ddpClient'
 TunnelManager = require './src/tunnelManager'
+{Settings, Logger} = require './madeye-common/common'
 util = require 'util'
 clc = require 'cli-color'
-io = require 'socket.io-client'
-{errorType} = require './madeye-common/common'
 exec = require("child_process").exec
 _s = require 'underscore.string'
-{LogListener} = require './madeye-common/common'
 constants = require './src/constants'
 
 dementor = null
@@ -33,8 +30,8 @@ run = ->
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
-    .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--madeyeUrl [url]', 'url to point to (instead of madeye.io)')
+    .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
     .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
@@ -67,50 +64,62 @@ run = ->
 # shareOutput: bool
 ###
 execute = (options) ->
-  if options.madeyeUrl
-    apogeeUrl = options.madeyeUrl
-    azkabanUrl = "#{options.madeyeUrl}/api"
-    socketUrl = options.madeyeUrl
-  else
-    apogeeUrl = Settings.apogeeUrl
-    azkabanUrl = Settings.azkabanUrl
-    socketUrl = Settings.socketUrl
-
-  #XXX: Need to handle custom case differently?
-  shareHost = Settings.shareHost
-
   logLevel = switch
     when options.trace then 'trace'
     when options.debug then 'debug'
     else 'info'
-  listener = new LogListener
-    logLevel: logLevel
-    onError: (err) ->
-      shutdown(err.code ? 1)
+  Logger.setLevel logLevel
+  Logger.onError (err) ->
+    if 'string' == typeof err
+      message = err
+    else
+      message = err.details ? err.message
+    console.error clc.red('ERROR:'), message
+    shutdown(1)
+    #Don't print standard error log output
+    return false
+
+  log = new Logger name:'app'
+
+  log.trace "Checking madeyeUrl: #{options.madeyeUrl}"
+  if options.madeyeUrl
+    apogeeUrl = options.madeyeUrl
+    azkabanUrl = "#{options.madeyeUrl}/api"
+    parsedUrl = require('url').parse options.madeyeUrl
+    ddpPort = switch
+      when parsedUrl.port then parsedUrl.port
+      when parsedUrl.protocol == 'http:' then 80
+      when parsedUrl.protocol == 'https:' then 443
+      else log.error "Can't figure out port for url #{options.madeyeUrl}"
+    ddpHost = parsedUrl.hostname
+  else
+    apogeeUrl = Settings.apogeeUrl
+    azkabanUrl = Settings.azkabanUrl
+    ddpHost = Settings.ddpHost
+    ddpPort = Settings.ddpPort
+
+  #FIXME: Need to handle custom case differently?
+  shareHost = Settings.shareHost
 
   if options.term
     ttyServer = new tty.Server
       cwd: process.cwd()
     ttyServer.listen constants.TERMINAL_PORT, "localhost"
 
+  ddpClient = new DdpClient
+    host: ddpHost
+    port: ddpPort
+  ddpClient.on 'message-warning', (msg) ->
+    console.warn clc.bold('Warning:'), msg
 
-  httpClient = new HttpClient azkabanUrl
-  listener.listen httpClient, 'httpClient'
-
-  listener.log 'debug', "Connecting to socketUrl #{socketUrl}"
-  socket = io.connect socketUrl,
-    'resource': 'socket.io' #NB: This must match the server.  Server defaults to 'socket.io'
-    'auto connect': false
 
   tunnelManager = new TunnelManager shareHost
-  listener.listen tunnelManager, 'tunnelManager'
+  Logger.listen tunnelManager, 'tunnelManager'
 
 
-  #TODO: Refactor dementor to take options
   dementor = new Dementor
     directory: options.directory
-    httpClient: httpClient
-    socket: socket
+    ddpClient: ddpClient
     tunnelManager: tunnelManager
     clean: options.clean
     ignorefile: options.ignorefile
@@ -118,12 +127,6 @@ execute = (options) ->
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
     term: options.term
-
-  listener.listen dementor, 'dementor'
-  listener.listen dementor.projectFiles, 'projectFiles'
-  listener.listen dementor.fileTree, 'fileTree'
-
-  util.puts "Enabling MadEye in " + clc.bold process.cwd()
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
@@ -134,6 +137,8 @@ execute = (options) ->
 
   dementor.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
+  dementor.on 'message-info', (msg) ->
+    console.log msg
 
   dementor.enable()
 
@@ -146,13 +151,22 @@ execute = (options) ->
     , 2000
 
   process.on 'SIGINT', ->
-    console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
+    log.debug 'Received SIGINT.'
     shutdown()
 
   process.on 'SIGTERM', ->
     unless options.linkToMeteorProcess
-      console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
+      log.debug "Received kill signal (SIGTERM)"
       shutdown()
+
+  #hack for dealing with exceptions caused by broken links
+  process.on 'uncaughtException', (err)->
+    if err.code == "ENOENT"
+      #Silence the error for now
+      log.debug "File does not exist #{err.path}"
+      0
+    else
+      throw err
 
 SHUTTING_DOWN = false
 
