@@ -192,7 +192,7 @@ class DdpClient extends EventEmitter
 
   #callback: (err) ->
   addTunnels: (tunnels, callback) ->
-    @ddpClient.call 'establishTunnels', [tunnels], callback
+    @ddpClient.call 'addTunnels', [@projectId, tunnels], callback
 
   remove: (collectionName, id) ->
     @emit 'debug', "Removing #{collectionName} #{id}"

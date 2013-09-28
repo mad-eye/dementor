@@ -61,7 +61,7 @@ class Dementor extends events.EventEmitter
           cb err, files
     }, (err, results) =>
       return @handleError err if err
-      @emit 'trace', 'Initial enable done, now adding files'
+      @emit 'debug', 'Initial enable done, now adding files'
       @fileTree.addInitialFiles results.files
       @watchProject()
       if @terminal or @tunnel
@@ -110,21 +110,23 @@ class Dementor extends events.EventEmitter
     #TODO: Remove this stub when we've integrated interview-term.
     @emit type
  
-  #callback: (err, tunnels) ->
-  setupTunnels: (callback) ->
+  setupTunnels: ->
+    @emit 'trace', "Setting up terminal tunnel: @{terminal}"
     tasks = {}
     #TODO: enable web tunneling.
     #if @tunnel
       #tasks['app'] = (cb) =>
+        #@emit 'trace', "Setting up tunnel on port #{@tunnel}"
         #tunnel =
           #name: "app"
           #localPort: @tunnel
         #@tunnelManager.startTunnel tunnel, cb
     if @terminal
       tasks['terminal'] = (cb) =>
+        @emit 'trace', "Setting up tunnel on port #{constants.TERMINAL_PORT}"
         tunnel =
           name: "terminal"
-          localPort: TERMINAL_PORT
+          localPort: constants.TERMINAL_PORT
         @tunnelManager.startTunnel tunnel, cb
 
     async.parallel tasks, (err, tunnels) =>
@@ -132,6 +134,7 @@ class Dementor extends events.EventEmitter
         @emit 'debug', "Error setting up tunnels:", err
         @handleWarning "We could not set up the tunnels; continuing without tunnels."
         return
+      @emit 'debug', 'Tunnels connected'
       @ddpClient.addTunnels tunnels, (err) =>
         if err
           @emit 'debug', "Error setting up tunnels:", err
