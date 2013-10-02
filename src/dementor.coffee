@@ -60,7 +60,7 @@ class Dementor extends events.EventEmitter
         @readFileTree (err, files) ->
           cb err, files
     }, (err, results) =>
-      return @handleError err if err
+      return @emit 'error', err if err
       @emit 'debug', 'Initial enable done, now adding files'
       @fileTree.addInitialFiles results.files
       @watchProject()
