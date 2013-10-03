@@ -1,12 +1,15 @@
 FileTree = require("../../src/fileTree")
 _path = require "path"
 uuid = require "node-uuid"
+hat = require 'hat'
 _ = require 'underscore'
 {assert} = require 'chai'
 {EventEmitter} = require 'events'
 sinon = require 'sinon'
 {Logger} = require '../../madeye-common/common'
 MockDdpClient = require '../mock/mockDdpClient'
+
+randomString = -> hat 32, 16
 
 describe "FileTree", ->
 
@@ -16,6 +19,7 @@ describe "FileTree", ->
     file =
       _id: uuid.v4()
       path: 'a/ways/down/to.txt'
+      parentPath: 'a/ways/down'
     before ->
       ddpClient = new MockDdpClient
       tree = new FileTree ddpClient
@@ -38,6 +42,10 @@ describe "FileTree", ->
       tree.addDdpFile file2
       assert.equal tree.filesById[file._id], file2
       assert.equal tree.filesByPath[file.path], file2
+
+    it 'should add filePath to filePathsByParent', ->
+      assert.deepEqual tree.filePathsByParent[file.parentPath], [file.path]
+
 
   describe 'addFsFile', ->
     tree = null
@@ -176,10 +184,65 @@ describe "FileTree", ->
           "shouldn't call updateFileContents"
 
 
-  describe "addInitialFiles", ->
-    it "should add new files"
-    it "should update existing files"
-    it "should remove orphaned files"
+  describe "loadDirectory", ->
+    tree = null
+    ddpClient = null
+    file1 =
+      _id: uuid.v4()
+      path: 'a/ways/down/to.txt'
+      parentPath: 'a/ways/down'
+      mtime: 123444
+    file2 =
+      _id: uuid.v4()
+      path: 'a/ways/down/below.txt'
+      parentPath: 'a/ways/down'
+      mtime: 123444
+    file3 =
+      _id: uuid.v4()
+      path: 'a/ways/up/here.txt'
+      parentPath: 'a/ways/up'
+      mtime: 123444
+    beforeEach ->
+      ddpClient = new MockDdpClient
+        addFile: sinon.spy()
+        updateFile: sinon.spy()
+        removeFile: sinon.spy()
+        markDirectoryLoaded: sinon.spy()
+      tree = new FileTree ddpClient
+      tree.addDdpFile file1
+      tree.addDdpFile file2
+      tree.addDdpFile file3
+
+    it "call markDirectoryLoaded", ->
+      tree.loadDirectory 'a/ways/up', [file3]
+      assert.isTrue ddpClient.markDirectoryLoaded.called
+      assert.isTrue ddpClient.markDirectoryLoaded.calledWith 'a/ways/up'
+
+    it "should add new files", ->
+      newFile =
+        path: 'a/ways/down/around.txt'
+        parentPath: 'a/ways/down'
+      tree.loadDirectory 'a/ways/down', [newFile]
+      assert.isTrue ddpClient.addFile.called
+      assert.isTrue ddpClient.addFile.calledWith newFile
+
+    it "should update existing files", ->
+      newFile =
+        path: file2.path
+        parentPath: file2.parentPath
+        mtime: 223444
+      tree.loadDirectory 'a/ways/down', [newFile]
+      assert.isTrue ddpClient.updateFile.called
+      assert.isTrue ddpClient.updateFile.calledWith(file2._id, mtime:newFile.mtime)
+
+    it "should remove orphaned files", ->
+      newFile =
+        path: file2.path
+        parentPath: file2.parentPath
+        mtime: file2.mtime
+      tree.loadDirectory 'a/ways/down', [newFile]
+      assert.isTrue ddpClient.removeFile.called
+      assert.isTrue ddpClient.removeFile.calledWith(file1._id)
 
   describe 'on ddp file change', ->
     tree = null
@@ -205,6 +268,44 @@ describe "FileTree", ->
       assert.isUndefined tree.findByPath(file.path).modified
 
     it "should not touch unmentioned fields"
+
+  describe 'on ddp readDir', ->
+    tree = null
+    projectFiles = null
+    ddpClient = null
+    dir = file = null
+    beforeEach ->
+      dir =
+        _id : randomString()
+        path : "more/#{randomString()}"
+      file =
+        path: "#{dir.path}/rarrrrrrrrr"
+        parentPath: dir.path
+      projectFiles = {readdir: sinon.stub()}
+      ddpClient = new MockDdpClient
+        addFile: sinon.spy()
+        updateFile: sinon.spy()
+        removeFile: sinon.spy()
+        markDirectoryLoaded: sinon.spy()
+      tree = new FileTree ddpClient, projectFiles
+      projectFiles.readdir.callsArgWith 1, null, [file]
+      dir =
+        _id : randomString()
+        path : "more/#{randomString()}"
+      ddpClient.emit 'readDir', dir
+
+    it 'should read dir', ->
+      assert.isTrue projectFiles.readdir.called, 'Should call readdir'
+      assert.isTrue projectFiles.readdir.calledWith(dir.path), 'Should call readdir with dir.path'
+
+    it 'should call markDirectoryLoaded', ->
+      assert.isTrue ddpClient.markDirectoryLoaded.called
+      assert.isTrue ddpClient.markDirectoryLoaded.calledWith dir.path
+
+    it 'should call ddpClient.addFile for new file', ->
+      assert.isTrue ddpClient.addFile.called
+      assert.isTrue ddpClient.addFile.calledWith file
+
 
   describe 'removeDdpFile', ->
     tree = null

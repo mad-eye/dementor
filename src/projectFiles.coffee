@@ -21,6 +21,24 @@ IgnoreRules = require './ignoreRules'
 #  'file changed', file
 #  'file removed', filePath
 
+###
+# Directory reading plan:
+# To minimize how many files we deluge apogee with, let's only read those
+# files that are visible, and those that might be visible soon.
+# 
+# Before we would 'clean out' the project by deleting those files not in
+# the initial scan.  Now we will have to do it dir-by-dir.
+#
+# The information as to what directories we care about is in the ddp collection
+# ActiveDirectories.  On a ddp add, we read the directory, add the files to
+# FileTree (which modifies, adds, and deletes orphans for that dir), then mark
+# the activeDir with a lastLoaded timestamp
+#
+# When a filesystem event happens, if the file's parent is not in activeDirs,
+# we ignore the event.  Otherwise we process as normal.
+#
+###
+
 MADEYE_PROJECTS_FILE = ".madeye_projects"
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory, ignorepath) ->
@@ -181,6 +199,21 @@ class ProjectFiles extends events.EventEmitter
           title: "Inconsistent line endings"
           message: "We've converted them all into #{lineEndingType}."
       callback null, {contents:cleanContents, checksum, warning}
+
+  #callback: (error, files) ->
+  readdir: (relDir, callback) ->
+    currentDir = _path.join(@directory, relDir)
+    @emit 'trace', "readdir", currentDir
+    fs.readdir currentDir, (err, fileNames) =>
+      return callback @wrapError err if err
+      async.map fileNames, (fileName, cb) =>
+        @makeFileData _path.join(@directory, relDir, fileName), cb
+      , (error, results) =>
+        @emit 'trace', "Finished reading", relDir
+        #Filter out null results
+        results = _.filter results, (result) -> result
+        callback error, results
+
 
   #callback: (error, files) ->
   readdirRecursive : (relDir='', callback) ->

@@ -10,6 +10,8 @@ class FileTree extends EventEmitter
     @filesById = {}
     @filesByPath = {}
     @filesPending = []
+    #null is ok key; refers to root dir
+    @filePathsByParent = []
     @_listenToDdpClient()
 
   getFiles: -> _.values @filesById
@@ -21,8 +23,10 @@ class FileTree extends EventEmitter
   #Add a file that comes via ddp
   addDdpFile: (file) ->
     return unless file
-    @filesById[file._id] = file if file._id
+    @filesById[file._id] = file
     @filesByPath[file.path] = file
+    @filePathsByParent[file.parentPath] ?= []
+    @filePathsByParent[file.parentPath].push file.path
     @emit 'trace', "Added ddp file #{file.path}"
     removed = removeItemFromArray file.path, @filesPending
     @emit 'trace', "Removed #{file.path} from pending dirs." if removed
@@ -81,6 +85,21 @@ class FileTree extends EventEmitter
         return unless filedata
         @addFsFile filedata
  
+  loadDirectory: (directory, files) ->
+    existingFilePaths = @filePathsByParent[directory]
+    filePathsAdded = []
+    for file in files
+      @addFsFile file
+      filePathsAdded.push file.path
+    orphanedPaths = _.difference existingFilePaths, filePathsAdded
+    @removeFsFile path for path in orphanedPaths
+    @ddpClient.markDirectoryLoaded directory if directory #don't mark root
+    @emit 'debug', "Loaded directory", (directory || '.')
+    @emit 'added initial files'
+
+
+
+
   addInitialFiles: (files) ->
     return unless files
     existingFilePaths = _.keys @filesByPath
@@ -111,9 +130,7 @@ class FileTree extends EventEmitter
     unless file
       @emit 'debug', "Trying to remove file unknown to ddp:", path
       return
-    if file.scratch
-      #dementor doesn't control these
-      return
+    return if file.scratch #dementor doesn't control these
     unless file.modified
       @ddpClient.removeFile file._id
       @emit 'trace', "Removed file #{file.path}"
@@ -140,6 +157,9 @@ class FileTree extends EventEmitter
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
       @emit 'trace', "Subscription has #{_.size @filesById} files"
+    @ddpClient.on 'readDir', (dir) =>
+      @projectFiles.readdir dir.path, (err, files) =>
+        @loadDirectory dir.path, files
 
 #Helper functions
 

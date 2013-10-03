@@ -4,8 +4,6 @@ _path = require 'path'
 uuid = require 'node-uuid'
 FileTree = require '../../src/fileTree'
 
-#TODO: Move this to madeye-common
-
 TEST_AREA = ".test_area"
 class FileUtils
   @mkDir : (dir) ->

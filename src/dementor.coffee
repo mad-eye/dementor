@@ -27,27 +27,25 @@ class Dementor extends events.EventEmitter
     @emit 'message-warning', msg
 
   enable: ->
-    async.parallel {
-      ddp: (cb) =>
-        #connect callback gets called each time a (re)connection is established
-        #to avoid calling cb multiple times, trigger once
-        #error event will handle error case.
-        @ddpClient.connect()
-        @ddpClient.once 'connected', =>
-          @registerProject (err) =>
-            return cb err if err
-            #need to be subscribed before adding fs files
-            @ddpClient.subscribe 'files', @projectId, cb
-            #don't need to wait for this callback
-            @ddpClient.subscribe 'commands', @projectId
-      files: (cb) =>
-        @readFileTree (err, files) ->
-          cb err, files
-    }, (err, results) =>
-      return @handleError err if err
-      @emit 'trace', 'Initial enable done, now adding files'
-      @fileTree.addInitialFiles results.files
-      @watchProject()
+    #connect callback gets called each time a (re)connection is established
+    #to avoid calling cb multiple times, trigger once
+    #error event will handle error case.
+    @ddpClient.connect()
+    @ddpClient.once 'connected', =>
+      @registerProject (err) =>
+        return @emit 'error', err if err
+        #don't need to wait for this callback
+        @ddpClient.subscribe 'commands', @projectId
+        #don't need to wait for this callback
+        @ddpClient.subscribe 'activeDirectories', @projectId
+        #need to be subscribed before adding fs files
+        @ddpClient.subscribe 'files', @projectId, (err) =>
+          return @emit 'error', err if err
+          @emit 'trace', 'Initial enable done, now adding files'
+          @projectFiles.readdir '', (err, files) =>
+            return @emit 'error', err if err
+            @fileTree.loadDirectory null, files
+            @watchProject()
 
   #callback: (err, files) ->
   readFileTree: (callback) ->
@@ -168,6 +166,5 @@ class Dementor extends events.EventEmitter
               loadChecksum: checksum
               fsChecksum: checksum
             @ddpClient.commandReceived null, commandId:data.commandId
-
 
 module.exports = Dementor
