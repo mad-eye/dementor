@@ -10,17 +10,6 @@ IgnoreRules = require './ignoreRules'
 {Logger} = require '../madeye-common/common'
 {crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
 
-#Info Events:
-#  'error', message:, file?:
-#  'warn', message
-#  'info', message
-#  'debug', message
-#    
-#File Events:
-#  'file added', file
-#  'file changed', file
-#  'file removed', filePath
-
 ###
 # Directory reading plan:
 # To minimize how many files we deluge apogee with, let's only read those
