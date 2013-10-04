@@ -184,7 +184,7 @@ class DdpClient extends EventEmitter
       return unless msg.msg == 'added'
       dir = msg.fields
       dir._id = msg.id
-      @emit 'readDir', dir
+      @emit 'activeDir', dir
 
 
   #data: {commandId, fields...:}

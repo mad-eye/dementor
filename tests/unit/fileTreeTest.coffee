@@ -8,12 +8,13 @@ _ = require 'underscore'
 sinon = require 'sinon'
 {Logger} = require '../../madeye-common/common'
 MockDdpClient = require '../mock/mockDdpClient'
+DdpFiles = require '../../src/ddpFiles'
 
 randomString = -> hat 32, 16
 
 describe "FileTree", ->
 
-  describe 'addFsFile', ->
+  describe '_addFsFile', ->
     tree = null
     ddpClient = null
     ago = Date.now()
@@ -23,16 +24,16 @@ describe "FileTree", ->
       ddpClient = new MockDdpClient
         addFile: sinon.spy()
         updateFile: sinon.spy()
-      tree = new FileTree ddpClient
+      tree = new FileTree ddpClient, null, new DdpFiles()
 
     it 'should not error on null file', ->
-      tree.addFsFile null
+      tree._addFsFile null
 
     it 'should ddp addFile on a new file', ->
       file =
         path: 'tooo.py'
         mtime: ago
-      tree.addFsFile file
+      tree._addFsFile file
       assert.isTrue ddpClient.addFile.called
       assert.isTrue ddpClient.addFile.calledWith file
 
@@ -40,13 +41,15 @@ describe "FileTree", ->
 
     describe 'over existing file', ->
       projectFiles = null
+      ddpFiles = null
       beforeEach ->
         ddpClient = new MockDdpClient
           addFile: sinon.spy()
           updateFile: sinon.spy()
           updateFileContents: sinon.spy()
         projectFiles = {retrieveContents: sinon.stub()}
-        tree = new FileTree ddpClient, projectFiles
+        ddpFiles = new DdpFiles()
+        tree = new FileTree ddpClient, projectFiles, ddpFiles
         Logger.listen tree, 'tree'
 
       it "should do nothing if new file's mtime is not newer", ->
@@ -54,11 +57,11 @@ describe "FileTree", ->
           _id: uuid.v4()
           path: 'to.txt'
           mtime: ago
-        tree.addDdpFile file
+        ddpFiles.addDdpFile file
         newFile =
           path: file.path
           mtime: ago
-        tree.addFsFile newFile
+        tree._addFsFile newFile
         assert.isFalse ddpClient.addFile.called
         assert.isFalse ddpClient.updateFile.called
 
@@ -67,11 +70,11 @@ describe "FileTree", ->
           _id: uuid.v4()
           path: uuid.v4()
           mtime: ago
-        tree.addDdpFile file
+        ddpFiles.addDdpFile file
         newFile =
           path: file.path
           mtime: later
-        tree.addFsFile newFile
+        tree._addFsFile newFile
         assert.isFalse ddpClient.addFile.called
         assert.isTrue ddpClient.updateFile.called
         [fileId, updateFields] = ddpClient.updateFile.getCall(0).args
@@ -86,7 +89,7 @@ describe "FileTree", ->
           lastOpened: ago
           fsChecksum: 1235
           loadChecksum: 1235
-        tree.addDdpFile file
+        ddpFiles.addDdpFile file
         newFile =
           path: file.path
           mtime: later
@@ -96,7 +99,7 @@ describe "FileTree", ->
           checksum : 9987066
         projectFiles.retrieveContents.callsArgWith 1, null, contentResults
 
-        tree.addFsFile newFile
+        tree._addFsFile newFile
         assert.isFalse ddpClient.addFile.called,
           "shouldn't call addFile"
 
@@ -124,7 +127,7 @@ describe "FileTree", ->
           fsChecksum: 1235
           loadChecksum: 1235
           modified: true
-        tree.addDdpFile file
+        ddpFiles.addDdpFile file
         newFile =
           path: file.path
           mtime: later
@@ -134,7 +137,7 @@ describe "FileTree", ->
           checksum : 99870
         projectFiles.retrieveContents.callsArgWith 1, null, contentResults
 
-        tree.addFsFile newFile
+        tree._addFsFile newFile
         assert.isFalse ddpClient.addFile.called,
           "shouldn't call addFile"
 
@@ -174,10 +177,11 @@ describe "FileTree", ->
         updateFile: sinon.spy()
         removeFile: sinon.spy()
         markDirectoryLoaded: sinon.spy()
-      tree = new FileTree ddpClient
-      tree.addDdpFile file1
-      tree.addDdpFile file2
-      tree.addDdpFile file3
+      ddpFiles = new DdpFiles()
+      tree = new FileTree ddpClient, null, ddpFiles
+      ddpFiles.addDdpFile file1
+      ddpFiles.addDdpFile file2
+      ddpFiles.addDdpFile file3
 
     it "call markDirectoryLoaded", ->
       tree.loadDirectory 'a/ways/up', [file3]
@@ -210,32 +214,32 @@ describe "FileTree", ->
       assert.isTrue ddpClient.removeFile.called
       assert.isTrue ddpClient.removeFile.calledWith(file1._id)
 
-  describe 'on ddp file change', ->
+  describe 'on ddp file event', ->
     tree = null
+    ddpFiles = null
     ddpClient = new MockDdpClient
-    file = _id: uuid.v4(), path: 'a/path', isDir:false, modified:true
+    file = _id: uuid.v4(), path: 'a/path', parentPath: 'a', isDir:false, modified:true
     beforeEach ->
-      tree = new FileTree ddpClient
-      tree.addDdpFile file
+      ddpFiles =
+        addDdpFile: sinon.spy()
+        removeDdpFile: sinon.spy()
+        changeDdpFile: sinon.spy()
+      tree = new FileTree ddpClient, null, ddpFiles
+      tree.filesPending.push file.parentPath
 
-    it 'should set fields', ->
-      ddpClient.emit 'changed', file._id, {'b':2}
-      assert.equal tree.findById(file._id).b, 2
-      assert.equal tree.findByPath(file.path).b, 2
+    it 'added should call ddpFiles.addDdpFile', ->
+      ddpClient.emit 'added', file
+      assert.isTrue ddpFiles.addDdpFile.calledWith file
 
-    it 'should overwrite fields', ->
-      ddpClient.emit 'changed', file._id, {isDir:true}
-      assert.equal tree.findById(file._id).isDir, true
-      assert.equal tree.findByPath(file.path).isDir, true
+    it 'removed should call ddpFiles.removeDdpFile', ->
+      ddpClient.emit 'removed', file._id
+      assert.isTrue ddpFiles.removeDdpFile.calledWith file._id
 
-    it 'should delete cleared fields', ->
-      ddpClient.emit 'changed', file._id, null, ['modified']
-      assert.isUndefined tree.findById(file._id).modified
-      assert.isUndefined tree.findByPath(file.path).modified
+    it 'changed should call ddpFiles.changeDdpFile', ->
+      ddpClient.emit 'changed', file._id, {isDir:true}, ['modified']
+      assert.isTrue ddpFiles.changeDdpFile.calledWith file._id, {isDir:true}, ['modified']
 
-    it "should not touch unmentioned fields"
-
-  describe 'on ddp readDir', ->
+  describe 'on ddp activeDir', ->
     tree = null
     projectFiles = null
     ddpClient = null
@@ -253,12 +257,12 @@ describe "FileTree", ->
         updateFile: sinon.spy()
         removeFile: sinon.spy()
         markDirectoryLoaded: sinon.spy()
-      tree = new FileTree ddpClient, projectFiles
+      tree = new FileTree ddpClient, projectFiles, new DdpFiles()
       projectFiles.readdir.callsArgWith 1, null, [file]
       dir =
         _id : randomString()
         path : "more/#{randomString()}"
-      ddpClient.emit 'readDir', dir
+      ddpClient.emit 'activeDir', dir
 
     it 'should read dir', ->
       assert.isTrue projectFiles.readdir.called, 'Should call readdir'
@@ -272,7 +276,8 @@ describe "FileTree", ->
       assert.isTrue ddpClient.addFile.called
       assert.isTrue ddpClient.addFile.calledWith file
 
-
+    it 'should make directory active', ->
+      assert.isTrue tree.isActiveDir dir.path
 
 
   describe 'removeFsFile', ->
@@ -291,9 +296,10 @@ describe "FileTree", ->
       ddpClient = new MockDdpClient
         updateFile: sinon.spy()
         removeFile: sinon.spy()
-      tree = new FileTree ddpClient
-      tree.addDdpFile modifiedFile
-      tree.addDdpFile unmodifiedFile
+      ddpFiles = new DdpFiles()
+      tree = new FileTree ddpClient, null, ddpFiles
+      ddpFiles.addDdpFile modifiedFile
+      ddpFiles.addDdpFile unmodifiedFile
 
     it 'should remove file if unmodified', ->
       tree.removeFsFile unmodifiedFile.path
@@ -312,44 +318,50 @@ describe "FileTree", ->
       tree.removeFsFile uuid.v4()
 
   describe 'addWatchedFile', ->
-    tree = ddpClient = null
-    dirOne =
+    tree = ddpClient = ddpFiles = file = null
+    grandparentDir =
       path: 'one'
       mtime: 123444
       isDir: true
       isLink: false
-    dirTwo =
+    parentDir =
       path: 'one/two'
       mtime: 123554
       isDir: true
       isLink: false
+    file =
+      path: 'one/two/' + uuid.v4()
+      isDir: false
+      mtime: 123564
+      isLink: false
+      
     beforeEach ->
       ddpClient = new MockDdpClient
-        addFile: (file) ->
-          file._id = uuid.v4()
-          process.nextTick =>
-            @emit 'added', file
+        addFile: sinon.spy()
       projectFiles = makeFileData: (path, callback) ->
         process.nextTick ->
-          callback null, dirOne if path == dirOne.path
-          callback null, dirTwo if path == dirTwo.path
-      tree = new FileTree ddpClient, projectFiles
+          callback null, grandparentDir if path == grandparentDir.path
+          callback null, parentDir if path == parentDir.path
+      ddpFiles = new DdpFiles
+      tree = new FileTree ddpClient, projectFiles, ddpFiles
 
-
-    it 'should add the parent dirs of a file', (done) ->
-      file =
-        path: 'one/two/' + uuid.v4()
-        isDir: false
+    it 'should add the file if the parent dir is active', ->
+      tree.activeDirs['one/two'] = true
       tree.addWatchedFile file
-      #Wait for the async fns to finish
+      assert.isTrue ddpClient.addFile.calledWith file
+
+    it 'should add the parent dir if the grandparent dir is active', (done) ->
+      tree.activeDirs['one'] = true
+      tree.addWatchedFile file
       setTimeout ->
-        files = tree.getFiles()
-        assert.equal files.length, 3
-        assert.isTrue dirOne in files
-        assert.isTrue dirTwo in files
-        assert.isTrue file in files
+        #Give projectFiles time to return
+        assert.isTrue ddpClient.addFile.calledWith parentDir
         done()
       , 10
+
+    it 'should not add anything if neither dir is active', ->
+      tree.addWatchedFile file
+      assert.isFalse ddpClient.addFile.called
 
     it 'should add only one dir for two child files', (done) ->
       file1 =
@@ -359,17 +371,24 @@ describe "FileTree", ->
         path: 'one/' + uuid.v4()
         isDir: false
       tree.addWatchedFile file1
-      tree.addWatchedFile file2
-      #Wait for the async fns to finish
+      process.nextTick ->
+        tree.addWatchedFile file2
       setTimeout ->
-        files = tree.getFiles()
-        assert.equal files.length, 3
-        assert.isTrue dirOne in files
-        assert.isTrue file1 in files
-        assert.isTrue file2 in files
+        #Give projectFiles time to return
+        assert.isTrue ddpClient.addFile.calledOnce
         done()
       , 10
       
+
+  describe 'isActiveDir', ->
+    fileTree = null
+    beforeEach ->
+      ddpClient = new MockDdpClient
+      fileTree = new FileTree ddpClient
+
+    it 'should consider root (in various forms) active', ->
+      assert.isTrue fileTree.isActiveDir '.'
+      assert.isTrue fileTree.isActiveDir null
 
 
 ###

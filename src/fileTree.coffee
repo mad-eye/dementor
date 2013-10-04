@@ -17,7 +17,7 @@ class FileTree extends EventEmitter
     return @activeDirs[path]
 
   loadDirectory: (directory, files) ->
-    existingFilePaths = @filePathsByParent[directory]
+    existingFilePaths = @ddpFiles.filePathsByParent[directory]
     filePathsAdded = []
     for file in files
       @_addFsFile file
@@ -40,7 +40,7 @@ class FileTree extends EventEmitter
     parentPath = getParentPath file.path
     grandparentPath = getParentPath parentPath
     #TODO: Make hasActiveDir
-    if @isActiveDirs parentPath
+    if @isActiveDir parentPath
       @_addFsFile file
     #XXX: Make sure we handle root dir correctly
     else if @isActiveDir grandparentPath
@@ -54,7 +54,7 @@ class FileTree extends EventEmitter
   #Add a file that we find on the file system
   _addFsFile: (file) ->
     return unless file
-    existingFile = @filesByPath[file.path]
+    existingFile = @ddpFiles.findByPath file.path
     if existingFile
       @_updateFile existingFile, file
     else
@@ -97,7 +97,7 @@ class FileTree extends EventEmitter
  
 
   removeFsFile: (path) ->
-    file = @filesByPath[path]
+    file = @ddpFiles.findByPath path
     unless file
       @emit 'debug', "Trying to remove file unknown to ddp:", path
       return
@@ -116,19 +116,19 @@ class FileTree extends EventEmitter
       @ddpFiles.addDdpFile file
       removed = removeItemFromArray file.path, @filesPending
       @emit 'trace', "Removed #{file.path} from pending dirs." if removed
+
     @ddpClient.on 'removed', (fileId) =>
       @ddpFiles.removeDdpFile fileId
+
     @ddpClient.on 'changed', (fileId, fields, cleared) =>
       @ddpFiles.changeDdpFile fileId, fields, cleared
-      path = fields.path
-      removed = removeItemFromArray path, @filesPending
-      @emit 'trace', "Removed #{path} from pending dirs." if removed
 
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
       @emit 'trace', "Subscription has #{_.size @filesById} files"
-    @ddpClient.on 'readDir', (dir) =>
-      @activeDirs[dir] = true
+
+    @ddpClient.on 'activeDir', (dir) =>
+      @activeDirs[dir.path] = true
       @projectFiles.readdir dir.path, (err, files) =>
         @loadDirectory dir.path, files
 
