@@ -108,7 +108,7 @@ describe "Dementor", ->
         #Give the async bits time to process.
         setTimeout ->
           assert.ok dementor.fileTree
-          files = dementor.fileTree.getFiles()
+          files = dementor.fileTree.ddpFiles.getFiles()
           #HACK: Find a better way to find how many top-level files there are
           assert.equal files.length, 3
           for file in files
@@ -186,7 +186,7 @@ describe "Dementor", ->
         #Give the async bits time to process.
         setTimeout ->
           assert.ok dementor.fileTree
-          files = dementor.fileTree.getFiles()
+          files = dementor.fileTree.ddpFiles.getFiles()
           #HACK: Find a better way to find how many top-level files there are
           assert.equal files.length, 3
           for file in files
