@@ -8,6 +8,7 @@ constants = require './constants'
 async = require 'async'
 {Logger} = require '../madeye-common/common'
 {crc32} = require '../madeye-common/common'
+DdpFiles = require "./ddpFiles"
 
 class Dementor extends events.EventEmitter
   constructor: (options) ->
@@ -19,7 +20,7 @@ class Dementor extends events.EventEmitter
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
-    @fileTree = new FileTree @ddpClient, @projectFiles
+    @fileTree = new FileTree @ddpClient, @projectFiles, new DdpFiles
     @version = require('../package.json').version
 
   handleWarning: (msg) ->

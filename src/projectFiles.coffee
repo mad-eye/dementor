@@ -34,8 +34,10 @@ IgnoreRules = require './ignoreRules'
 # FileTree (which modifies, adds, and deletes orphans for that dir), then mark
 # the activeDir with a lastLoaded timestamp
 #
-# When a filesystem event happens, if the file's parent is not in activeDirs,
-# we ignore the event.  Otherwise we process as normal.
+# The file watcher we use (chokidar) does not notice when directories are
+# added/removed.  So we have to implicitly add dirs that are required for
+# a given filesystem event.
+# 
 #
 ###
 
