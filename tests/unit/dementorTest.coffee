@@ -12,6 +12,7 @@ Dementor = require '../../src/dementor'
 MockDdpClient = require '../mock/mockDdpClient'
 {errors, errorType} = require '../../madeye-common/common'
 {Logger} = require '../../madeye-common/common'
+{crc32} = require '../../madeye-common/common'
 
 randomString = -> hat 32, 16
 
@@ -198,8 +199,11 @@ describe "Dementor", ->
 
   describe "receiving 'request file' command", ->
     dementor = ddpClient = projectFiles = null
+    commandId = fileId = null
 
     beforeEach ->
+      commandId = randomString()
+      fileId = randomString()
       projectFiles =
         getProjectId: -> randomString()
         retrieveContents: sinon.stub()
@@ -222,18 +226,14 @@ describe "Dementor", ->
       assert.equal data.commandId, commandId
 
     it 'should return MissingParameter error if no fileId is sent', ->
-      commandId = randomString()
       ddpClient.emit 'command', 'request file', {commandId}
       checkCommandError 'MissingParameter', commandId
 
     it 'should return FileNotFound error if no file is found is sent', ->
-      commandId = randomString()
       ddpClient.emit 'command', 'request file', {commandId, fileId:randomString()}
       checkCommandError 'FileNotFound', commandId
 
     it 'should return errors given by projectFiles', ->
-      commandId = randomString()
-      fileId = randomString()
       projectFiles.retrieveContents.callsArgWith 1, errors.new 'IsDirectory'
       #XXX: This is awkward, and looks at internal details
       dementor.fileTree.ddpFiles.addDdpFile {_id:fileId, path: 'a/path.txt'}
@@ -241,8 +241,6 @@ describe "Dementor", ->
       checkCommandError 'IsDirectory', commandId
 
     it 'should call updateFile with correct data', ->
-      commandId = randomString()
-      fileId = randomString()
       contents = 'With a kitten, is life real, or just imgur?'
       checksum = 123311
       projectFiles.retrieveContents.callsArgWith 1, null, {checksum, contents}
@@ -256,8 +254,6 @@ describe "Dementor", ->
       assert.ok updateData.lastOpened
 
     it 'should call commandReceived with contents', ->
-      commandId = randomString()
-      fileId = randomString()
       contents = 'With a kitten, is life real, or just imgur?'
       checksum = 123311
       projectFiles.retrieveContents.callsArgWith 1, null, {checksum, contents}
@@ -271,96 +267,72 @@ describe "Dementor", ->
       assert.equal results.contents, contents
 
 
-###
-    projectPath = projectFiles = null
-    filePath = fileBody = null
-    beforeEach (done) ->
-      projectPath = fileUtils.createProject "cleesh", fileUtils.defaultFileMap
-      filePath = "dir2/moderateFile"
-      fileBody = fileUtils.defaultFileMap.dir2.moderateFile
-      projectFiles = new ProjectFiles projectPath
+  describe "receiving 'save file' command", ->
+    dementor = ddpClient = projectFiles = null
+    commandId = fileId = null
+    contents = "somehow, somewhere, a kitten is falling suddenly alseep"
 
-      mockSocket = new MockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.on 'enabled', ->
-        done()
-      dementor.enable()
+    beforeEach ->
+      commandId = randomString()
+      fileId = randomString()
+      projectFiles =
+        getProjectId: -> randomString()
+        writeFile: sinon.stub()
+      ddpClient = new MockDdpClient
+        commandReceived: sinon.spy()
+        updateFile: sinon.spy()
+        
+      dementor = new Dementor
+        directory: randomString()
+        projectFiles: projectFiles
+        ddpClient: ddpClient
 
-    it "should reply with file body", (done) ->
-      data = fileId: dementor.fileTree.findByPath(filePath)._id
-      mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
-        assert.equal err, null
-        assert.equal body, fileBody
-        done()
 
-    it "should give correct error message if no file exists", (done) ->
-      data = fileId: randomString()
-      mockSocket.trigger messageAction.REQUEST_FILE, data, (err, body) ->
-        assert.ok err
-        assert.equal err.type, errorType.NO_FILE
-        assert.equal body, null
-        done()
-      
-    #Needed to check dementor-created errors
-    it 'should return the correct error if fileId parameter is missing', (done) ->
-      mockSocket.trigger messageAction.REQUEST_FILE, randomString(), (err, body) ->
-        assert.ok err
-        assert.equal err.type, errorType.MISSING_PARAM
-        assert.equal body, null
-        done()
+    checkCommandError = (reason, commandId) ->
+      assert.isTrue ddpClient.commandReceived.called
+      error = ddpClient.commandReceived.getCall(0).args[0]
+      data = ddpClient.commandReceived.getCall(0).args[1]
+      assert.ok error, "There should be an error"
+      assert.equal error.reason, reason
+      assert.equal data.commandId, commandId
 
-  describe "receiving SAVE_LOCAL_FILE message", ->
-    dementor = mockSocket = null
-    projectPath = projectFiles = null
-    filePath = null
-    fileBody = "Two great swans eat the frogs."
-    before (done) ->
-      projectPath = fileUtils.createProject "cleesh", fileUtils.defaultFileMap
-      filePath = "dir2/moderateFile"
-      projectFiles = new ProjectFiles projectPath
+    it 'should return MissingParameter error if no fileId is sent', ->
+      ddpClient.emit 'command', 'save file', {commandId, contents}
+      checkCommandError 'MissingParameter', commandId
 
-      mockSocket = new MockSocket
-      dementor = new Dementor projectPath, defaultHttpClient, mockSocket
-      dementor.on 'READ_FILETREE', ->
-        done()
-      dementor.enable()
+    it 'should return MissingParameter error if no contents is sent', ->
+      ddpClient.emit 'command', 'save file', {commandId, fileId}
+      checkCommandError 'MissingParameter', commandId
 
-    it "should save file contents to projectFiles", (done) ->
-      fileId = dementor.fileTree.findByPath(filePath)._id
-      data =
-        fileId: fileId
-        contents: fileBody
-      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
-        assert.equal err, null, "Should not have an error."
-        readContents = fs.readFileSync _path.join projectPath, filePath
-        assert.equal readContents, fileBody
-        done()
+    it 'should return FileNotFound error if no file is found is sent', ->
+      ddpClient.emit 'command', 'save file', {commandId, fileId, contents}
+      checkCommandError 'FileNotFound', commandId
 
-    it "should give correct error message if no file exists", (done) ->
-      data =
-        fileId: randomString()
-        contents: fileBody
-      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
-        assert.ok err
-        assert.equal err.type, errorType.NO_FILE
-        done()
+    it 'should return errors given by projectFiles', ->
+      projectFiles.writeFile.callsArgWith 2, errors.new 'IsDirectory'
+      #XXX: This is awkward, and looks at internal details
+      dementor.fileTree.ddpFiles.addDdpFile {_id:fileId, path: 'a/path.txt'}
+      ddpClient.emit 'command', 'save file', {commandId, fileId, contents}
+      checkCommandError 'IsDirectory', commandId
 
-    #Needed to check dementor-created errors
-    it 'should return the correct error if fileId parameter is missing', (done) ->
-      data =
-        contents: fileBody
-      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
-        assert.ok err
-        assert.equal err.type, errorType.MISSING_PARAM
-        done()
+    it 'should call updateFile with correct data', ->
+      projectFiles.writeFile.callsArgWith 2, null
+      #XXX: This is awkward, and looks at internal details
+      dementor.fileTree.ddpFiles.addDdpFile {_id:fileId, path: 'a/path.txt'}
+      ddpClient.emit 'command', 'save file', {commandId, fileId, contents}
+      assert.isTrue ddpClient.updateFile.calledWith fileId
+      updateData = ddpClient.updateFile.args[0][1]
+      checksum = crc32 contents
+      assert.equal updateData.loadChecksum, checksum
+      assert.equal updateData.fsChecksum, checksum
 
-    it 'should return the correct error if contents parameter is missing', (done) ->
-      data =
-        fileId: randomString()
-      mockSocket.trigger messageAction.SAVE_LOCAL_FILE, data, (err) ->
-        assert.ok err
-        assert.equal err.type, errorType.MISSING_PARAM
-        done()
+    it 'should call commandReceived', ->
+      projectFiles.writeFile.callsArgWith 2, null
+      #XXX: This is awkward, and looks at internal details
+      dementor.fileTree.ddpFiles.addDdpFile {_id:fileId, path: 'a/path.txt'}
+      ddpClient.emit 'command', 'save file', {commandId, fileId, contents}
+      assert.isTrue ddpClient.commandReceived.calledWith null
+      results = ddpClient.commandReceived.args[0][1]
+      assert.equal results.commandId, commandId
 
-###
 

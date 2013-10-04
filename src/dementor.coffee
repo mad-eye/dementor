@@ -123,11 +123,11 @@ class Dementor extends events.EventEmitter
           fileId = data.fileId
           unless fileId
             @emit 'warn', "Request file failed: missing fileId"
-            return errorCallback errors.new('MissingParameter'), data.commandId
+            return errorCallback errors.new('MissingParameter', parameter:'fileId'), data.commandId
           path = @fileTree.ddpFiles.findById(fileId)?.path
           unless path
             @emit 'warn', "Request file failed: missing file #{fileId}"
-            return errorCallback errors.new('FileNotFound'), data.commandId
+            return errorCallback errors.new('FileNotFound', path:path), data.commandId
           @emit 'trace', "Remote request for #{path}"
           @projectFiles.retrieveContents path, (err, results) =>
             if err
@@ -149,16 +149,19 @@ class Dementor extends events.EventEmitter
           contents = data.contents
           unless fileId && contents?
             @emit 'warn', "Save file failed: missing fileId or contents"
-            return errorCallback errors.new('MISSING_PARAM'), data.commandId
-          path = @fileTree.findById(fileId)?.path
+            if !fileId
+              missingParam = 'fileId'
+            else
+              missingParam = 'contents'
+            return errorCallback errors.new('MissingParameter', parameter:missingParam), data.commandId
+          path = @fileTree.ddpFiles.findById(fileId)?.path
           unless path
             @emit 'warn', "Save file failed: missing file #{fileId}"
-            return errorCallback errors.new('NO_FILE'), data.commandId
+            return errorCallback errors.new('FileNotFound', path:path), data.commandId
           @emit 'debug', "Saving file #{path} from remote contents."
           @projectFiles.writeFile path, contents, (err) =>
             if err
               @emit 'warn', "Error saving file #{path}:", err
-              #TODO: Wrap error into JSON object
               return errorCallback err, data.commandId
             checksum = crc32 contents
             @emit 'message-info', "Saving file " + clc.bold path
