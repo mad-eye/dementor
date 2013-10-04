@@ -13,40 +13,6 @@ randomString = -> hat 32, 16
 
 describe "FileTree", ->
 
-  describe 'addDdpFile', ->
-    tree = null
-    ddpClient = null
-    file =
-      _id: uuid.v4()
-      path: 'a/ways/down/to.txt'
-      parentPath: 'a/ways/down'
-    before ->
-      ddpClient = new MockDdpClient
-      tree = new FileTree ddpClient
-      tree.addDdpFile file
-
-    it 'should populate filesById', ->
-      assert.equal tree.filesById[file._id], file
-
-    it 'should populate filesByPath', ->
-      assert.equal tree.filesByPath[file.path], file
-
-    it 'should not error on null file', ->
-      tree.addDdpFile null
-
-    it 'should replace files on second add', ->
-      file2 =
-        _id: file._id
-        path: file.path
-        a: 2
-      tree.addDdpFile file2
-      assert.equal tree.filesById[file._id], file2
-      assert.equal tree.filesByPath[file.path], file2
-
-    it 'should add filePath to filePathsByParent', ->
-      assert.deepEqual tree.filePathsByParent[file.parentPath], [file.path]
-
-
   describe 'addFsFile', ->
     tree = null
     ddpClient = null
@@ -307,26 +273,7 @@ describe "FileTree", ->
       assert.isTrue ddpClient.addFile.calledWith file
 
 
-  describe 'removeDdpFile', ->
-    tree = null
-    ddpClient = null
-    file =
-      _id: uuid.v4()
-      path: uuid.v4()
-    before ->
-      ddpClient = new MockDdpClient
-      tree = new FileTree ddpClient
-      tree.addDdpFile file
-      tree.removeDdpFile file._id
 
-    it 'should clear filesById', ->
-      assert.ok !tree.filesById[file._id]
-
-    it 'should clear filesByPath', ->
-      assert.ok !tree.filesByPath[file.path]
-
-    it 'should not error on null file', ->
-      tree.removeDdpFile null
 
   describe 'removeFsFile', ->
     tree = null
