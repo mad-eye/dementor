@@ -37,12 +37,12 @@ class Dementor extends events.EventEmitter
         return @emit 'error', err if err
         #don't need to wait for this callback
         @ddpClient.subscribe 'commands', @projectId
-        #don't need to wait for this callback
-        @ddpClient.subscribe 'activeDirectories', @projectId
         #need to be subscribed before adding fs files
         @ddpClient.subscribe 'files', @projectId, (err) =>
           return @emit 'error', err if err
           @emit 'trace', 'Initial enable done, now adding files'
+          #don't need to wait for this callback
+          @ddpClient.subscribe 'activeDirectories', @projectId
           @projectFiles.readdir '', (err, files) =>
             return @emit 'error', err if err
             @fileTree.loadDirectory null, files
