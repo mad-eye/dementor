@@ -8,18 +8,19 @@ constants = require './constants'
 async = require 'async'
 {Logger} = require '../madeye-common/common'
 {crc32} = require '../madeye-common/common'
+DdpFiles = require "./ddpFiles"
 
 class Dementor extends events.EventEmitter
   constructor: (options) ->
     Logger.listen @, 'dementor'
     @emit 'trace', "Constructing with directory #{options.directory}"
-    @projectFiles = new ProjectFiles(options.directory, options.ignorefile)
+    @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
     @projectId = @projectFiles.getProjectId() unless options.clean
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
-    @fileTree = new FileTree @ddpClient, @projectFiles
+    @fileTree = new FileTree @ddpClient, @projectFiles, new DdpFiles
     @version = require('../package.json').version
 
   handleWarning: (msg) ->
@@ -107,12 +108,11 @@ class Dementor extends events.EventEmitter
       @fileTree.removeFsFile path
 
     @projectFiles.watchFileTree()
-    @addMetric 'WATCHING_FILETREE'
     @emit 'trace', 'Watching file tree.'
 
   ## DDP CLIENT SETUP
   setupDdpClient: ->
-    errorCallback = (err, commandId) ->
+    errorCallback = (err, commandId) =>
       @ddpClient.commandReceived err, {commandId}
 
     @ddpClient.on 'command', (command, data) =>
@@ -123,11 +123,11 @@ class Dementor extends events.EventEmitter
           fileId = data.fileId
           unless fileId
             @emit 'warn', "Request file failed: missing fileId"
-            return errorCallback errors.new('MISSING_PARAM'), data.commandId
-          path = @fileTree.findById(fileId)?.path
+            return errorCallback errors.new('MissingParameter', parameter:'fileId'), data.commandId
+          path = @fileTree.ddpFiles.findById(fileId)?.path
           unless path
             @emit 'warn', "Request file failed: missing file #{fileId}"
-            return errorCallback errors.new('NO_FILE'), data.commandId
+            return errorCallback errors.new('FileNotFound', path:path), data.commandId
           @emit 'trace', "Remote request for #{path}"
           @projectFiles.retrieveContents path, (err, results) =>
             if err
@@ -149,16 +149,19 @@ class Dementor extends events.EventEmitter
           contents = data.contents
           unless fileId && contents?
             @emit 'warn', "Save file failed: missing fileId or contents"
-            return errorCallback errors.new('MISSING_PARAM'), data.commandId
-          path = @fileTree.findById(fileId)?.path
+            if !fileId
+              missingParam = 'fileId'
+            else
+              missingParam = 'contents'
+            return errorCallback errors.new('MissingParameter', parameter:missingParam), data.commandId
+          path = @fileTree.ddpFiles.findById(fileId)?.path
           unless path
             @emit 'warn', "Save file failed: missing file #{fileId}"
-            return errorCallback errors.new('NO_FILE'), data.commandId
+            return errorCallback errors.new('FileNotFound', path:path), data.commandId
           @emit 'debug', "Saving file #{path} from remote contents."
           @projectFiles.writeFile path, contents, (err) =>
             if err
               @emit 'warn', "Error saving file #{path}:", err
-              #TODO: Wrap error into JSON object
               return errorCallback err, data.commandId
             checksum = crc32 contents
             @emit 'message-info', "Saving file " + clc.bold path

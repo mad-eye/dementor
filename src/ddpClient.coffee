@@ -184,7 +184,7 @@ class DdpClient extends EventEmitter
       return unless msg.msg == 'added'
       dir = msg.fields
       dir._id = msg.id
-      @emit 'readDir', dir
+      @emit 'activeDir', dir
 
 
   #data: {commandId, fields...:}
@@ -201,7 +201,7 @@ class DdpClient extends EventEmitter
         @emit 'trace', "Updated file #{fileId}"
 
   markDirectoryLoaded: (path) ->
-    @ddpClient.call 'markDirectoryLoaded', [path], (err) =>
+    @ddpClient.call 'markDirectoryLoaded', [@projectId, path], (err) =>
       if err
         @emit 'warn', "Error marking directory #{path} as loaded:", err
       else

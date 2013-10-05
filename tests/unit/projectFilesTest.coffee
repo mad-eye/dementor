@@ -101,7 +101,7 @@ describe 'ProjectFiles', ->
   describe 'readFileTree', ->
     projectFiles = null
 
-    it 'should return error if no directory exists fweep', (done) ->
+    it 'should return error if no directory exists', (done) ->
       noRootDir = _path.join homeDir, 'notADir'
       projectFiles = new ProjectFiles noRootDir
       projectFiles.readFileTree (err, results) ->

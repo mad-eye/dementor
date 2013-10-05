@@ -3,6 +3,7 @@ fs = require 'fs'
 _path = require 'path'
 uuid = require 'node-uuid'
 FileTree = require '../../src/fileTree'
+DdpFiles = require "../../src/ddpFiles"
 
 TEST_AREA = ".test_area"
 class FileUtils
@@ -56,7 +57,8 @@ class FileUtils
         @writeFiles(_path.join(root, key), value)
 
   @constructFileTree : (fileMap, root, fileTree) ->
-    fileTree ?= new FileTree(null, null)
+    ddpFiles = new DdpFiles()
+    fileTree ?= new FileTree(null, null, ddpFiles)
     makeRawFile = (path, value) ->
       rawFile = {
         _id : uuid.v4()
@@ -65,7 +67,7 @@ class FileUtils
       }
       return rawFile
     for key, value of fileMap
-      fileTree.addDdpFile makeRawFile _path.join(root, key), value
+      ddpFiles.addDdpFile makeRawFile _path.join(root, key), value
       unless typeof value == "string"
         @constructFileTree(value, _path.join(root, key), fileTree)
     return fileTree

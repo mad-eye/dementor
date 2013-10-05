@@ -5,36 +5,56 @@ _path = require 'path'
 {Logger} = require '../madeye-common/common'
 
 class FileTree extends EventEmitter
-  constructor: (@ddpClient, @projectFiles) ->
+  constructor: (@ddpClient, @projectFiles, @ddpFiles) ->
     Logger.listen @, 'fileTree'
-    @filesById = {}
-    @filesByPath = {}
     @filesPending = []
-    #null is ok key; refers to root dir
-    @filePathsByParent = []
+    @activeDirs = {}
     @_listenToDdpClient()
 
-  getFiles: -> _.values @filesById
+  isActiveDir: (path) ->
+    #handle the case where path is root (root is always active)
+    return true if path == '.' or path == '/' or !path
+    return @activeDirs[path]
 
-  findById: (id) -> @filesById[id]
+  loadDirectory: (directory, files) ->
+    existingFilePaths = @ddpFiles.filePathsByParent[directory]
+    filePathsAdded = []
+    for file in files
+      @_addFsFile file
+      filePathsAdded.push file.path
+    orphanedPaths = _.difference existingFilePaths, filePathsAdded
+    @removeFsFile path for path in orphanedPaths
+    @ddpClient.markDirectoryLoaded directory if directory #don't mark root
+    @emit 'debug', "Loaded directory", (directory || '.')
+    @emit 'added initial files' unless directory #this is the first dir
 
-  findByPath: (path) -> @filesByPath[path]
-
-  #Add a file that comes via ddp
-  addDdpFile: (file) ->
+  #we are assuming that the watcher does not notice dirs, so complete
+  #missing parent dirs
+  # When a filesystem event happens:
+  # if the file's parent is in activeDirs, handle normally.
+  # else if the file's grandparent is in activeDirs, add the parent.
+  #   (this means getting the info for a directory)
+  # else ignore the event.
+  addWatchedFile: (file) ->
     return unless file
-    @filesById[file._id] = file
-    @filesByPath[file.path] = file
-    @filePathsByParent[file.parentPath] ?= []
-    @filePathsByParent[file.parentPath].push file.path
-    @emit 'trace', "Added ddp file #{file.path}"
-    removed = removeItemFromArray file.path, @filesPending
-    @emit 'trace', "Removed #{file.path} from pending dirs." if removed
+    parentPath = getParentPath file.path
+    grandparentPath = getParentPath parentPath
+    #TODO: Make hasActiveDir
+    if @isActiveDir parentPath
+      @_addFsFile file
+    #XXX: Make sure we handle root dir correctly
+    else if @isActiveDir grandparentPath
+      @projectFiles.makeFileData parentPath, (err, data) =>
+        return @emit 'warn', @projectFiles.wrapError err if err
+        @_addParentDir data
+    else
+      #We aren't watching this file, move along
+      0
 
   #Add a file that we find on the file system
-  addFsFile: (file) ->
+  _addFsFile: (file) ->
     return unless file
-    existingFile = @filesByPath[file.path]
+    existingFile = @ddpFiles.findByPath file.path
     if existingFile
       @_updateFile existingFile, file
     else
@@ -67,66 +87,17 @@ class FileTree extends EventEmitter
         @ddpClient.updateFileContents fileId, contents
 
   #Add missing parent dirs to files
-  _addParentDirs: (file) ->
-    path = file.path
-    loop
-      #Need to localize path seps for _path.dirname to work
-      path = standardizePath _path.dirname localizePath path
-      break if path == '.' or path == '/' or !path?
-      #We assume if a dir is already handled, all of its parents are
-      break if path in @filesPending
-      break if path of @filesByPath
-      @filesPending.push path
-      @emit 'trace', "Adding #{path} to dirsPending."
-      @projectFiles.makeFileData path, (err, filedata) =>
-        if err
-          @emit 'warn', "Error making fileData for #{path}:", err
-          return
-        return unless filedata
-        @addFsFile filedata
+  _addParentDir: (dir) ->
+    path = dir.path
+    return if path == '.' or path == '/' or !path?
+    return if path in @filesPending
+    @filesPending.push path
+    @emit 'trace', "Adding #{path} to dirsPending."
+    @_addFsFile dir
  
-  loadDirectory: (directory, files) ->
-    existingFilePaths = @filePathsByParent[directory]
-    filePathsAdded = []
-    for file in files
-      @addFsFile file
-      filePathsAdded.push file.path
-    orphanedPaths = _.difference existingFilePaths, filePathsAdded
-    @removeFsFile path for path in orphanedPaths
-    @ddpClient.markDirectoryLoaded directory if directory #don't mark root
-    @emit 'debug', "Loaded directory", (directory || '.')
-    @emit 'added initial files'
-
-
-
-
-  addInitialFiles: (files) ->
-    return unless files
-    existingFilePaths = _.keys @filesByPath
-    filePathsAdded = []
-    for file in files
-      @addFsFile file
-      filePathsAdded.push file.path
-    orphanedPaths = _.difference existingFilePaths, filePathsAdded
-    @removeFsFile path for path in orphanedPaths
-    @emit 'added initial files'
-
-  #we are assuming that the watcher does not notice dirs, so complete
-  #missing parent dirs
-  addWatchedFile: (file) ->
-    return unless file
-    @addFsFile file
-    @_addParentDirs file
-
-  removeDdpFile: (fileId) ->
-    file = @filesById[fileId]
-    return unless file
-    delete @filesById[fileId]
-    delete @filesByPath[file.path]
-    @emit 'trace', "Removed ddp file #{file.path}"
 
   removeFsFile: (path) ->
-    file = @filesByPath[path]
+    file = @ddpFiles.findByPath path
     unless file
       @emit 'debug', "Trying to remove file unknown to ddp:", path
       return
@@ -138,35 +109,37 @@ class FileTree extends EventEmitter
       @ddpClient.updateFile file._id, {deletedInFs:true}
       @emit 'trace', "Marked file #{file.path} as deleted in filesystem"
 
-  _changeDdpFile: (fileId, fields={}, cleared=[]) ->
-    file = @filesById[fileId]
-    @emit 'trace', "Updating fields for #{file.path}:", fields if fields
-    _.extend file, fields if fields
-    @emit 'trace', "Clearing fields for #{file.path}:", cleared if cleared
-    delete file[field] for field in cleared if cleared
-    @emit 'debug', "Updated file", file.path
-
   _listenToDdpClient: ->
     return unless @ddpClient
+    
     @ddpClient.on 'added', (file) =>
-      @addDdpFile file
+      @ddpFiles.addDdpFile file
+      removed = removeItemFromArray file.path, @filesPending
+      @emit 'trace', "Removed #{file.path} from pending dirs." if removed
+
     @ddpClient.on 'removed', (fileId) =>
-      @removeDdpFile fileId
+      @ddpFiles.removeDdpFile fileId
+
     @ddpClient.on 'changed', (fileId, fields, cleared) =>
-      @_changeDdpFile fileId, fields, cleared
+      @ddpFiles.changeDdpFile fileId, fields, cleared
+
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
       @emit 'trace', "Subscription has #{_.size @filesById} files"
-    @ddpClient.on 'readDir', (dir) =>
+
+    @ddpClient.on 'activeDir', (dir) =>
+      @activeDirs[dir.path] = true
       @projectFiles.readdir dir.path, (err, files) =>
         @loadDirectory dir.path, files
 
 #Helper functions
-
 removeItemFromArray = (item, array) ->
   idx = array.indexOf item
   array.splice(idx,1) if idx != -1
   return idx != -1
+
+#TODO: Extract this to common.fileUtils
+getParentPath = (path) -> standardizePath _path.dirname(localizePath(path))
 
 module.exports = FileTree
 
