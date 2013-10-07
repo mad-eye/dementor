@@ -1,7 +1,9 @@
 {EventEmitter} = require 'events'
 _ = require 'underscore'
 DDPClient = require "ddp"
+_path = require 'path'
 {normalizePath} = require '../madeye-common/common'
+{standardizePath, localizePath} = require './projectFiles'
 {Logger} = require '../madeye-common/common'
 require('https').globalAgent.options.rejectUnauthorized = false
 
@@ -89,6 +91,7 @@ class DdpClient extends EventEmitter
       @emit 'trace', "ddpClient connected"
     @listenForFiles()
     @listenForCommands()
+    @listenForDirs()
     @_startHeartbeat()
 
   _startHeartbeat: ->
@@ -119,9 +122,11 @@ class DdpClient extends EventEmitter
       @emit 'debug', "Registered project and got id #{projectId}"
       @projectId = projectId
       #Resubscribe on reconnection
+      #Initial connected event is already gone, this is for the future
       @ddpClient.on 'connected', =>
         @subscribe 'files', @projectId
         @subscribe 'commands', @projectId
+        @subscribe 'activeDirectories', @projectId
       callback null, projectId, warning
       
   addFile: (file) ->
@@ -143,6 +148,8 @@ class DdpClient extends EventEmitter
   cleanFile: (file) ->
     file.projectId = @projectId
     file.orderingPath = normalizePath file.path
+    #Need to localize path seps for _path.dirname to work
+    file.parentPath = standardizePath _path.dirname localizePath file.path
 
   listenForCommands: ->
     @ddpClient.on 'message', (message) =>
@@ -169,6 +176,17 @@ class DdpClient extends EventEmitter
           #eg {"msg":"changed","collection":"files","id":"57204c04-4d73-474b-8c25-259b38c06dce","fields":{"modified":false}}
           @emit 'changed', msg.id, msg.fields, msg.cleared
 
+  #Listen for ActiveDirectories
+  listenForDirs: ->
+    @ddpClient.on 'message', (message) =>
+      msg = JSON.parse message
+      return unless msg.collection == 'activeDirectories'
+      return unless msg.msg == 'added'
+      dir = msg.fields
+      dir._id = msg.id
+      @emit 'activeDir', dir
+
+
   #data: {commandId, fields...:}
   commandReceived: (err, data) ->
     @ddpClient.call 'commandReceived', [err, data]
@@ -181,6 +199,13 @@ class DdpClient extends EventEmitter
         @emit 'warn', "Error updating file:", err
       else
         @emit 'trace', "Updated file #{fileId}"
+
+  markDirectoryLoaded: (path) ->
+    @ddpClient.call 'markDirectoryLoaded', [@projectId, path], (err) =>
+      if err
+        @emit 'warn', "Error marking directory #{path} as loaded:", err
+      else
+        @emit 'trace', "Marked directory #{path} as loaded"
 
   updateFileContents: (fileId, contents) ->
     @ddpClient.call 'updateFileContents', [fileId, contents], (err) =>

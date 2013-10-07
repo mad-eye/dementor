@@ -12,12 +12,13 @@ async = require 'async'
 {crc32} = require '../madeye-common/common'
 exec = require("child_process").exec
 #captureProcessOutput = require("./injector/inject").captureProcessOutput
+DdpFiles = require "./ddpFiles"
 
 class Dementor extends events.EventEmitter
   constructor: (options) ->
     Logger.listen @, 'dementor'
     @emit 'trace', "Constructing with directory #{options.directory}"
-    @projectFiles = new ProjectFiles(options.directory, options.ignorefile)
+    @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
     @projectId = @projectFiles.getProjectId() unless options.clean
 
@@ -29,7 +30,7 @@ class Dementor extends events.EventEmitter
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
-    @fileTree = new FileTree @ddpClient, @projectFiles
+    @fileTree = new FileTree @ddpClient, @projectFiles, new DdpFiles
     @version = require('../package.json').version
 
   handleWarning: (msg) ->
@@ -43,30 +44,28 @@ class Dementor extends events.EventEmitter
         console.log "capturing"
         captureProcessOutput(pid)
 
-    async.parallel {
-      ddp: (cb) =>
-        #connect callback gets called each time a (re)connection is established
-        #to avoid calling cb multiple times, trigger once
-        #error event will handle error case.
-        @ddpClient.connect()
-        @ddpClient.once 'connected', =>
-          @registerProject (err) =>
-            return cb err if err
-            #need to be subscribed before adding fs files
-            @ddpClient.subscribe 'files', @projectId, cb
-            #don't need to wait for this callback
-            @ddpClient.subscribe 'commands', @projectId
-      files: (cb) =>
-        @readFileTree (err, files) ->
-          cb err, files
-    }, (err, results) =>
-      return @emit 'error', err if err
-      @emit 'debug', 'Initial enable done, now adding files'
-      @fileTree.addInitialFiles results.files
-      @watchProject()
-      if @terminal or @tunnel
-        @setupTunnels()
-
+    #connect callback gets called each time a (re)connection is established
+    #to avoid calling cb multiple times, trigger once
+    #error event will handle error case.
+    @ddpClient.connect()
+    @ddpClient.once 'connected', =>
+      @registerProject (err) =>
+        return @emit 'error', err if err
+        #don't need to wait for this callback
+        @ddpClient.subscribe 'commands', @projectId
+        #don't need to wait for this callback
+        if @terminal or @tunnel
+          @setupTunnels()
+        #need to be subscribed before adding fs files
+        @ddpClient.subscribe 'files', @projectId, (err) =>
+          return @emit 'error', err if err
+          @emit 'trace', 'Initial enable done, now adding files'
+          #don't need to wait for this callback
+          @ddpClient.subscribe 'activeDirectories', @projectId
+          @projectFiles.readdir '', (err, files) =>
+            return @emit 'error', err if err
+            @fileTree.loadDirectory null, files
+            @watchProject()
 
   #callback: (err, files) ->
   readFileTree: (callback) ->
@@ -168,7 +167,7 @@ class Dementor extends events.EventEmitter
 
   ## DDP CLIENT SETUP
   setupDdpClient: ->
-    errorCallback = (err, commandId) ->
+    errorCallback = (err, commandId) =>
       @ddpClient.commandReceived err, {commandId}
 
     @ddpClient.on 'command', (command, data) =>
@@ -179,11 +178,11 @@ class Dementor extends events.EventEmitter
           fileId = data.fileId
           unless fileId
             @emit 'warn', "Request file failed: missing fileId"
-            return errorCallback errors.new('MISSING_PARAM'), data.commandId
-          path = @fileTree.findById(fileId)?.path
+            return errorCallback errors.new('MissingParameter', parameter:'fileId'), data.commandId
+          path = @fileTree.ddpFiles.findById(fileId)?.path
           unless path
             @emit 'warn', "Request file failed: missing file #{fileId}"
-            return errorCallback errors.new('NO_FILE'), data.commandId
+            return errorCallback errors.new('FileNotFound', path:path), data.commandId
           @emit 'trace', "Remote request for #{path}"
           @projectFiles.retrieveContents path, (err, results) =>
             if err
@@ -205,16 +204,19 @@ class Dementor extends events.EventEmitter
           contents = data.contents
           unless fileId && contents?
             @emit 'warn', "Save file failed: missing fileId or contents"
-            return errorCallback errors.new('MISSING_PARAM'), data.commandId
-          path = @fileTree.findById(fileId)?.path
+            if !fileId
+              missingParam = 'fileId'
+            else
+              missingParam = 'contents'
+            return errorCallback errors.new('MissingParameter', parameter:missingParam), data.commandId
+          path = @fileTree.ddpFiles.findById(fileId)?.path
           unless path
             @emit 'warn', "Save file failed: missing file #{fileId}"
-            return errorCallback errors.new('NO_FILE'), data.commandId
+            return errorCallback errors.new('FileNotFound', path:path), data.commandId
           @emit 'debug', "Saving file #{path} from remote contents."
           @projectFiles.writeFile path, contents, (err) =>
             if err
               @emit 'warn', "Error saving file #{path}:", err
-              #TODO: Wrap error into JSON object
               return errorCallback err, data.commandId
             checksum = crc32 contents
             @emit 'message-info', "Saving file " + clc.bold path
@@ -222,6 +224,5 @@ class Dementor extends events.EventEmitter
               loadChecksum: checksum
               fsChecksum: checksum
             @ddpClient.commandReceived null, commandId:data.commandId
-
 
 module.exports = Dementor
