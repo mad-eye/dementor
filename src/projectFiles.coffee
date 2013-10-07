@@ -9,6 +9,7 @@ async = require 'async'
 IgnoreRules = require './ignoreRules'
 {Logger} = require '../madeye-common/common'
 {crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
+{standardizePath, localizePath} = require '../madeye-common/common'
 
 ###
 # Directory reading plan:
@@ -236,15 +237,5 @@ class ProjectFiles extends events.EventEmitter
           #console.log "Finished reading", relDir
           callback error, results
 
-
-exports.standardizePath = standardizePath = (path) ->
-  return unless path?
-  return path if _path.sep == '/'
-  return path.split(_path.sep).join('/')
-
-exports.localizePath = localizePath = (path) ->
-  return unless path?
-  return path if _path.sep == '/'
-  return path.split('/').join(_path.sep)
 
 exports.ProjectFiles = ProjectFiles

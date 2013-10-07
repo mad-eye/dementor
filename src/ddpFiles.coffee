@@ -1,8 +1,11 @@
 _ = require 'underscore'
+{standardizePath, localizePath, findParentPath} = require '../madeye-common/common'
+{Logger} = require '../madeye-common/common'
 EventEmitter = require("events").EventEmitter
 
 class DdpFiles extends EventEmitter
   constructor: ->
+    Logger.listen @, 'ddpFiles'
     @filesById = {}
     @filesByPath = {}
     #null is ok key; refers to root dir
@@ -19,8 +22,9 @@ class DdpFiles extends EventEmitter
     return unless file
     @filesById[file._id] = file
     @filesByPath[file.path] = file
-    @filePathsByParent[file.parentPath] ?= []
-    @filePathsByParent[file.parentPath].push file.path
+    parentPath = findParentPath file.path
+    @filePathsByParent[parentPath] ?= []
+    @filePathsByParent[parentPath].push file.path
     @emit "trace", "Added ddp file #{file.path}"
     
   removeDdpFile: (fileId) ->

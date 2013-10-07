@@ -148,8 +148,6 @@ class DdpClient extends EventEmitter
   cleanFile: (file) ->
     file.projectId = @projectId
     file.orderingPath = normalizePath file.path
-    #Need to localize path seps for _path.dirname to work
-    file.parentPath = standardizePath _path.dirname localizePath file.path
 
   listenForCommands: ->
     @ddpClient.on 'message', (message) =>

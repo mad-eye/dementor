@@ -1,4 +1,4 @@
-Dementor = require './src/dementor' 
+Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
 {Settings, Logger} = require './madeye-common/common'
 util = require 'util'
