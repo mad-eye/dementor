@@ -98,13 +98,13 @@ describe 'ProjectFiles', ->
           assert.equal contents, fileBody
           done()
 
-  describe 'readFileTree', ->
+  describe 'readdir', ->
     projectFiles = null
 
     it 'should return error if no directory exists', (done) ->
       noRootDir = _path.join homeDir, 'notADir'
       projectFiles = new ProjectFiles noRootDir
-      projectFiles.readFileTree (err, results) ->
+      projectFiles.readdir '', (err, results) ->
         assert.ok err
         assert.equal err.reason, 'FileNotFound'
         done()
@@ -112,9 +112,9 @@ describe 'ProjectFiles', ->
     it 'should correctly serialize empty directory', (done) ->
       projectDir = fileUtils.createProject("vacuous", {})
       projectFiles = new ProjectFiles projectDir
-      projectFiles.readFileTree (err, results) ->
+      projectFiles.readdir '', (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree for empty directory should return true results."
+        assert.ok results, "readdir for empty directory should return true results."
         assert.deepEqual results, []
         done()
 
@@ -122,9 +122,9 @@ describe 'ProjectFiles', ->
       projectDir = fileUtils.createProject "oneFile",
         readme: "nothing important here"
       projectFiles = new ProjectFiles projectDir
-      projectFiles.readFileTree (err, results) ->
+      projectFiles.readdir '', (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree should return true results."
+        assert.ok results, "readdir should return true results."
         assertFilesEqual results, [
           isDir: false
           path: "readme"
@@ -136,9 +136,9 @@ describe 'ProjectFiles', ->
         readme: "nothing important here"
         "app.js": "console.log('hello world');"
       projectFiles = new ProjectFiles projectDir
-      projectFiles.readFileTree (err, results) ->
+      projectFiles.readdir '', (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree should return true results."
+        assert.ok results, "readdir should return true results."
         assertFilesEqual results, [
           {isDir: false
           path: "app.js"},
@@ -148,7 +148,7 @@ describe 'ProjectFiles', ->
         done()
       
 
-    it 'should correctly serialize a deep complicated directory structure', (done) ->
+    it 'should only serialize the top directory of a deep complicated directory structure', (done) ->
       projectDir = fileUtils.createProject "manyFiles",
         readme: "nothing important here"
         "app.js": "console.log('hello world');"
@@ -157,9 +157,9 @@ describe 'ProjectFiles', ->
             ninja_turtles: "Cowabunga!"
             dir3: {}
       projectFiles = new ProjectFiles projectDir
-      projectFiles.readFileTree (err, results) ->
+      projectFiles.readdir '', (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree should return true results."
+        assert.ok results, "readdir should return true results."
         results = results.sort (a, b) ->
           a.path > b.path
         assertFilesEqual results, [
@@ -167,12 +167,6 @@ describe 'ProjectFiles', ->
           path: "app.js"},
           {isDir: true
           path: "dir1"},
-          {isDir: true
-          path: "dir1/dir2"},
-          {isDir: true
-          path: "dir1/dir2/dir3"},
-          {isDir: false
-          path: "dir1/dir2/ninja_turtles"},
           {isDir: false
           path: "readme"}
         ]
@@ -196,15 +190,15 @@ describe 'ProjectFiles', ->
         dir4:
           stuff: "stuff"
       projectFiles = new ProjectFiles projectDir
-      projectFiles.readFileTree (err, results)->
+      projectFiles.readdir '', (err, results)->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree should return true results."
+        assert.ok results, "readdir should return true results."
         paths = (result.path for result in results)
         assert.include paths, 'dir1'
-        assert.include paths, 'dir2/moderateFile'
-        assert.notInclude paths, 'dir2/dir3/garbage'
+        assert.include paths, 'dir2'
+        assert.include paths, 'rootFile'
+        assert.notInclude paths, 'superfluousFile'
         assert.notInclude paths, 'dir4'
-        assert.notInclude paths, 'dir4/stuff'
 
         results.forEach (result)->
           assert.notInclude ignoreFiles, result.path
@@ -216,16 +210,14 @@ describe 'ProjectFiles', ->
         dir1:
           afile: "totally cool"
       projectFiles = new ProjectFiles projectDir
-      projectFiles.readFileTree (err, results) ->
+      projectFiles.readdir '', (err, results) ->
         assert.equal err, null, "Should not have returned an error."
-        assert.ok results, "readFileTree should return true results."
+        assert.ok results, "readdir should return true results."
         results = results.sort (a, b) ->
           a.path > b.path
         assertFilesEqual results, [
           {isDir: true
           path: "dir1"},
-          {isDir: false
-          path: "dir1/afile"},
           {isDir: false
           path: "readme"}
         ]
@@ -345,6 +337,7 @@ describe 'ProjectFiles', ->
       watcher.emit 'add', filePath
       projectFiles.emit 'stop'
 
+    #XXX: Chokidar does not notice added directories.
     it "should notice when I add a directory"
 
     it "should notice when i delete a file"

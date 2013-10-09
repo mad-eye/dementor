@@ -110,14 +110,6 @@ class ProjectFiles extends events.EventEmitter
   shouldInclude: (path) ->
     not @ignoreRules.shouldIgnore path
 
-  #callback: (err, results) -> ...
-  readFileTree: (callback) ->
-    try
-      @readdirRecursive null, (err, files) =>
-        callback @wrapError(err), files
-    catch error
-      callback @wrapError(error), files
-
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
   watchFileTree: ->
@@ -205,37 +197,6 @@ class ProjectFiles extends events.EventEmitter
         #Filter out null results
         results = _.filter results, (result) -> result
         callback error, results
-
-
-  #callback: (error, files) ->
-  readdirRecursive : (relDir='', callback) ->
-    currentDir = _path.join(@directory, relDir)
-    results = []
-    #console.log "calling readdirRecursive for", currentDir
-    fs.readdir currentDir, (err, fileNames) =>
-      if err
-        if err.code == 'EACCES'
-          @emit 'debug', "Permission denied for #{relDir}"
-          callback null
-        else
-          callback @wrapError err
-      else
-        async.each fileNames, (fileName, cb) =>
-          @makeFileData _path.join(@directory, relDir, fileName), (err, fileData) =>
-            return cb err if err or !fileData?
-            results.push fileData
-            #watch file
-            #@emit 'EXISTING_FILE', fileData
-            if fileData.isDir
-              #console.log "Recusing into", fileData.path
-              @readdirRecursive fileData.path, (err, res) =>
-                results = results.concat res if res
-                cb err
-            else
-              cb null
-        , (error) =>
-          #console.log "Finished reading", relDir
-          callback error, results
 
 
 exports.ProjectFiles = ProjectFiles

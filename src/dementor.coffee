@@ -4,7 +4,6 @@ FileTree = require './fileTree'
 events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
-constants = require './constants'
 async = require 'async'
 {Logger} = require '../madeye-common/common'
 {crc32} = require '../madeye-common/common'
@@ -48,21 +47,6 @@ class Dementor extends events.EventEmitter
             @fileTree.loadDirectory null, files
             @watchProject()
 
-  #callback: (err, files) ->
-  readFileTree: (callback) ->
-    @projectFiles.readFileTree (err, files) =>
-      return callback err if err
-      unless files?
-        err = message: "No files found!"
-        return callback err
-      @emit 'debug', "Found #{files.length} files"
-      if files.length > constants.FILE_HARD_LIMIT
-        return callback constants.ERROR_TOO_MANY_FILES
-      else if files.length > constants.FILE_SOFT_LIMIT
-        @handleWarning constants.WARNING_MANY_FILES
-      @emit 'trace', 'Read filetree'
-      callback null, files
-
   #callback: (err) ->
   registerProject: (callback) ->
     params =
@@ -91,8 +75,6 @@ class Dementor extends events.EventEmitter
  
   #####
   # Events from ProjectFiles
-
-  # XXX: When files are modified because of server messages, they will fire events.  We should ignore those.
 
   watchProject: ->
     @projectFiles.on 'file added', (file) =>
