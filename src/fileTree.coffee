@@ -125,7 +125,6 @@ class FileTree extends EventEmitter
 
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
-      @emit 'trace', "Subscription has #{_.size @filesById} files"
 
     @ddpClient.on 'activeDir', (dir) =>
       @activeDirs[dir.path] = true

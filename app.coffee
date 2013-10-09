@@ -6,6 +6,7 @@ clc = require 'cli-color'
 
 dementor = null
 debug = false
+log = null
 
 run = ->
   program = require 'commander'
@@ -49,22 +50,20 @@ run = ->
   if program.madeyeUrl
     apogeeUrl = program.madeyeUrl
     azkabanUrl = "#{program.madeyeUrl}/api"
-    parsedUrl = require('url').parse program.madeyeUrl
-    ddpPort = switch
-      when parsedUrl.port then parsedUrl.port
-      when parsedUrl.protocol == 'http:' then 80
-      when parsedUrl.protocol == 'https:' then 443
-      else log.error "Can't figure out port for url #{program.madeyeUrl}"
-    ddpHost = parsedUrl.hostname
   else
     apogeeUrl = Settings.apogeeUrl
     azkabanUrl = Settings.azkabanUrl
+
+  if Settings.ddpPort and Settings.ddpHost
+    ddpHost = Settings.ddpHost
+    ddpPort = Settings.ddpPort
+  else
     parsedUrl = require('url').parse apogeeUrl
     ddpPort = switch
       when parsedUrl.port then parsedUrl.port
       when parsedUrl.protocol == 'http:' then 80
       when parsedUrl.protocol == 'https:' then 443
-      else log.error "Can't figure out port for url #{program.madeyeUrl}"
+      else log.error "Can't figure out port for url #{apogeeUrl}"
     ddpHost = parsedUrl.hostname
 
   #TODO: Handle custom url case.
@@ -110,6 +109,7 @@ run = ->
 SHUTTING_DOWN = false
 
 shutdown = (returnVal=0) ->
+  log.trace "Shutdown called with exit value #{returnVal}"
   process.exit(returnVal || 1) if SHUTTING_DOWN # || not ?, because we don't want 0
   process.nextTick ->
     shutdownGracefully(returnVal)
@@ -128,11 +128,11 @@ shutdownGracefully = (returnVal=0) ->
   , 20*1000
 
 process.on 'SIGINT', ->
-  #console.log clc.blackBright 'Received SIGINT.' if process.env.MADEYE_DEBUG
+  log.debug 'Received SIGINT.'
   shutdown()
 
 process.on 'SIGTERM', ->
-  #console.log clc.blackBright "Received kill signal (SIGTERM)" if process.env.MADEYE_DEBUG
+  log.debug "Received kill signal (SIGTERM)"
   shutdown()
 
 exports.run = run
