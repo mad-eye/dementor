@@ -62,7 +62,7 @@ class FileTree extends EventEmitter
 
   _updateFile: (existingFile, newFile) ->
     return unless newFile.mtime > existingFile.mtime
-    @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
+    @emit 'trace', "Updating file #{newFile.path} [#{existingFile._id}]"
     fileId = existingFile._id
     unless existingFile.lastOpened
       @ddpClient.updateFile fileId, mtime: newFile.mtime
