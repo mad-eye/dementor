@@ -46,25 +46,29 @@ run = ->
 
   log = new Logger name:'app'
 
-  log.trace "Checking madeyeUrl: #{program.madeyeUrl}"
-  if program.madeyeUrl
-    apogeeUrl = program.madeyeUrl
-    azkabanUrl = "#{program.madeyeUrl}/api"
-  else
-    apogeeUrl = Settings.apogeeUrl
-    azkabanUrl = Settings.azkabanUrl
+  log.trace "Checking madeyeUrl switch: #{program.madeyeUrl}"
+  log.trace "Checking MADEYE_URL: #{process.env.MADEYE_URL}"
+  log.trace "Checking MADEYE_BASE_URL: #{process.env.MADEYE_BASE_URL}"
+  madeyeUrl = program.madeyeUrl ?
+    process.env.MADEYE_URL ?
+    process.env.MADEYE_BASE_URL
+  log.debug "Using madeyeUrl", madeyeUrl
 
-  if Settings.ddpPort and Settings.ddpHost
-    ddpHost = Settings.ddpHost
-    ddpPort = Settings.ddpPort
-  else
-    parsedUrl = require('url').parse apogeeUrl
+  if madeyeUrl
+    apogeeUrl = madeyeUrl
+    azkabanUrl = "#{madeyeUrl}/api"
+    parsedUrl = require('url').parse madeyeUrl
     ddpPort = switch
       when parsedUrl.port then parsedUrl.port
       when parsedUrl.protocol == 'http:' then 80
       when parsedUrl.protocol == 'https:' then 443
-      else log.error "Can't figure out port for url #{apogeeUrl}"
+      else log.error "Can't figure out port for url #{madeyeUrl}"
     ddpHost = parsedUrl.hostname
+  else
+    apogeeUrl = Settings.apogeeUrl
+    azkabanUrl = Settings.azkabanUrl
+    ddpHost = Settings.ddpHost
+    ddpPort = Settings.ddpPort
 
   #TODO: Handle custom url case.
   ddpClient = new DdpClient
