@@ -9,6 +9,7 @@ async = require 'async'
 IgnoreRules = require './ignoreRules'
 {Logger} = require '../madeye-common/common'
 {crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
+{standardizePath, localizePath} = require '../madeye-common/common'
 
 ###
 # Directory reading plan:

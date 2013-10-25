@@ -86,11 +86,24 @@ execute = (options) ->
     apogeeUrl = options.madeyeUrl
     azkabanUrl = "#{options.madeyeUrl}/api"
     parsedUrl = require('url').parse options.madeyeUrl
+
+  log.trace "Checking madeyeUrl switch: #{program.madeyeUrl}"
+  log.trace "Checking MADEYE_URL: #{process.env.MADEYE_URL}"
+  log.trace "Checking MADEYE_BASE_URL: #{process.env.MADEYE_BASE_URL}"
+  madeyeUrl = program.madeyeUrl ?
+    process.env.MADEYE_URL ?
+    process.env.MADEYE_BASE_URL
+  log.debug "Using madeyeUrl", madeyeUrl
+
+  if madeyeUrl
+    apogeeUrl = madeyeUrl
+    azkabanUrl = "#{madeyeUrl}/api"
+    parsedUrl = require('url').parse madeyeUrl
     ddpPort = switch
       when parsedUrl.port then parsedUrl.port
       when parsedUrl.protocol == 'http:' then 80
       when parsedUrl.protocol == 'https:' then 443
-      else log.error "Can't figure out port for url #{options.madeyeUrl}"
+      else log.error "Can't figure out port for url #{madeyeUrl}"
     ddpHost = parsedUrl.hostname
   else
     apogeeUrl = Settings.apogeeUrl
@@ -171,6 +184,7 @@ execute = (options) ->
 SHUTTING_DOWN = false
 
 shutdown = (returnVal=0) ->
+  log.trace "Shutdown called with exit value #{returnVal}"
   process.exit(returnVal || 1) if SHUTTING_DOWN # || not ?, because we don't want 0
   process.nextTick ->
     shutdownGracefully(returnVal)
@@ -188,6 +202,13 @@ shutdownGracefully = (returnVal=0) ->
     process.exit(returnVal || 1)
   , 20*1000
 
+process.on 'SIGINT', ->
+  log.debug 'Received SIGINT.'
+  shutdown()
+
+process.on 'SIGTERM', ->
+  log.debug "Received kill signal (SIGTERM)"
+  shutdown()
 
 exports.run = run
 exports.execute = execute

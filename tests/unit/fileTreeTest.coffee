@@ -9,6 +9,7 @@ sinon = require 'sinon'
 {Logger} = require '../../madeye-common/common'
 MockDdpClient = require '../mock/mockDdpClient'
 DdpFiles = require '../../src/ddpFiles'
+{findParentPath} = require '../../madeye-common/common'
 
 randomString = -> hat 32, 16
 
@@ -159,17 +160,14 @@ describe "FileTree", ->
     file1 =
       _id: uuid.v4()
       path: 'a/ways/down/to.txt'
-      parentPath: 'a/ways/down'
       mtime: 123444
     file2 =
       _id: uuid.v4()
       path: 'a/ways/down/below.txt'
-      parentPath: 'a/ways/down'
       mtime: 123444
     file3 =
       _id: uuid.v4()
       path: 'a/ways/up/here.txt'
-      parentPath: 'a/ways/up'
       mtime: 123444
     beforeEach ->
       ddpClient = new MockDdpClient
@@ -191,7 +189,6 @@ describe "FileTree", ->
     it "should add new files", ->
       newFile =
         path: 'a/ways/down/around.txt'
-        parentPath: 'a/ways/down'
       tree.loadDirectory 'a/ways/down', [newFile]
       assert.isTrue ddpClient.addFile.called
       assert.isTrue ddpClient.addFile.calledWith newFile
@@ -199,7 +196,6 @@ describe "FileTree", ->
     it "should update existing files", ->
       newFile =
         path: file2.path
-        parentPath: file2.parentPath
         mtime: 223444
       tree.loadDirectory 'a/ways/down', [newFile]
       assert.isTrue ddpClient.updateFile.called
@@ -208,7 +204,6 @@ describe "FileTree", ->
     it "should remove orphaned files", ->
       newFile =
         path: file2.path
-        parentPath: file2.parentPath
         mtime: file2.mtime
       tree.loadDirectory 'a/ways/down', [newFile]
       assert.isTrue ddpClient.removeFile.called
@@ -218,14 +213,14 @@ describe "FileTree", ->
     tree = null
     ddpFiles = null
     ddpClient = new MockDdpClient
-    file = _id: uuid.v4(), path: 'a/path', parentPath: 'a', isDir:false, modified:true
+    file = _id: uuid.v4(), path: 'a/path', isDir:false, modified:true
     beforeEach ->
       ddpFiles =
         addDdpFile: sinon.spy()
         removeDdpFile: sinon.spy()
         changeDdpFile: sinon.spy()
       tree = new FileTree ddpClient, null, ddpFiles
-      tree.filesPending.push file.parentPath
+      tree.filesPending.push findParentPath file.path
 
     it 'added should call ddpFiles.addDdpFile', ->
       ddpClient.emit 'added', file
@@ -250,7 +245,6 @@ describe "FileTree", ->
         path : "more/#{randomString()}"
       file =
         path: "#{dir.path}/rarrrrrrrrr"
-        parentPath: dir.path
       projectFiles = {readdir: sinon.stub()}
       ddpClient = new MockDdpClient
         addFile: sinon.spy()

@@ -1,7 +1,7 @@
 _ = require 'underscore'
 _path = require 'path'
 {EventEmitter} = require 'events'
-{standardizePath, localizePath} = require './projectFiles'
+{standardizePath, localizePath, findParentPath} = require '../madeye-common/common'
 {Logger} = require '../madeye-common/common'
 
 class FileTree extends EventEmitter
@@ -37,8 +37,8 @@ class FileTree extends EventEmitter
   # else ignore the event.
   addWatchedFile: (file) ->
     return unless file
-    parentPath = getParentPath file.path
-    grandparentPath = getParentPath parentPath
+    parentPath = findParentPath file.path
+    grandparentPath = findParentPath parentPath
     #TODO: Make hasActiveDir
     if @isActiveDir parentPath
       @_addFsFile file
@@ -62,7 +62,7 @@ class FileTree extends EventEmitter
 
   _updateFile: (existingFile, newFile) ->
     return unless newFile.mtime > existingFile.mtime
-    @emit 'trace', "Updating file #{newFile.path} [#{fileId}]"
+    @emit 'trace', "Updating file #{newFile.path} [#{existingFile._id}]"
     fileId = existingFile._id
     unless existingFile.lastOpened
       @ddpClient.updateFile fileId, mtime: newFile.mtime
@@ -125,7 +125,6 @@ class FileTree extends EventEmitter
 
     @ddpClient.on 'subscribed', (collectionName) =>
       @complete = true if collectionName == 'files'
-      @emit 'trace', "Subscription has #{_.size @filesById} files"
 
     @ddpClient.on 'activeDir', (dir) =>
       @activeDirs[dir.path] = true
@@ -138,8 +137,6 @@ removeItemFromArray = (item, array) ->
   array.splice(idx,1) if idx != -1
   return idx != -1
 
-#TODO: Extract this to common.fileUtils
-getParentPath = (path) -> standardizePath _path.dirname(localizePath(path))
 
 module.exports = FileTree
 

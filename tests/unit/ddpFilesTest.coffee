@@ -4,6 +4,7 @@ hat = require 'hat'
 _path = require 'path'
 sinon = require 'sinon'
 uuid = require 'node-uuid'
+{standardizePath, localizePath, findParentPath} = require '../../madeye-common/common'
 
 {Logger} = require '../../madeye-common/common'
 DdpFiles = require '../../src/ddpFiles'
@@ -17,8 +18,7 @@ describe 'DdpFiles', ->
     file =
       _id: randomString()
       path: 'a/ways/down/to.txt'
-      parentPath: 'a/ways/down'
-    before ->
+    beforeEach ->
       ddpFiles = new DdpFiles
       ddpFiles.addDdpFile file
 
@@ -44,7 +44,8 @@ describe 'DdpFiles', ->
       assert.equal ddpFiles.findByPath(file.path), file2
 
     it 'should add filePath to filePathsByParent', ->
-      assert.deepEqual ddpFiles.filePathsByParent[file.parentPath], [file.path]
+      parentPath = findParentPath file.path
+      assert.deepEqual ddpFiles.filePathsByParent[parentPath], [file.path]
 
 
   describe 'removeDdpFile', ->
@@ -52,7 +53,6 @@ describe 'DdpFiles', ->
     file =
       _id: uuid.v4()
       path: 'abd/' + uuid.v4()
-      parentPath: 'abd'
     before ->
       ddpFiles = new DdpFiles
       ddpFiles.addDdpFile file
@@ -73,7 +73,6 @@ describe 'DdpFiles', ->
     file =
       _id: uuid.v4()
       path: 'abd/' + uuid.v4()
-      parentPath: 'abd'
       isDir:false
       modified:true
     before ->
@@ -98,7 +97,7 @@ describe 'DdpFiles', ->
     it "should not touch unmentioned fields", ->
       ddpFiles.changeDdpFile file._id, {'b':2}
       f = ddpFiles.findById(file._id)
-      assert.equal f.parentPath, file.parentPath
+      assert.equal f.path, file.path
       assert.equal f._id, file._id
 
     
