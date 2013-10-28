@@ -46,13 +46,16 @@ class ProjectFiles extends events.EventEmitter
   wrapError: (error) ->
     return null unless error
     newError = null
+    path = @cleanPath error.path
     switch error.code
       when 'ENOENT'
-        newError = errors.new 'FileNotFound', path: error.path
+        newError = errors.new 'FileNotFound', path: path
+        #Need this to check if an activeDirectory should be deleted.
+        newError.path = path
       when 'EISDIR'
         newError = errors.new 'IsDirectory'
       when 'EACCES'
-        newError = errors.new 'PermissionDenied', path: error.path
+        newError = errors.new 'PermissionDenied', path: path
       #Fill in other error cases here...
     @emit 'trace', "Found error:", newError ? error
     return newError ? error

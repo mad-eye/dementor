@@ -129,7 +129,16 @@ class FileTree extends EventEmitter
     @ddpClient.on 'activeDir', (dir) =>
       @activeDirs[dir.path] = true
       @projectFiles.readdir dir.path, (err, files) =>
-        @loadDirectory dir.path, files
+        if err
+          if err.reason == 'FileNotFound' and err.path == dir.path
+            #the dir is gone, remove it from ddp
+            @ddpClient.remove 'activeDirectories', dir._id
+            file = @ddpFiles.findByPath dir.path
+            @ddpClient.removeFile file._id if file
+          else
+            @emit 'error', "Error loading activeDir #{dir.path}:", err
+        else
+          @loadDirectory dir.path, files
 
 #Helper functions
 removeItemFromArray = (item, array) ->
