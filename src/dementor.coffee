@@ -106,10 +106,10 @@ class Dementor extends events.EventEmitter
         #@tunnelManager.startTunnel tunnel, cb
     if @terminal
       tasks['terminal'] = (cb) =>
-        @emit 'trace', "Setting up tunnel on port #{constants.TERMINAL_PORT}"
+        @emit 'trace', "Setting up tunnel on port 9798"
         tunnel =
           name: "terminal"
-          localPort: constants.TERMINAL_PORT
+          localPort: 9798
         @tunnelManager.startTunnel tunnel, cb
 
     async.parallel tasks, (err, tunnels) =>

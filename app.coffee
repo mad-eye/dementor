@@ -6,10 +6,11 @@ util = require 'util'
 clc = require 'cli-color'
 exec = require("child_process").exec
 _s = require 'underscore.string'
-constants = require './src/constants'
 
 dementor = null
 debug = false
+log = new Logger name:'app'
+
 try
   tty = require 'tty.js'
 catch e
@@ -79,18 +80,16 @@ execute = (options) ->
     #Don't print standard error log output
     return false
 
-  log = new Logger name:'app'
-
   log.trace "Checking madeyeUrl: #{options.madeyeUrl}"
   if options.madeyeUrl
     apogeeUrl = options.madeyeUrl
     azkabanUrl = "#{options.madeyeUrl}/api"
     parsedUrl = require('url').parse options.madeyeUrl
 
-  log.trace "Checking madeyeUrl switch: #{program.madeyeUrl}"
+  log.trace "Checking madeyeUrl switch: #{options.madeyeUrl}"
   log.trace "Checking MADEYE_URL: #{process.env.MADEYE_URL}"
   log.trace "Checking MADEYE_BASE_URL: #{process.env.MADEYE_BASE_URL}"
-  madeyeUrl = program.madeyeUrl ?
+  madeyeUrl = options.madeyeUrl ?
     process.env.MADEYE_URL ?
     process.env.MADEYE_BASE_URL
   log.debug "Using madeyeUrl", madeyeUrl
@@ -117,7 +116,7 @@ execute = (options) ->
   if options.term
     ttyServer = new tty.Server
       cwd: process.cwd()
-    ttyServer.listen constants.TERMINAL_PORT, "localhost"
+    ttyServer.listen 9798, "localhost"
 
   ddpClient = new DdpClient
     host: ddpHost

@@ -4,7 +4,6 @@ net = require 'net'
 fs = require 'fs'
 util = require 'util'
 _path = require 'path'
-constants = require './constants'
 
 ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
 remoteAddr = '0.0.0.0' #FIXME: This accepts all IPV4 connections.  Generalize.
@@ -94,8 +93,8 @@ class TunnelManager extends events.EventEmitter
 
     @emit 'trace', "Pausing stream"
     stream.pause()
-    @emit 'trace', "Forwarding to localhost:#{constants.TERMINAL_PORT}"
-    socket = net.connect constants.TERMINAL_PORT, 'localhost', =>
+    @emit 'trace', "Forwarding to localhost:9798}"
+    socket = net.connect 9798, 'localhost', =>
       stream.pipe socket
       socket.pipe stream
       stream.resume()
