@@ -5,7 +5,7 @@ _path = require 'path'
 {normalizePath} = require '../madeye-common/common'
 {standardizePath, localizePath} = require './projectFiles'
 {Logger} = require '../madeye-common/common'
-require('https').globalAgent.options.rejectUnauthorized = false
+#require('https').globalAgent.options.rejectUnauthorized = false
 
 DEFAULT_OPTIONS =
   host: "localhost"
