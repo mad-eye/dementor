@@ -23,6 +23,7 @@ class DdpFiles extends EventEmitter
     @filesById[file._id] = file
     @filesByPath[file.path] = file
     parentPath = findParentPath file.path
+    parentPath ||= '.'
     @filePathsByParent[parentPath] ?= []
     @filePathsByParent[parentPath].push file.path
     @emit "trace", "Added ddp file #{file.path}"
