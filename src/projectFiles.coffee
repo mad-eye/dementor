@@ -169,6 +169,7 @@ class ProjectFiles extends events.EventEmitter
         isDir: stat.isDirectory()
         isLink: stat.isSymbolicLink()
         mtime: stat.mtime.getTime()
+        size: stat.size
       }
 
   #callback: (err, {contents, checksum, warning}) ->
