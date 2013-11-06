@@ -10,6 +10,7 @@ sinon = require 'sinon'
 MockDdpClient = require '../mock/mockDdpClient'
 DdpFiles = require '../../src/ddpFiles'
 {findParentPath} = require '../../madeye-common/common'
+{errors} = require '../../madeye-common/common'
 
 randomString = -> hat 32, 16
 
@@ -169,6 +170,10 @@ describe "FileTree", ->
       _id: uuid.v4()
       path: 'a/ways/up/here.txt'
       mtime: 123444
+    file4 =
+      _id: uuid.v4()
+      path: 'top.txt'
+      mtime: 123444
     beforeEach ->
       ddpClient = new MockDdpClient
         addFile: sinon.spy()
@@ -180,6 +185,7 @@ describe "FileTree", ->
       ddpFiles.addDdpFile file1
       ddpFiles.addDdpFile file2
       ddpFiles.addDdpFile file3
+      ddpFiles.addDdpFile file4
 
     it "call markDirectoryLoaded", ->
       tree.loadDirectory 'a/ways/up', [file3]
@@ -208,6 +214,11 @@ describe "FileTree", ->
       tree.loadDirectory 'a/ways/down', [newFile]
       assert.isTrue ddpClient.removeFile.called
       assert.isTrue ddpClient.removeFile.calledWith(file1._id)
+
+    it "should remove orphaned files in top level directory", ->
+      tree.loadDirectory null, []
+      assert.isTrue ddpClient.removeFile.called
+      assert.isTrue ddpClient.removeFile.calledWith(file4._id)
 
   describe 'on ddp file event', ->
     tree = null
@@ -272,6 +283,45 @@ describe "FileTree", ->
 
     it 'should make directory active', ->
       assert.isTrue tree.isActiveDir dir.path
+
+  describe 'on missing activeDir', ->
+    tree = null
+    projectFiles = null
+    ddpClient = null
+    dir = activeDir = file = null
+    beforeEach ->
+      dir =
+        _id : randomString()
+        path : "more/#{randomString()}"
+      activeDir =
+        _id : randomString()
+        path : dir.path
+      projectFiles = {readdir: sinon.stub()}
+      ddpClient = new MockDdpClient
+        remove: sinon.spy()
+        removeFile: sinon.spy()
+        markDirectoryLoaded: sinon.spy()
+      ddpFiles = new DdpFiles()
+      ddpFiles.addDdpFile dir
+      tree = new FileTree ddpClient, projectFiles, ddpFiles
+      err = errors.new 'FileNotFound', path: dir.path
+      err.path = dir.path
+      projectFiles.readdir.callsArgWith 1, err
+      ddpClient.emit 'activeDir', activeDir
+
+    it 'should not call markDirectoryLoaded', ->
+      assert.isFalse ddpClient.markDirectoryLoaded.called
+
+    it 'should remove the activeDir', ->
+      assert.isTrue ddpClient.remove.called
+      assert.isTrue ddpClient.remove.calledWith 'activeDirectories', activeDir._id
+
+    it 'should remove the ddp file corresponding to activeDir', ->
+      assert.isTrue ddpClient.removeFile.called, "removeFile should be called"
+      assert.isTrue ddpClient.removeFile.calledWith(dir._id), "removeFile should be called with id #{dir._id}"
+
+    it 'should not error if the ddp file corresponding to activeDir is missing', ->
+      ddpClient.emit 'activeDir', {_id: randomString(), path : "more/#{randomString()}"}
 
 
   describe 'removeFsFile', ->

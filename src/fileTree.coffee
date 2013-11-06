@@ -17,16 +17,17 @@ class FileTree extends EventEmitter
     return @activeDirs[path]
 
   loadDirectory: (directory, files) ->
-    existingFilePaths = @ddpFiles.filePathsByParent[directory]
+    directory ||= '.'
+    existingFilePaths = @ddpFiles.filePathsByParent[directory] ? []
     filePathsAdded = []
     for file in files
       @_addFsFile file
       filePathsAdded.push file.path
     orphanedPaths = _.difference existingFilePaths, filePathsAdded
     @removeFsFile path for path in orphanedPaths
-    @ddpClient.markDirectoryLoaded directory if directory #don't mark root
-    @emit 'debug', "Loaded directory", (directory || '.')
-    @emit 'added initial files' unless directory #this is the first dir
+    @ddpClient.markDirectoryLoaded directory unless directory == '.' #don't mark root
+    @emit 'debug', "Loaded directory", directory
+    @emit 'added initial files' if directory == '.' #this is the first dir
 
   #we are assuming that the watcher does not notice dirs, so complete
   #missing parent dirs
@@ -129,7 +130,16 @@ class FileTree extends EventEmitter
     @ddpClient.on 'activeDir', (dir) =>
       @activeDirs[dir.path] = true
       @projectFiles.readdir dir.path, (err, files) =>
-        @loadDirectory dir.path, files
+        if err
+          if err.reason == 'FileNotFound' and err.path == dir.path
+            #the dir is gone, remove it from ddp
+            @ddpClient.remove 'activeDirectories', dir._id
+            file = @ddpFiles.findByPath dir.path
+            @ddpClient.removeFile file._id if file
+          else
+            @emit 'error', "Error loading activeDir #{dir.path}:", err
+        else
+          @loadDirectory dir.path, files
 
 #Helper functions
 removeItemFromArray = (item, array) ->

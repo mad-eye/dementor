@@ -70,12 +70,9 @@ execute = (options) ->
     when options.debug then 'debug'
     else 'info'
   Logger.setLevel logLevel
-  Logger.onError (err) ->
-    if 'string' == typeof err
-      message = err
-    else
-      message = err.details ? err.message
-    console.error clc.red('ERROR:'), message
+  Logger.onError (msgs...) ->
+    msgs.unshift clc.red('ERROR:')
+    console.error.apply console, msgs
     shutdown(1)
     #Don't print standard error log output
     return false
