@@ -100,9 +100,6 @@ class ProjectFiles extends events.EventEmitter
     projectIds[@directory] = projectId
     @saveProjectIds projectIds
 
-  getProjectId: ->
-    @projectIds()[@directory]
-
   saveProjectIds: (projects) ->
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
 
