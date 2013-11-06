@@ -114,10 +114,10 @@ class Dementor extends events.EventEmitter
 
     async.parallel tasks, (err, tunnels) =>
       if err
-        @emit 'debug', "Error setting up tunnels:", err
+        @emit 'debug', "Error setting up tunnels:", tunnels, err
         @handleWarning "We could not set up the tunnels; continuing without tunnels."
         return
-      @emit 'debug', 'Tunnels connected'
+      @emit 'debug', 'Tunnels connected', tunnels
       @ddpClient.addTunnels tunnels, (err) =>
         if err
           @emit 'debug', "Error setting up tunnels:", err
