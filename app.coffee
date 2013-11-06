@@ -35,15 +35,15 @@ run = ->
     .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
-    .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
+#    .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
       console.log "  Give the returned url to your friends, and you can edit the project"
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
-  if tty
-    program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
+  # if tty
+  #   program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
 
   program.parse(process.argv)
   execute
@@ -53,7 +53,8 @@ run = ->
     tunnel: program.tunnel
     debug: program.debug
     trace: program.trace
-    term: program.term
+    term: process.env.MADEYE_TERM
+    # term: program.term
     madeyeUrl: program.madeyeUrl
 
 ###
