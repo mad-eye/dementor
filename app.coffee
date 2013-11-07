@@ -1,6 +1,7 @@
 Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
-{Settings, Logger} = require './madeye-common/common'
+{Settings} = require './madeye-common/common'
+Logger = require 'pince'
 util = require 'util'
 clc = require 'cli-color'
 

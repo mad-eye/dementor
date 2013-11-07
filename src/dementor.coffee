@@ -5,7 +5,7 @@ events = require 'events'
 clc = require 'cli-color'
 _path = require 'path'
 async = require 'async'
-{Logger} = require '../madeye-common/common'
+Logger = require 'pince'
 {crc32} = require '../madeye-common/common'
 DdpFiles = require "./ddpFiles"
 

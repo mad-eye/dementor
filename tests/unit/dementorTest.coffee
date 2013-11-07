@@ -11,7 +11,7 @@ Dementor = require '../../src/dementor'
 {fileUtils} = require '../util/fileUtils'
 MockDdpClient = require '../mock/mockDdpClient'
 {errors, errorType} = require '../../madeye-common/common'
-{Logger} = require '../../madeye-common/common'
+Logger = require 'pince'
 {crc32} = require '../../madeye-common/common'
 
 randomString = -> hat 32, 16

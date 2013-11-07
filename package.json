@@ -16,7 +16,8 @@
     "minimatch": "0.2.12",
     "underscore.string": "2.3.3",
     "moment": "2.1.0",
-    "ddp": "0.3.4"
+    "ddp": "0.3.4",
+    "pince": "0.0.2"
   },
   "devDependencies": {
     "wrench": "~1.4.2",
