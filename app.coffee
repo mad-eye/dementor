@@ -1,13 +1,26 @@
 Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
+TunnelManager = require './src/tunnelManager'
 {Settings} = require './madeye-common/common'
 Logger = require 'pince'
 util = require 'util'
 clc = require 'cli-color'
+exec = require("child_process").exec
+_s = require 'underscore.string'
 
 dementor = null
 debug = false
-log = null
+log = new Logger name:'app'
+
+try
+  tty = require 'tty.js'
+catch e
+  #No tty.js, so no terminal for you!
+
+getMeteorPid = (meteorPort, callback)->
+  cmd = """lsof -n -i4TCP:#{meteorPort} | grep LISTEN | awk '{print $2}'"""
+  exec cmd, (err, stdout, stderr)->
+    callback null, _s.trim(stdout)
 
 run = ->
   program = require 'commander'
@@ -19,20 +32,44 @@ run = ->
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
-    .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--madeyeUrl [url]', 'url to point to (instead of madeye.io)')
+    .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
+
+#    .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
       console.log "  Give the returned url to your friends, and you can edit the project"
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
+  # if tty
+  #   program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
+
   program.parse(process.argv)
-  debug = program.debug
+  execute
+    directory:process.cwd()
+    clean: program.clean
+    ignorefile: program.ignorefile
+    tunnel: program.tunnel
+    debug: program.debug
+    trace: program.trace
+    term: process.env.MADEYE_TERM
+    # term: program.term
+    madeyeUrl: program.madeyeUrl
+
+###
+#options:
+# directory: path
+# clean: bool
+# ignorefile: path
+# tunnel: integer
+# shareOutput: bool
+###
+execute = (options) ->
   logLevel = switch
-    when program.trace then 'trace'
-    when program.debug then 'debug'
+    when options.trace then 'trace'
+    when options.debug then 'debug'
     else 'info'
   Logger.setLevel logLevel
   Logger.onError (msgs...) ->
@@ -42,12 +79,16 @@ run = ->
     #Don't print standard error log output
     return false
 
-  log = new Logger name:'app'
+  log.trace "Checking madeyeUrl: #{options.madeyeUrl}"
+  if options.madeyeUrl
+    apogeeUrl = options.madeyeUrl
+    azkabanUrl = "#{options.madeyeUrl}/api"
+    parsedUrl = require('url').parse options.madeyeUrl
 
-  log.trace "Checking madeyeUrl switch: #{program.madeyeUrl}"
+  log.trace "Checking madeyeUrl switch: #{options.madeyeUrl}"
   log.trace "Checking MADEYE_URL: #{process.env.MADEYE_URL}"
   log.trace "Checking MADEYE_BASE_URL: #{process.env.MADEYE_BASE_URL}"
-  madeyeUrl = program.madeyeUrl ?
+  madeyeUrl = options.madeyeUrl ?
     process.env.MADEYE_URL ?
     process.env.MADEYE_BASE_URL
   log.debug "Using madeyeUrl", madeyeUrl
@@ -68,26 +109,42 @@ run = ->
     ddpHost = Settings.ddpHost
     ddpPort = Settings.ddpPort
 
-  #TODO: Handle custom url case.
+  #FIXME: Need to handle custom case differently?
+  shareHost = Settings.shareHost
+
+  if options.term
+    ttyServer = new tty.Server
+      cwd: process.cwd()
+    ttyServer.listen 9798, "localhost"
+
   ddpClient = new DdpClient
     host: ddpHost
     port: ddpPort
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
+
+  tunnelManager = new TunnelManager shareHost
+  Logger.listen tunnelManager, 'tunnelManager'
+
+
   dementor = new Dementor
-    directory: process.cwd()
+    directory: options.directory
     ddpClient: ddpClient
-    clean: program.clean
-    ignoreFile: program.ignorefile
-  util.puts "Enabling MadEye in " + clc.bold process.cwd()
+    tunnelManager: tunnelManager
+    clean: options.clean
+    ignorefile: options.ignorefile
+    tunnel: options.tunnel
+    appPort: options.appPort
+    captureViaDebugger: options.captureViaDebugger
+    term: options.term
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
     hangoutUrl = "#{azkabanUrl}/hangout/#{dementor.projectId}"
 
-    util.puts "View your project at " + clc.bold apogeeUrl
-    util.puts "Use Google Hangout at " + clc.bold hangoutUrl
+    util.puts "View your project with MadEye at " + clc.bold apogeeUrl
+    util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
   dementor.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
@@ -96,7 +153,22 @@ run = ->
 
   dementor.enable()
 
+  if options.linkToMeteorProcess
+    setInterval ->
+      getMeteorPid options.appPort, (err, pid)->
+        console.log "found meteor pid", pid
+        #TODO if metoer process isn't found then exit this process
+        #how to best handle a rapid restart...
+    , 2000
 
+  process.on 'SIGINT', ->
+    log.debug 'Received SIGINT.'
+    shutdown()
+
+  process.on 'SIGTERM', ->
+    unless options.linkToMeteorProcess
+      log.debug "Received kill signal (SIGTERM)"
+      shutdown()
 
   #hack for dealing with exceptions caused by broken links
   process.on 'uncaughtException', (err)->
@@ -107,7 +179,6 @@ run = ->
     else
       throw err
 
-# Shutdown section
 SHUTTING_DOWN = false
 
 shutdown = (returnVal=0) ->
@@ -123,7 +194,7 @@ shutdownGracefully = (returnVal=0) ->
   dementor.shutdown ->
     console.log "Closed out connections."
     process.exit returnVal
- 
+
   setTimeout ->
     console.error "Could not close connections in time, shutting down harder."
     process.exit(returnVal || 1)
@@ -138,3 +209,4 @@ process.on 'SIGTERM', ->
   shutdown()
 
 exports.run = run
+exports.execute = execute

@@ -212,6 +212,11 @@ class DdpClient extends EventEmitter
       else
         @emit 'trace', "Updated file contents #{fileId}"
 
+
+  #callback: (err) ->
+  addTunnels: (tunnels, callback) ->
+    @ddpClient.call 'addTunnels', [@projectId, tunnels], callback
+
   remove: (collectionName, id) ->
     @emit 'debug', "Removing #{collectionName} #{id}"
     #@ddpClient.call "/#{collectionName}/remove", [makeIdSelector(id)], (err, result) =>

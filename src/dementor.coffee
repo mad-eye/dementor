@@ -1,12 +1,16 @@
+async = require 'async'
 {ProjectFiles, fileEventType} = require './projectFiles'
 FileTree = require './fileTree'
 {errors, errorType} = require '../madeye-common/common'
 events = require 'events'
+fs = require "fs"
 clc = require 'cli-color'
 _path = require 'path'
 async = require 'async'
 Logger = require 'pince'
 {crc32} = require '../madeye-common/common'
+exec = require("child_process").exec
+#captureProcessOutput = require("./injector/inject").captureProcessOutput
 DdpFiles = require "./ddpFiles"
 
 class Dementor extends events.EventEmitter
@@ -16,6 +20,12 @@ class Dementor extends events.EventEmitter
     @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
     @projectId = @projectFiles.getProjectId() unless options.clean
+
+    @appPort = options.appPort
+    captureViaDebugger = options.captureViaDebugger
+    @tunnel = options.tunnel
+    @terminal = options.term
+    @tunnelManager = options.tunnelManager
 
     @ddpClient = options.ddpClient
     @setupDdpClient()
@@ -27,6 +37,12 @@ class Dementor extends events.EventEmitter
     @emit 'message-warning', msg
 
   enable: ->
+    if false and @captureViaDebugger
+      console.log "fetch meteor pid"
+      @getMeteorPid @appPort, (err, pid)->
+        console.log "capturing"
+        captureProcessOutput(pid)
+
     #connect callback gets called each time a (re)connection is established
     #to avoid calling cb multiple times, trigger once
     #error event will handle error case.
@@ -36,6 +52,9 @@ class Dementor extends events.EventEmitter
         return @emit 'error', err if err
         #don't need to wait for this callback
         @ddpClient.subscribe 'commands', @projectId
+        #don't need to wait for this callback
+        if @terminal or @tunnel
+          @setupTunnels()
         #need to be subscribed before adding fs files
         @ddpClient.subscribe 'files', @projectId, (err) =>
           return @emit 'error', err if err
@@ -63,9 +82,10 @@ class Dementor extends events.EventEmitter
       @emit 'enabled'
       callback()
 
-
   shutdown: (callback) ->
     @emit 'trace', "Shutting down."
+    #XXX: Does TunnelManager.shutdown need a callback?
+    @tunnelManager?.shutdown()
     @ddpClient.shutdown ->
       callback?()
 
@@ -73,6 +93,40 @@ class Dementor extends events.EventEmitter
     #TODO: Remove this stub when we've integrated interview-term.
     @emit type
  
+  setupTunnels: ->
+    @emit 'trace', "Setting up terminal tunnel: @{terminal}"
+    tasks = {}
+    #TODO: enable web tunneling.
+    #if @tunnel
+      #tasks['app'] = (cb) =>
+        #@emit 'trace', "Setting up tunnel on port #{@tunnel}"
+        #tunnel =
+          #name: "app"
+          #localPort: @tunnel
+        #@tunnelManager.startTunnel tunnel, cb
+    if @terminal
+      tasks['terminal'] = (cb) =>
+        @emit 'trace', "Setting up tunnel on port 9798"
+        tunnel =
+          name: "terminal"
+          localPort: 9798
+        @tunnelManager.startTunnel tunnel, cb
+
+    async.parallel tasks, (err, tunnels) =>
+      if err
+        @emit 'debug', "Error setting up tunnels:", tunnels, err
+        @handleWarning "We could not set up the tunnels; continuing without tunnels."
+        return
+      @emit 'debug', 'Tunnels connected', tunnels
+      @ddpClient.addTunnels tunnels, (err) =>
+        if err
+          @emit 'debug', "Error setting up tunnels:", err
+          @handleWarning "We could not set up the tunnels; continuing without tunnels."
+        else
+          @emit 'debug', 'Tunnels established successfully.'
+        
+
+
   #####
   # Events from ProjectFiles
 
@@ -91,6 +145,7 @@ class Dementor extends events.EventEmitter
 
     @projectFiles.watchFileTree()
     @emit 'trace', 'Watching file tree.'
+    @emit 'watching filetree'
 
   ## DDP CLIENT SETUP
   setupDdpClient: ->

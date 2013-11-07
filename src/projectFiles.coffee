@@ -100,9 +100,6 @@ class ProjectFiles extends events.EventEmitter
     projectIds[@directory] = projectId
     @saveProjectIds projectIds
 
-  getProjectId: ->
-    @projectIds()[@directory]
-
   saveProjectIds: (projects) ->
     fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
 
@@ -110,8 +107,20 @@ class ProjectFiles extends events.EventEmitter
     return {} unless fs.existsSync @projectsDbPath()
     JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
 
+  getProjectId: ->
+    return @projectIds()[@directory]
+
   shouldInclude: (path) ->
     not @ignoreRules.shouldIgnore path
+
+  #callback: (err, results) -> ...
+  readFileTree: (callback) ->
+    try
+      @readdirRecursive null, (err, files) =>
+        callback @wrapError(err), files
+    catch error
+      console.error "ERROR", error
+      callback @wrapError(error), files
 
   #Sets up event listeners, and emits messages
   #TODO: Current dies on EACCES for directories with bad permissions
@@ -202,5 +211,45 @@ class ProjectFiles extends events.EventEmitter
         results = _.filter results, (result) -> result
         callback error, results
 
+
+  #callback: (error, files) ->
+  readdirRecursive : (relDir='', callback) ->
+    currentDir = _path.join(@directory, relDir)
+    results = []
+    fs.readdir currentDir, (err, fileNames) =>
+      if err
+        if err.code == 'EACCES'
+          @emit 'debug', "Permission denied for #{relDir}"
+          callback null
+        else
+          callback @wrapError err
+      else
+        async.each fileNames, (fileName, cb) =>
+          @makeFileData _path.join(@directory, relDir, fileName), (err, fileData) =>
+            return cb err if err or !fileData?
+            results.push fileData
+            #watch file
+            #@emit 'EXISTING_FILE', fileData
+            if fileData.isDir
+              #console.log "Recusing into", fileData.path
+              @readdirRecursive fileData.path, (err, res) =>
+                results = results.concat res if res
+                cb err
+            else
+              cb null
+        , (error) =>
+          #console.log "Finished reading", relDir
+          callback error, results
+
+
+exports.standardizePath = standardizePath = (path) ->
+  return unless path?
+  return path if _path.sep == '/'
+  return path.split(_path.sep).join('/')
+
+exports.localizePath = localizePath = (path) ->
+  return unless path?
+  return path if _path.sep == '/'
+  return path.split('/').join(_path.sep)
 
 exports.ProjectFiles = ProjectFiles

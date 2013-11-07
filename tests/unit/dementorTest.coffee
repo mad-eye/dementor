@@ -127,13 +127,16 @@ describe "Dementor", ->
         targetFileTree = fileUtils.constructFileTree fileMap, "."
         projectPath = fileUtils.createProject "outdatedNodeJsTest-#{randomString()}", fileMap
         warningMsg = "its not right!"
-        httpClient = new MockHttpClient (options, params) ->
+        httpClient = new MockHttpClient (options, params, callback) ->
           assert.equal options.json?['nodeVersion'], process.version
           projectName = options.json?['projectName']
           files = options.json?['files']
-          return {project: {_id:randomString(), name:projectName}, files:files, warning: warningMsg}
-
-        dementor = new Dementor projectPath, httpClient, new MockSocket
+          callback null, {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
+            
+        dementor = new Dementor
+          directory: projectPath
+          httpClient: httpClient
+          socket: new MockSocket
         dementor.on 'warn', (msg) ->
           assert.equal msg, warningMsg
           done()
@@ -334,5 +337,4 @@ describe "Dementor", ->
       assert.isTrue ddpClient.commandReceived.calledWith null
       results = ddpClient.commandReceived.args[0][1]
       assert.equal results.commandId, commandId
-
 

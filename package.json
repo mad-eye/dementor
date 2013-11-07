@@ -16,9 +16,11 @@
     "minimatch": "0.2.12",
     "underscore.string": "2.3.3",
     "moment": "2.1.0",
+    "ssh2": "0.2.12",
     "ddp": "0.3.4",
     "pince": "0.0.2"
   },
+  "main": "lib.js",
   "devDependencies": {
     "wrench": "~1.4.2",
     "sinon": "~1.6.0",
@@ -26,5 +28,8 @@
     "chai": "~1.6.0",
     "node-uuid": "~1.4.0",
     "hat": "0.0.3"
+  },
+  "optionalDependencies": {
+    "tty.js": "git://github.com/rissem/tty.js.git#embeddable"
   }
 }
