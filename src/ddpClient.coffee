@@ -4,7 +4,7 @@ DDPClient = require "ddp"
 _path = require 'path'
 {normalizePath} = require '../madeye-common/common'
 {standardizePath, localizePath} = require './projectFiles'
-{Logger} = require '../madeye-common/common'
+Logger = require 'pince'
 #require('https').globalAgent.options.rejectUnauthorized = false
 
 DEFAULT_OPTIONS =

@@ -7,7 +7,7 @@ clc = require 'cli-color'
 events = require 'events'
 async = require 'async'
 IgnoreRules = require './ignoreRules'
-{Logger} = require '../madeye-common/common'
+Logger = require 'pince'
 {crc32, cleanupLineEndings, findLineEndingType} = require '../madeye-common/common'
 {standardizePath, localizePath} = require '../madeye-common/common'
 

@@ -1,7 +1,8 @@
 Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
 TunnelManager = require './src/tunnelManager'
-{Settings, Logger} = require './madeye-common/common'
+{Settings} = require './madeye-common/common'
+Logger = require 'pince'
 util = require 'util'
 clc = require 'cli-color'
 exec = require("child_process").exec

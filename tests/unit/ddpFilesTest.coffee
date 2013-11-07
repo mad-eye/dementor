@@ -6,7 +6,7 @@ sinon = require 'sinon'
 uuid = require 'node-uuid'
 {standardizePath, localizePath, findParentPath} = require '../../madeye-common/common'
 
-{Logger} = require '../../madeye-common/common'
+Logger = require 'pince'
 DdpFiles = require '../../src/ddpFiles'
 
 randomString = -> hat 32, 16

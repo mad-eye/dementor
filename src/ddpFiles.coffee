@@ -1,6 +1,6 @@
 _ = require 'underscore'
 {standardizePath, localizePath, findParentPath} = require '../madeye-common/common'
-{Logger} = require '../madeye-common/common'
+Logger = require 'pince'
 EventEmitter = require("events").EventEmitter
 
 class DdpFiles extends EventEmitter

@@ -2,7 +2,7 @@ _ = require 'underscore'
 _path = require 'path'
 {EventEmitter} = require 'events'
 {standardizePath, localizePath, findParentPath} = require '../madeye-common/common'
-{Logger} = require '../madeye-common/common'
+Logger = require 'pince'
 
 class FileTree extends EventEmitter
   constructor: (@ddpClient, @projectFiles, @ddpFiles) ->
