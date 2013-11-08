@@ -17,12 +17,12 @@ DEFAULT_OPTIONS =
 makeIdSelector = (id) ->
   {"_id":{"$type":"oid","$value":id}}
 
+log = new Logger 'ddpClient'
 #state in [closed, connecting, connected, reconnecting]
 class DdpClient extends EventEmitter
   constructor: (options) ->
-    Logger.listen @, 'ddpClient'
     options = _.extend DEFAULT_OPTIONS, options
-    @emit 'trace', "Initializing DdpClient with options", options
+    log.trace "Initializing DdpClient with options", options
     @ddpClient = new DDPClient options
     @initialized = false
     @state = 'closed'
@@ -31,23 +31,23 @@ class DdpClient extends EventEmitter
   #This will emit a 'connected' event on each connection.
   connect: ->
     @state = 'connecting'
-    @emit 'trace', 'DDP connecting'
+    log.trace 'DDP connecting'
     @ddpClient.connect (error) =>
-      @emit 'error', "Ddp error while connecting:", error if error
+      log.error "Ddp error while connecting:", error if error
       unless error
         @emit 'connected'
-        @emit 'debug', 'DDP connected'
+        log.debug 'DDP connected'
 
   #TODO: Write tests for these
   shutdown: (callback=->) ->
-    @emit 'debug', 'Shutting down ddpClient'
+    log.debug 'Shutting down ddpClient'
     closeProject = (timeoutHandle) =>
       @ddpClient.call 'closeProject', [@projectId], (err) =>
         clearTimeout timeoutHandle
         if err
-          @emit 'warn', "Error closing project:", err
+          log.warn "Error closing project:", err
         else
-          @emit 'debug', "Closed project"
+          log.debug "Closed project"
         @ddpClient.close()
         process.nextTick callback
 
@@ -71,24 +71,24 @@ class DdpClient extends EventEmitter
   _initialize: ->
     return if @initialized
     @initialized = true
-    @emit 'trace', 'Initializing ddp'
+    log.trace 'Initializing ddp'
     @ddpClient.on 'message', (msg) =>
-      @emit 'trace', 'Ddp message: ' + msg
+      log.trace 'Ddp message: ' + msg
     @ddpClient.on 'socket-close', (code, message) =>
       @state = 'reconnecting'
-      @emit 'debug', "DDP closed: [#{code}] #{message}"
+      log.debug "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
       #Get this when apogee goes down: {"code":"ECONNREFUSED","errno":"ECONNREFUSED","syscall":"connect"}
       if @state == 'reconnecting' and error.code == 'ECONNREFUSED'
-        @emit 'trace', "Socket error while not connected:", error
+        log.trace "Socket error while not connected:", error
       else if @state == 'connecting' #We haoven't connected yet
-        @emit 'debug', "Error while connecting:", error
-        @emit 'error', "Unable to connect to server; please try again later."
+        log.debug "Error while connecting:", error
+        log.error "Unable to connect to server; please try again later."
       else
-        @emit 'warn', "Socket error:", error
+        log.warn "Socket error:", error
     @ddpClient.on 'connected', =>
       @state = 'connected'
-      @emit 'trace', "ddpClient connected"
+      log.trace "ddpClient connected"
     @listenForFiles()
     @listenForCommands()
     @listenForDirs()
@@ -105,9 +105,9 @@ class DdpClient extends EventEmitter
       args ?= []
       args.push callback
       callback = null
-    @emit 'trace', "Subscribing to #{collectionName} with args", args
+    log.trace "Subscribing to #{collectionName} with args", args
     @ddpClient.subscribe collectionName, args, =>
-      @emit 'debug', "Subscribed to #{collectionName}"
+      log.debug "Subscribed to #{collectionName}"
       @emit 'subscribed', collectionName
       callback?()
 
@@ -115,11 +115,11 @@ class DdpClient extends EventEmitter
     #Don't trigger this on reconnect.
     return if @projectId
     params.dementor = true
-    @emit 'trace', "Registering project with params", params
+    log.trace "Registering project with params", params
     @ddpClient.call 'registerProject', [params], (err, result) =>
       return callback err if err
       {projectId, warning} = result
-      @emit 'debug', "Registered project and got id #{projectId}"
+      log.debug "Registered project and got id #{projectId}"
       @projectId = projectId
       #Resubscribe on reconnection
       #Initial connected event is already gone, this is for the future
@@ -133,17 +133,17 @@ class DdpClient extends EventEmitter
     @cleanFile file
     @ddpClient.call 'addFile', [file], (err) =>
       if err
-        @emit 'warn', "Error in adding file:", err
+        log.warn "Error in adding file:", err
       else
-        @emit 'trace', "Added file #{file.path}"
+        log.trace "Added file #{file.path}"
 
   removeFile: (fileId) ->
-    @emit 'trace', "Calling removeFile", fileId
+    log.trace "Calling removeFile", fileId
     @ddpClient.call 'removeFile', [fileId], (err) =>
       if err
-        @emit 'warn', "Error in removing file:", err
+        log.warn "Error in removing file:", err
       else
-        @emit 'trace', "Removed file #{fileId}"
+        log.trace "Removed file #{fileId}"
 
   cleanFile: (file) ->
     file.projectId = @projectId
@@ -194,23 +194,23 @@ class DdpClient extends EventEmitter
     modifier = {$set:modifier}
     @ddpClient.call 'updateFile', [fileId, modifier], (err) =>
       if err
-        @emit 'warn', "Error updating file:", err
+        log.warn "Error updating file:", err
       else
-        @emit 'trace', "Updated file #{fileId}"
+        log.trace "Updated file #{fileId}"
 
   markDirectoryLoaded: (path) ->
     @ddpClient.call 'markDirectoryLoaded', [@projectId, path], (err) =>
       if err
-        @emit 'warn', "Error marking directory #{path} as loaded:", err
+        log.warn "Error marking directory #{path} as loaded:", err
       else
-        @emit 'trace', "Marked directory #{path} as loaded"
+        log.trace "Marked directory #{path} as loaded"
 
   updateFileContents: (fileId, contents) ->
     @ddpClient.call 'updateFileContents', [fileId, contents], (err) =>
       if err
-        @emit 'warn', "Error updating file contents:", err
+        log.warn "Error updating file contents:", err
       else
-        @emit 'trace', "Updated file contents #{fileId}"
+        log.trace "Updated file contents #{fileId}"
 
 
   #callback: (err) ->
@@ -218,24 +218,24 @@ class DdpClient extends EventEmitter
     @ddpClient.call 'addTunnels', [@projectId, tunnels], callback
 
   remove: (collectionName, id) ->
-    @emit 'debug', "Removing #{collectionName} #{id}"
+    log.debug "Removing #{collectionName} #{id}"
     #@ddpClient.call "/#{collectionName}/remove", [makeIdSelector(id)], (err, result) =>
     @ddpClient.call "/#{collectionName}/remove", [id], (err, result) =>
-      @emit 'error', 'remove error:', err if err
-      #@emit 'debug', "Remove #{collectionName} returned" unless err
+      log.error 'remove error:', err if err
+      #log.debug "Remove #{collectionName} returned" unless err
 
   insert: (collectionName, doc) ->
-    @emit 'debug', "Inserting #{collectionName} #{JSON.stringify doc}"
+    log.debug "Inserting #{collectionName} #{JSON.stringify doc}"
     @ddpClient.call "/#{collectionName}/insert", [doc], (err, result) =>
-      @emit 'error', 'insert error:', err if err
-      #@emit 'debug', "Insert #{collectionName} returned" unless err
+      log.error 'insert error:', err if err
+      #log.debug "Insert #{collectionName} returned" unless err
 
   update: (collectionName, id, modifier) ->
-    @emit 'debug', "Updating #{collectionName} #{id}"
+    log.debug "Updating #{collectionName} #{id}"
     #@ddpClient.call "/#{collectionName}/update", [makeIdSelector(id)], (err, result) =>
     @ddpClient.call "/#{collectionName}/update", [{_id:id}, modifier], (err, result) =>
-      @emit 'error', 'update error:', err if err
-      #@emit 'debug', "Update #{collectionName} returned" unless err
+      log.error 'update error:', err if err
+      #log.debug "Update #{collectionName} returned" unless err
 
 module.exports = DdpClient
 

@@ -3,9 +3,9 @@ _ = require 'underscore'
 Logger = require 'pince'
 EventEmitter = require("events").EventEmitter
 
+log = new Logger 'ddpFiles'
 class DdpFiles extends EventEmitter
   constructor: ->
-    Logger.listen @, 'ddpFiles'
     @filesById = {}
     @filesByPath = {}
     #null is ok key; refers to root dir
@@ -26,21 +26,21 @@ class DdpFiles extends EventEmitter
     parentPath ||= '.'
     @filePathsByParent[parentPath] ?= []
     @filePathsByParent[parentPath].push file.path
-    @emit "trace", "Added ddp file #{file.path}"
+    log.trace "Added ddp file #{file.path}"
     
   removeDdpFile: (fileId) ->
     file = @filesById[fileId]
     return unless file
     delete @filesById[fileId]
     delete @filesByPath[file.path]
-    @emit "trace", "Removed ddp file #{file.path}"
+    log.trace "Removed ddp file #{file.path}"
 
   changeDdpFile: (fileId, fields={}, cleared=[]) ->
     file = @filesById[fileId]
-    @emit "trace", "Updating fields for #{file.path}:", fields if fields
+    log.trace "Updating fields for #{file.path}:", fields if fields
     _.extend file, fields if fields
-    @emit "trace", "Clearing fields for #{file.path}:", cleared if cleared
+    log.trace "Clearing fields for #{file.path}:", cleared if cleared
     delete file[field] for field in cleared if cleared
-    @emit "debug", "Updated file", file.path
+    log.debug "Updated file", file.path
 
 module.exports = DdpFiles

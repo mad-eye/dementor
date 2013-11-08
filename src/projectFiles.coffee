@@ -32,9 +32,9 @@ Logger = require 'pince'
 ###
 
 MADEYE_PROJECTS_FILE = ".madeye_projects"
+log = new Logger 'projectFiles'
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory, ignorepath) ->
-    Logger.listen @, 'projectFiles'
     @fileWatcher = require 'chokidar'
     @loadIgnoreRules ignorepath
 
@@ -57,7 +57,7 @@ class ProjectFiles extends events.EventEmitter
       when 'EACCES'
         newError = errors.new 'PermissionDenied', path: path
       #Fill in other error cases here...
-    @emit 'trace', "Found error:", newError ? error
+    log.trace "Found error:", newError ? error
     return newError ? error
 
   loadIgnoreRules: (ignorepath) ->
@@ -132,36 +132,36 @@ class ProjectFiles extends events.EventEmitter
     @watcher = @fileWatcher.watch @directory, options
     @watcher.on "error", (error) =>
       @_handleScanError error, (err) =>
-        @emit 'error', err if err
+        log.error err if err
 
     @watcher.on "add", (path, stats) =>
       @makeFileData path, (err, file) =>
-        return @emit 'error', err if err
+        return log.error err if err
         return unless file
-        @emit 'debug', "Local file added:", file.path
+        log.debug "Local file added:", file.path
         @emit 'file added', file
 
     @watcher.on "change", (path, stats) =>
       @makeFileData path, (err, file) =>
-        return @emit 'error', err if err
+        return log.error err if err
         return unless file
-        @emit 'debug', "Local file modified:", file.path
+        log.debug "Local file modified:", file.path
         @emit 'file changed', file
 
     @watcher.on "unlink", (path) =>
       relativePath = @cleanPath path
       return unless @shouldInclude relativePath
-      @emit 'debug', "Local file removed:", relativePath
+      log.debug "Local file removed:", relativePath
       @emit 'file removed', relativePath
 
     #TODO: Moved
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
-      @emit 'debug', "Ignoring broken link", error
+      log.debug "Ignoring broken link", error
       callback null
     else if error.code == 'EACCES'
-      @emit 'debug', "Permission denied for", error #if process.env.MADEYE_DEBUG
+      log.debug "Permission denied for", error #if process.env.MADEYE_DEBUG
       callback null
     else
       callback @wrapError error
@@ -185,7 +185,7 @@ class ProjectFiles extends events.EventEmitter
   retrieveContents: (path, callback) ->
     @readFile path, (err, contents) =>
       if err
-        @emit 'warn', "Error retrieving contents for file #{path}:", err
+        log.warn "Error retrieving contents for file #{path}:", err
         return callback @wrapError err
       cleanContents = cleanupLineEndings contents
       checksum = crc32 cleanContents
@@ -200,13 +200,13 @@ class ProjectFiles extends events.EventEmitter
   #callback: (error, files) ->
   readdir: (relDir, callback) ->
     currentDir = _path.join(@directory, relDir)
-    @emit 'trace', "readdir", currentDir
+    log.trace "readdir", currentDir
     fs.readdir currentDir, (err, fileNames) =>
       return callback @wrapError err if err
       async.map fileNames, (fileName, cb) =>
         @makeFileData _path.join(@directory, relDir, fileName), cb
       , (error, results) =>
-        @emit 'trace', "Finished reading", relDir
+        log.trace "Finished reading", relDir
         #Filter out null results
         results = _.filter results, (result) -> result
         callback error, results
@@ -219,7 +219,7 @@ class ProjectFiles extends events.EventEmitter
     fs.readdir currentDir, (err, fileNames) =>
       if err
         if err.code == 'EACCES'
-          @emit 'debug', "Permission denied for #{relDir}"
+          log.debug "Permission denied for #{relDir}"
           callback null
         else
           callback @wrapError err

@@ -4,9 +4,9 @@ _path = require 'path'
 {standardizePath, localizePath, findParentPath} = require '../madeye-common/common'
 Logger = require 'pince'
 
+log = new Logger 'fileTree'
 class FileTree extends EventEmitter
   constructor: (@ddpClient, @projectFiles, @ddpFiles) ->
-    Logger.listen @, 'fileTree'
     @filesPending = []
     @activeDirs = {}
     @_listenToDdpClient()
@@ -26,7 +26,7 @@ class FileTree extends EventEmitter
     orphanedPaths = _.difference existingFilePaths, filePathsAdded
     @removeFsFile path for path in orphanedPaths
     @ddpClient.markDirectoryLoaded directory unless directory == '.' #don't mark root
-    @emit 'debug', "Loaded directory", directory
+    log.debug "Loaded directory", directory
     @emit 'added initial files' if directory == '.' #this is the first dir
 
   #we are assuming that the watcher does not notice dirs, so complete
@@ -46,7 +46,7 @@ class FileTree extends EventEmitter
     #XXX: Make sure we handle root dir correctly
     else if @isActiveDir grandparentPath
       @projectFiles.makeFileData parentPath, (err, data) =>
-        return @emit 'warn', @projectFiles.wrapError err if err
+        return log.warn @projectFiles.wrapError err if err
         @_addParentDir data
     else
       #We aren't watching this file, move along
@@ -63,7 +63,7 @@ class FileTree extends EventEmitter
 
   _updateFile: (existingFile, newFile) ->
     return unless newFile.mtime > existingFile.mtime
-    @emit 'trace', "Updating file #{newFile.path} [#{existingFile._id}]"
+    log.trace "Updating file #{newFile.path} [#{existingFile._id}]"
     fileId = existingFile._id
     unless existingFile.lastOpened
       @ddpClient.updateFile fileId, mtime: newFile.mtime
@@ -71,7 +71,7 @@ class FileTree extends EventEmitter
 
     @projectFiles.retrieveContents newFile.path, (err, {contents, checksum, warning}) =>
       if err
-        @emit 'error', "Error retrieving contents:", err
+        log.error "Error retrieving contents:", err
         return
       #TODO: Handle warning
       if existingFile.modified
@@ -93,22 +93,22 @@ class FileTree extends EventEmitter
     return if path == '.' or path == '/' or !path?
     return if path in @filesPending
     @filesPending.push path
-    @emit 'trace', "Adding #{path} to dirsPending."
+    log.trace "Adding #{path} to dirsPending."
     @_addFsFile dir
  
 
   removeFsFile: (path) ->
     file = @ddpFiles.findByPath path
     unless file
-      @emit 'debug', "Trying to remove file unknown to ddp:", path
+      log.debug "Trying to remove file unknown to ddp:", path
       return
     return if file.scratch #dementor doesn't control these
     unless file.modified
       @ddpClient.removeFile file._id
-      @emit 'trace', "Removed file #{file.path}"
+      log.trace "Removed file #{file.path}"
     else
       @ddpClient.updateFile file._id, {deletedInFs:true}
-      @emit 'trace', "Marked file #{file.path} as deleted in filesystem"
+      log.trace "Marked file #{file.path} as deleted in filesystem"
 
   _listenToDdpClient: ->
     return unless @ddpClient
@@ -116,7 +116,7 @@ class FileTree extends EventEmitter
     @ddpClient.on 'added', (file) =>
       @ddpFiles.addDdpFile file
       removed = removeItemFromArray file.path, @filesPending
-      @emit 'trace', "Removed #{file.path} from pending dirs." if removed
+      log.trace "Removed #{file.path} from pending dirs." if removed
 
     @ddpClient.on 'removed', (fileId) =>
       @ddpFiles.removeDdpFile fileId
@@ -137,7 +137,7 @@ class FileTree extends EventEmitter
             file = @ddpFiles.findByPath dir.path
             @ddpClient.removeFile file._id if file
           else
-            @emit 'error', "Error loading activeDir #{dir.path}:", err
+            log.error "Error loading activeDir #{dir.path}:", err
         else
           @loadDirectory dir.path, files
 

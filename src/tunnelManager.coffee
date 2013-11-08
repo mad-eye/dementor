@@ -4,13 +4,15 @@ net = require 'net'
 fs = require 'fs'
 util = require 'util'
 _path = require 'path'
+Logger = require 'pince'
 
 ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
 remoteAddr = '0.0.0.0' #FIXME: This accepts all IPV4 connections.  Generalize.
 
+log = new Logger 'tunnelManager'
 class TunnelManager extends events.EventEmitter
   constructor: (@shareHost) ->
-    @emit 'trace', 'Constructing TunnelManager'
+    log.trace 'Constructing TunnelManager'
     @shuttingDown = false
     @tunnels = {}
     @Connection = require 'ssh2'
@@ -29,7 +31,7 @@ class TunnelManager extends events.EventEmitter
 
   #callback: (err, tunnel) ->
   startTunnel: (options, callback)->
-    @emit 'debug', "Starting tunnel #{options.name} for local port #{options.localPort}"
+    log.debug "Starting tunnel #{options.name} for local port #{options.localPort}"
     options.remotePort ?= 0
     name = options.name
     @tunnels[name] = tunnel = name: name, localPort: options.localPort, remotePort: options.remotePort
@@ -43,39 +45,39 @@ class TunnelManager extends events.EventEmitter
     #Useful flag to disable known hosts checking: -oStrictHostKeyChecking=no
     @connections[tunnel.name] = connection = new @Connection
     connection.on 'connect', =>
-      @emit 'debug', "Connected to #{@connectionOptions.host}"
+      log.debug "Connected to #{@connectionOptions.host}"
     connection.on 'ready', =>
-      @emit 'trace', "Tunnel #{tunnel.name} ready"
+      log.trace "Tunnel #{tunnel.name} ready"
       clearInterval @reconnectIntervals[tunnel.name]
       delete @reconnectIntervals[tunnel.name]
-      @emit 'trace', "Requesting forwarding for remote port #{tunnel.remotePort}"
+      log.trace "Requesting forwarding for remote port #{tunnel.remotePort}"
       connection.forwardIn remoteAddr, tunnel.remotePort, (err, remotePort) =>
         if err
-          @emit 'warn', "Error opening tunnel #{tunnel.name}:", err
+          log.warn "Error opening tunnel #{tunnel.name}:", err
         else
           #remotePort isn't populated if we supplied it with a port.
           remotePort ?= tunnel.remotePort
-          @emit 'debug', "Remote forwarding port: #{remotePort}"
+          log.debug "Remote forwarding port: #{remotePort}"
         callback? err, remotePort
     connection.on 'error', (err) =>
-      @emit 'warn', "Tunnel #{tunnel.name} had error:", err
+      log.warn "Tunnel #{tunnel.name} had error:", err
     connection.on 'end', =>
-      @emit 'debug', "Tunnel #{tunnel.name} ending"
+      log.debug "Tunnel #{tunnel.name} ending"
     connection.on 'close', (hadError) =>
-      @emit 'debug', "Tunnel #{tunnel.name} closing"
+      log.debug "Tunnel #{tunnel.name} closing"
       if hadError
-        @emit 'warn', "Closing had error:", hadError
+        log.warn "Closing had error:", hadError
       unless @shuttingDown
-        @emit 'trace', "Setting up reconnection interval for #{tunnel.name}"
+        log.trace "Setting up reconnection interval for #{tunnel.name}"
         @reconnectIntervals[tunnel.name] = setInterval =>
-          @emit 'trace', "Trying to reopen tunnel #{tunnel.name}"
+          log.trace "Trying to reopen tunnel #{tunnel.name}"
           @_openConnection tunnel, (err) =>
             #Need to conncetion.close() here?
-            @emit 'debug', "Tunnel #{tunnel.name} reconnected"
+            log.debug "Tunnel #{tunnel.name} reconnected"
         , 10*1000
 
     connection.on 'tcp connection', (info, accept, reject) =>
-      @emit 'trace', "tcp incoming connection:", util.inspect info
+      log.trace "tcp incoming connection:", util.inspect info
       stream = accept()
       @_handleIncomingStream stream, tunnel.name
 
@@ -83,28 +85,28 @@ class TunnelManager extends events.EventEmitter
 
   _handleIncomingStream: (stream, name) ->
     stream.on 'data', (data) =>
-      @emit 'trace', "[#{name}] Data received"
+      log.trace "[#{name}] Data received"
     stream.on 'end', =>
-      @emit 'trace', "[#{name}] EOF"
+      log.trace "[#{name}] EOF"
     stream.on 'error', (err) =>
-      @emit 'warn', "[#{name}] error:", err
+      log.warn "[#{name}] error:", err
     stream.on 'close', (hadErr) =>
-      @emit 'trace', "[#{name}] closed", (if hadErr then "with error")
+      log.trace "[#{name}] closed", (if hadErr then "with error")
 
-    @emit 'trace', "Pausing stream"
+    log.trace "Pausing stream"
     stream.pause()
-    @emit 'trace', "Forwarding to localhost:9798}"
+    log.trace "Forwarding to localhost:9798}"
     socket = net.connect 9798, 'localhost', =>
       stream.pipe socket
       socket.pipe stream
       stream.resume()
-      @emit 'trace', "Resuming stream"
+      log.trace "Resuming stream"
 
   shutdown: (callback) ->
-    @emit 'trace', 'Shutting down TunnelManager'
+    log.trace 'Shutting down TunnelManager'
     @shuttingDown = true
     for name, connection in @connections
-      @emit 'trace', "Killing tunnel #{name}"
+      log.trace "Killing tunnel #{name}"
       connection.end()
     process.nextTick (callback ? ->)
 
