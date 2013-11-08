@@ -64,7 +64,10 @@ run = ->
 # clean: bool
 # ignorefile: path
 # tunnel: integer
-# shareOutput: bool
+# debug: bool
+# trace: bool
+# term: bool
+# madeyeUrl: string
 ###
 execute = (options) ->
   logLevel = switch
@@ -110,7 +113,7 @@ execute = (options) ->
     ddpPort = Settings.ddpPort
 
   #FIXME: Need to handle custom case differently?
-  shareHost = Settings.shareHost
+  tunnelHost = Settings.tunnelHost
 
   if options.term
     ttyServer = new tty.Server
@@ -124,7 +127,7 @@ execute = (options) ->
     console.warn clc.bold('Warning:'), msg
 
 
-  tunnelManager = new TunnelManager shareHost
+  tunnelManager = new TunnelManager tunnelHost
   Logger.listen tunnelManager, 'tunnelManager'
 
 
