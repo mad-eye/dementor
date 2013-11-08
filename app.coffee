@@ -43,8 +43,9 @@ run = ->
       console.log "  Give the returned url to your friends, and you can edit the project"
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
-  # if tty
-  #   program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
+  #For now, hide this option unless there is MADEYE_TERM
+  if tty and process.env.MADEYE_TERM
+    program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
 
   program.parse(process.argv)
   execute
@@ -54,8 +55,7 @@ run = ->
     tunnel: program.tunnel
     debug: program.debug
     trace: program.trace
-    term: process.env.MADEYE_TERM
-    # term: program.term
+    term: program.term
     madeyeUrl: program.madeyeUrl
 
 ###
