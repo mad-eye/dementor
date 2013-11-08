@@ -26,7 +26,7 @@ class TunnelManager extends events.EventEmitter
       privateKey: require('fs').readFileSync(ID_FILE_PATH)
 
     #npm installs this with the wrong permissions.
-    fs.chmodSync ID_FILE_PATH, "400"
+    # fs.chmodSync ID_FILE_PATH, "400"
 
 
   #callback: (err, tunnel) ->

@@ -1,7 +1,7 @@
 {
   "name": "madeye",
   "bin": "bin/madeye",
-  "version": "0.2.2",
+  "version": "0.2.2.1",
   "private": false,
   "engines": {
     "node": ">=0.8.18"
