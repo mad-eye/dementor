@@ -22,7 +22,7 @@ class TunnelManager extends events.EventEmitter
     @connectionOptions =
       host: @tunnelHost
       port: 22
-      username: 'ubuntu'
+      username: 'prisoner'
       privateKey: require('fs').readFileSync(ID_FILE_PATH)
 
     #npm installs this with the wrong permissions.
