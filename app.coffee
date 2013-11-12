@@ -7,6 +7,7 @@ util = require 'util'
 clc = require 'cli-color'
 exec = require("child_process").exec
 _s = require 'underscore.string'
+Constants = require './constants'
 
 dementor = null
 debug = false
@@ -118,7 +119,7 @@ execute = (options) ->
   if options.term
     ttyServer = new tty.Server
       cwd: process.cwd()
-    ttyServer.listen 9798, "localhost"
+    ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
   ddpClient = new DdpClient
     host: ddpHost

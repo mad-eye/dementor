@@ -12,6 +12,7 @@ Logger = require 'pince'
 exec = require("child_process").exec
 #captureProcessOutput = require("./injector/inject").captureProcessOutput
 DdpFiles = require "./ddpFiles"
+Constants = require '../constants'
 
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
@@ -103,10 +104,10 @@ class Dementor extends events.EventEmitter
         #@tunnelManager.startTunnel tunnel, cb
     if @terminal
       tasks['terminal'] = (cb) =>
-        log.trace "Setting up tunnel on port 9798"
+        log.trace "Setting up tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
         tunnel =
           name: "terminal"
-          localPort: 9798
+          localPort: Constants.LOCAL_TUNNEL_PORT
         @tunnelManager.startTunnel tunnel, cb
 
     async.parallel tasks, (err, tunnels) =>
