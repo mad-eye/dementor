@@ -85,7 +85,8 @@ class TunnelManager extends events.EventEmitter
 
   _handleIncomingStream: (stream, name) ->
     stream.on 'data', (data) =>
-      log.trace "[#{name}] Data received"
+      #log.trace "[#{name}] Data received"
+      0
     stream.on 'end', =>
       log.trace "[#{name}] EOF"
     stream.on 'error', (err) =>
@@ -95,7 +96,7 @@ class TunnelManager extends events.EventEmitter
 
     log.trace "Pausing stream"
     stream.pause()
-    log.trace "Forwarding to localhost:9798}"
+    log.trace "Forwarding to localhost:9798"
     socket = net.connect 9798, 'localhost', =>
       stream.pipe socket
       socket.pipe stream
