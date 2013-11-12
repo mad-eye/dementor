@@ -30,6 +30,6 @@
     "hat": "0.0.3"
   },
   "optionalDependencies": {
-    "tty.js": "git://github.com/rissem/tty.js.git#embeddable"
+    "tty.js": "git://github.com/mad-eye/tty.js.git#embeddable"
   }
 }
