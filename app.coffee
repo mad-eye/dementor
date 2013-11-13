@@ -116,9 +116,13 @@ execute = (options) ->
   #FIXME: Need to handle custom case differently?
   tunnelHost = Settings.tunnelHost
 
+  #Show tty output on debug or trace loglevel.
+  ttyLog = options.debug || options.trace || false
   if options.term
     ttyServer = new tty.Server
       cwd: process.cwd()
+      log: ttyLog
+
     ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
   ddpClient = new DdpClient
