@@ -21,6 +21,7 @@ SCCS
 _MTN
 _darcs
 .meteor
+.build
 node_modules
 .DS_Store
 .DS_Store?

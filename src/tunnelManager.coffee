@@ -79,13 +79,14 @@ class TunnelManager extends events.EventEmitter
     connection.on 'tcp connection', (info, accept, reject) =>
       log.trace "tcp incoming connection:", util.inspect info
       stream = accept()
-      @_handleIncomingStream stream, tunnel.name
+      @_handleIncomingStream stream, tunnel
 
     connection.connect @connectionOptions
 
-  _handleIncomingStream: (stream, name) ->
+  _handleIncomingStream: (stream, {name, localPort}) ->
     stream.on 'data', (data) =>
-      log.trace "[#{name}] Data received"
+      #log.trace "[#{name}] Data received"
+      0
     stream.on 'end', =>
       log.trace "[#{name}] EOF"
     stream.on 'error', (err) =>
@@ -95,8 +96,8 @@ class TunnelManager extends events.EventEmitter
 
     log.trace "Pausing stream"
     stream.pause()
-    log.trace "Forwarding to localhost:9798}"
-    socket = net.connect 9798, 'localhost', =>
+    log.trace "Forwarding to localhost:#{localPort}"
+    socket = net.connect localPort, 'localhost', =>
       stream.pipe socket
       socket.pipe stream
       stream.resume()

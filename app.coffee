@@ -7,6 +7,7 @@ util = require 'util'
 clc = require 'cli-color'
 exec = require("child_process").exec
 _s = require 'underscore.string'
+Constants = require './constants'
 
 dementor = null
 debug = false
@@ -117,12 +118,16 @@ execute = (options) ->
   #FIXME: Need to handle custom case differently?
   tunnelHost = Settings.tunnelHost
 
+  #Show tty output on debug or trace loglevel.
+  ttyLog = options.debug || options.trace || false
   if options.term or options.readonlyTerm
     readonly = if options.readonlyTerm then true else false 
     ttyServer = new tty.Server
       readonly: readonly
       cwd: process.cwd()
-    ttyServer.listen 9798, "localhost"
+      log: ttyLog
+
+    ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
   ddpClient = new DdpClient
     host: ddpHost
