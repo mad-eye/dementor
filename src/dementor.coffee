@@ -92,37 +92,36 @@ class Dementor extends events.EventEmitter
       callback?()
 
   setupTunnels: ->
-    log.trace "Setting up terminal tunnel: #{@terminal}"
-    tasks = {}
-    #TODO: enable web tunneling.
-    #if @tunnel
-      #tasks['app'] = (cb) =>
-        #log.trace "Setting up tunnel on port #{@tunnel}"
-        #tunnel =
-          #name: "app"
-          #localPort: @tunnel
-        #@tunnelManager.startTunnel tunnel, cb
     if @terminal
-      tasks['terminal'] = (cb) =>
-        log.trace "Setting up tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
-        tunnel =
-          name: "terminal"
-          localPort: Constants.LOCAL_TUNNEL_PORT
-        @tunnelManager.startTunnel tunnel, cb
-
-    async.parallel tasks, (err, tunnels) =>
-      if err
-        log.debug "Error setting up tunnels:", tunnels, err
-        @handleWarning "We could not set up the tunnels; continuing without tunnels."
-        return
-      log.debug 'Tunnels connected', tunnels
-      @ddpClient.addTunnels tunnels, (err) =>
-        if err
-          log.debug "Error setting up tunnels:", err
-          @handleWarning "We could not set up the tunnels; continuing without tunnels."
-        else
-          log.debug 'Tunnels established successfully.'
-        
+      log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
+      terminalTunnel =
+        name: "terminal"
+        localPort: Constants.LOCAL_TUNNEL_PORT
+      @tunnelManager.startTunnel terminalTunnel,
+        end: =>
+          terminalTunnel.unavailable = true
+          @ddpClient.updateTunnel terminalTunnel, (err) =>
+            if err
+              log.debug "Error disabling tunnel:", err
+            else
+              log.debug 'Tunnels established successfully.'
+        close: =>
+          terminalTunnel.unavailable = true
+          @ddpClient.updateTunnel terminalTunnel, (err) =>
+            if err
+              log.debug "Error disabling tunnel:", err
+            else
+              log.debug 'Tunnels established successfully.'
+        setup: (remotePort) =>
+          log.debug "Terminal tunnel set up with remotePort #{remotePort}"
+          terminalTunnel.remotePort = remotePort
+          terminalTunnel.unavailable = false
+          @ddpClient.updateTunnel terminalTunnel, (err) =>
+            if err
+              log.debug "Error setting up tunnel:", err
+              @handleWarning "We could not set up the tunnels; continuing without tunnels."
+            else
+              log.debug 'Tunnels established successfully.'
 
 
   #####
