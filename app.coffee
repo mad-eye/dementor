@@ -201,15 +201,6 @@ execute = (options) ->
       log.debug "Received kill signal (SIGTERM)"
       shutdown()
 
-  # #hack for dealing with exceptions caused by broken links
-  # process.on 'uncaughtException', (err)->
-  #   if err.code == "ENOENT"
-  #     #Silence the error for now
-  #     log.debug "File does not exist #{err.path}"
-  #     0
-  #   else
-  #     throw err
-
 SHUTTING_DOWN = false
 
 shutdown = (returnVal=0) ->
