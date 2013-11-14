@@ -173,6 +173,7 @@ execute = (options) ->
         readonly: true
         cwd: process.cwd()
         log: ttyLog
+        prompt: "$PS1(madeye) "
 
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
