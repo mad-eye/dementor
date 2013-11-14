@@ -46,6 +46,7 @@ run = ->
   #For now, hide this option unless there is MADEYE_TERM
   if tty and process.env.MADEYE_TERM
     program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
+    program.option('-r --readonlyTerm', 'Share your terminal output with MadEye (read-only)')
 
   program.parse(process.argv)
   execute
@@ -56,6 +57,7 @@ run = ->
     debug: program.debug
     trace: program.trace
     term: program.term
+    readonlyTerm: program.readonlyTerm
     madeyeUrl: program.madeyeUrl
 
 ###
@@ -115,8 +117,10 @@ execute = (options) ->
   #FIXME: Need to handle custom case differently?
   tunnelHost = Settings.tunnelHost
 
-  if options.term
+  if options.term or options.readonlyTerm
+    readonly = if options.readonlyTerm then true else false 
     ttyServer = new tty.Server
+      readonly: readonly
       cwd: process.cwd()
     ttyServer.listen 9798, "localhost"
 
@@ -140,7 +144,7 @@ execute = (options) ->
     tunnel: options.tunnel
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
-    term: options.term
+    term: options.term or options.readonlyTerm
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
