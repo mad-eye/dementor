@@ -120,10 +120,10 @@ execute = (options) ->
 
   #Show tty output on debug or trace loglevel.
   ttyLog = options.debug || options.trace || false
-  if options.term or options.readonlyTerm
+  if options.term
     readonly = if options.readonlyTerm then true else false 
     ttyServer = new tty.Server
-      readonly: readonly
+      readonly: false
       cwd: process.cwd()
       log: ttyLog
 
@@ -158,6 +158,24 @@ execute = (options) ->
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
+    #read only terminal has to wait until madeye/hangout links have been displayed
+    if options.readonlyTerm
+      util.puts ""
+      util.puts "################################################################################"
+      util.puts "## MadEye Terminal    ##########################################################"
+      util.puts "################################################################################"
+      util.puts ""
+      util.puts "Anything output from this terminal will be shared within in your MadEye session."
+      util.puts "The shaared terminal is read-only. Only you can type commands at this shell"
+      util.puts ""
+
+      ttyServer = new tty.Server
+        readonly: true
+        cwd: process.cwd()
+        log: ttyLog
+
+      ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
+
   dementor.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
   dementor.on 'message-info', (msg) ->
@@ -182,14 +200,14 @@ execute = (options) ->
       log.debug "Received kill signal (SIGTERM)"
       shutdown()
 
-  #hack for dealing with exceptions caused by broken links
-  process.on 'uncaughtException', (err)->
-    if err.code == "ENOENT"
-      #Silence the error for now
-      log.debug "File does not exist #{err.path}"
-      0
-    else
-      throw err
+  # #hack for dealing with exceptions caused by broken links
+  # process.on 'uncaughtException', (err)->
+  #   if err.code == "ENOENT"
+  #     #Silence the error for now
+  #     log.debug "File does not exist #{err.path}"
+  #     0
+  #   else
+  #     throw err
 
 SHUTTING_DOWN = false
 
