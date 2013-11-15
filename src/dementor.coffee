@@ -118,7 +118,6 @@ class Dementor extends events.EventEmitter
         return
       log.debug 'Tunnels connected', tunnels
       @ddpClient.addTunnels tunnels, (err) =>
-        console.log "TUNNELS", tunnels
         if err
           log.debug "Error setting up tunnels:", err
           @handleWarning "We could not set up the tunnels; continuing without tunnels."
