@@ -46,8 +46,8 @@ run = ->
     )
   #For now, hide this option unless there is MADEYE_TERM
   if tty and process.env.MADEYE_TERM
-    program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
-    program.option('-r --readonlyTerm', 'Share your terminal output with MadEye (read-only)')
+    program.option('-t --term', 'Share your terminal output with MadEye (read-only)')
+    program.option('-r --readWriteTerm', 'Share a fully powered terminal within MadEye (premium feature)')
 
   program.parse(process.argv)
   execute
@@ -58,7 +58,7 @@ run = ->
     debug: program.debug
     trace: program.trace
     term: program.term
-    readonlyTerm: program.readonlyTerm
+    readWriteTerm: program.readWriteTerm
     madeyeUrl: program.madeyeUrl
 
 ###
@@ -76,7 +76,7 @@ execute = (options) ->
   logLevel = switch
     when options.trace then 'trace'
     when options.debug then 'debug'
-    when options.readonlyTerm then 'warn'
+    when options.term then 'warn'
     else 'info'
 
   Logger.setLevel logLevel
@@ -122,7 +122,7 @@ execute = (options) ->
 
   #Show tty output on debug or trace loglevel.
   ttyLog = options.debug || options.trace || false
-  if options.term
+  if options.readWriteTerm
     ttyServer = new tty.Server
       readonly: false
       cwd: process.cwd()
@@ -141,9 +141,9 @@ execute = (options) ->
   Logger.listen tunnelManager, 'tunnelManager'
 
 
-  if options.term
+  if options.readWriteTerm
     term = "readWrite"
-  else if options.readonlyTerm
+  else if options.term
     term = "readOnly"
   else
     term = null
@@ -167,7 +167,7 @@ execute = (options) ->
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
     #read only terminal has to wait until madeye/hangout links have been displayed
-    if options.readonlyTerm
+    if options.term
       util.puts ""
       util.puts "################################################################################"
       util.puts "## MadEye Terminal    ##########################################################"
