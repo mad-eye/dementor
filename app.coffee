@@ -168,8 +168,10 @@ execute = (options) ->
       util.puts "################################################################################"
       util.puts ""
       util.puts "Anything output from this terminal will be shared within in your MadEye session."
-      util.puts "The shaared terminal is read-only. Only you can type commands at this shell"
+      util.puts "The shared terminal is read-only. Only you can type commands at this shell"
+      util.puts "To exit this shell and end your MadEye session type exit"
       util.puts ""
+      util.puts "Setting prompt to reflect that you are in a MadEye session"
 
       ttyServer = new tty.Server
         readonly: true
