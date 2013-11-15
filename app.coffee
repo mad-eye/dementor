@@ -76,7 +76,9 @@ execute = (options) ->
   logLevel = switch
     when options.trace then 'trace'
     when options.debug then 'debug'
+    when options.readonlyTerm then 'warn'
     else 'info'
+
   Logger.setLevel logLevel
   Logger.onError (msgs...) ->
     msgs.unshift clc.red('ERROR:')
@@ -178,8 +180,12 @@ execute = (options) ->
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
   dementor.on 'message-warning', (msg) ->
+    #TODO: Clean up this hackery
+    return if logLevel == 'error'
     console.warn clc.bold('Warning:'), msg
   dementor.on 'message-info', (msg) ->
+    #TODO: Clean up this hackery
+    return if logLevel == 'error' or logLevel == 'warn'
     console.log msg
 
   dementor.enable()
