@@ -123,7 +123,6 @@ execute = (options) ->
   #Show tty output on debug or trace loglevel.
   ttyLog = options.debug || options.trace || false
   if options.term
-    readonly = if options.readonlyTerm then true else false 
     ttyServer = new tty.Server
       readonly: false
       cwd: process.cwd()
