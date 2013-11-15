@@ -123,7 +123,6 @@ class Dementor extends events.EventEmitter
             else
               log.debug 'Tunnels established successfully.'
 
-
   #####
   # Events from ProjectFiles
 

@@ -46,7 +46,8 @@ run = ->
     )
   #For now, hide this option unless there is MADEYE_TERM
   if tty and process.env.MADEYE_TERM
-    program.option('-t --term', 'Share terminal in MadEye session (premium feature)')
+    program.option('-t --term', 'Share your terminal output with MadEye (read-only)')
+    program.option('-r --readWriteTerm', 'Share a fully powered terminal within MadEye (premium feature)')
 
   program.parse(process.argv)
   execute
@@ -57,6 +58,7 @@ run = ->
     debug: program.debug
     trace: program.trace
     term: program.term
+    readWriteTerm: program.readWriteTerm
     madeyeUrl: program.madeyeUrl
 
 ###
@@ -74,7 +76,9 @@ execute = (options) ->
   logLevel = switch
     when options.trace then 'trace'
     when options.debug then 'debug'
+    when options.term then 'warn'
     else 'info'
+
   Logger.setLevel logLevel
   Logger.onError (msgs...) ->
     msgs.unshift clc.red('ERROR:')
@@ -118,8 +122,9 @@ execute = (options) ->
 
   #Show tty output on debug or trace loglevel.
   ttyLog = options.debug || options.trace || false
-  if options.term
+  if options.readWriteTerm
     ttyServer = new tty.Server
+      readonly: false
       cwd: process.cwd()
       log: ttyLog
 
@@ -136,6 +141,12 @@ execute = (options) ->
   Logger.listen tunnelManager, 'tunnelManager'
 
 
+  if options.readWriteTerm
+    term = "readWrite"
+  else if options.term
+    term = "readOnly"
+  else
+    term = null
   dementor = new Dementor
     directory: options.directory
     ddpClient: ddpClient
@@ -145,7 +156,8 @@ execute = (options) ->
     tunnel: options.tunnel
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
-    term: options.term
+    term: term
+
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
@@ -154,9 +166,38 @@ execute = (options) ->
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
+    #read only terminal has to wait until madeye/hangout links have been displayed
+    if options.term
+      util.puts ""
+      util.puts "################################################################################"
+      util.puts "## MadEye Terminal    ##########################################################"
+      util.puts "################################################################################"
+      util.puts ""
+      util.puts "Anything output from this terminal will be shared within in your MadEye session."
+      util.puts "The shared terminal is read-only. Only you can type commands at this shell"
+      util.puts "To exit this shell and end your MadEye session type exit"
+      util.puts ""
+      util.puts "Setting prompt to reflect that you are in a MadEye session"
+
+      ttyServer = new tty.Server
+        readonly: true
+        cwd: process.cwd()
+        log: ttyLog
+        prompt: "$PS1(madeye) "
+
+      ttyServer.on 'exit', ->
+        console.log "the tty server has exited"
+        shutdown()
+
+      ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
+
   dementor.on 'message-warning', (msg) ->
+    #TODO: Clean up this hackery
+    return if logLevel == 'error'
     console.warn clc.bold('Warning:'), msg
   dementor.on 'message-info', (msg) ->
+    #TODO: Clean up this hackery
+    return if logLevel == 'error' or logLevel == 'warn'
     console.log msg
 
   dementor.enable()
@@ -177,15 +218,6 @@ execute = (options) ->
     unless options.linkToMeteorProcess
       log.debug "Received kill signal (SIGTERM)"
       shutdown()
-
-  #hack for dealing with exceptions caused by broken links
-  process.on 'uncaughtException', (err)->
-    if err.code == "ENOENT"
-      #Silence the error for now
-      log.debug "File does not exist #{err.path}"
-      0
-    else
-      throw err
 
 SHUTTING_DOWN = false
 
