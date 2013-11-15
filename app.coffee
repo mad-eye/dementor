@@ -185,6 +185,10 @@ execute = (options) ->
         log: ttyLog
         prompt: "$PS1(madeye) "
 
+      ttyServer.on 'exit', ->
+        console.log "the tty server has exited"
+        shutdown()
+
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
   dementor.on 'message-warning', (msg) ->
