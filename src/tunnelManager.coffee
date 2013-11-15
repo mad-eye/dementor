@@ -29,20 +29,16 @@ class TunnelManager extends events.EventEmitter
     # fs.chmodSync ID_FILE_PATH, "400"
 
 
-  #callback: (err, tunnel) ->
-  startTunnel: (options, callback)->
-    log.debug "Starting tunnel #{options.name} for local port #{options.localPort}"
-    options.remotePort ?= 0
-    name = options.name
-    type = options.type
-    @tunnels[name] = tunnel = name: name, type: type, localPort: options.localPort, remotePort: options.remotePort
-    @_openConnection tunnel, (err, remotePort) =>
-      return callback err if err
-      tunnel.remotePort = remotePort if remotePort?
-      callback null, tunnel
+  #@param tunnel: {name, localPort, remotePort}
+  #@param hooks: map of event names to callbacks for that event
+  startTunnel: (tunnel, hooks) ->
+    log.debug "Starting tunnel #{tunnel.name} for local port #{tunnel.localPort}"
+    tunnel.remotePort ?= 0
+    @tunnels[tunnel.name] = tunnel
+    @_openConnection tunnel, hooks
 
-  #callback: (err, remotePort) ->
-  _openConnection: (tunnel, callback) ->
+  #hooks: {close:->, end:->}
+  _openConnection: (tunnel, hooks) ->
     #Useful flag to disable known hosts checking: -oStrictHostKeyChecking=no
     @connections[tunnel.name] = connection = new @Connection
     connection.on 'connect', =>
@@ -55,26 +51,31 @@ class TunnelManager extends events.EventEmitter
       connection.forwardIn remoteAddr, tunnel.remotePort, (err, remotePort) =>
         if err
           log.warn "Error opening tunnel #{tunnel.name}:", err
+          #XXX: This will currently kill things
+          connection.emit 'error', err
         else
+          if remotePort
+            tunnel.remotePort = remotePort
           #remotePort isn't populated if we supplied it with a port.
-          remotePort ?= tunnel.remotePort
+          else
+            remotePort = tunnel.remotePort
           log.debug "Remote forwarding port: #{remotePort}"
-        callback? err, remotePort
+          hooks.setup remotePort
     connection.on 'error', (err) =>
       log.warn "Tunnel #{tunnel.name} had error:", err
     connection.on 'end', =>
       log.debug "Tunnel #{tunnel.name} ending"
+      hooks.end?()
     connection.on 'close', (hadError) =>
       log.debug "Tunnel #{tunnel.name} closing"
+      hooks.close?()
       if hadError
         log.warn "Closing had error:", hadError
       unless @shuttingDown
         log.trace "Setting up reconnection interval for #{tunnel.name}"
         @reconnectIntervals[tunnel.name] = setInterval =>
           log.trace "Trying to reopen tunnel #{tunnel.name}"
-          @_openConnection tunnel, (err) =>
-            #Need to conncetion.close() here?
-            log.debug "Tunnel #{tunnel.name} reconnected"
+          @_openConnection tunnel, hooks
         , 10*1000
 
     connection.on 'tcp connection', (info, accept, reject) =>
