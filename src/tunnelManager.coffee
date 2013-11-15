@@ -34,7 +34,8 @@ class TunnelManager extends events.EventEmitter
     log.debug "Starting tunnel #{options.name} for local port #{options.localPort}"
     options.remotePort ?= 0
     name = options.name
-    @tunnels[name] = tunnel = name: name, localPort: options.localPort, remotePort: options.remotePort
+    type = options.type
+    @tunnels[name] = tunnel = name: name, type: type, localPort: options.localPort, remotePort: options.remotePort
     @_openConnection tunnel, (err, remotePort) =>
       return callback err if err
       tunnel.remotePort = remotePort if remotePort?

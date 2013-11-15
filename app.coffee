@@ -142,6 +142,12 @@ execute = (options) ->
   Logger.listen tunnelManager, 'tunnelManager'
 
 
+  if options.term
+    term = "readWrite"
+  else if options.readonlyTerm
+    term = "readOnly"
+  else
+    term = null
   dementor = new Dementor
     directory: options.directory
     ddpClient: ddpClient
@@ -151,7 +157,8 @@ execute = (options) ->
     tunnel: options.tunnel
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
-    term: options.term or options.readonlyTerm
+    term: term
+
 
   dementor.once 'enabled', ->
     apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"

@@ -106,6 +106,7 @@ class Dementor extends events.EventEmitter
       tasks['terminal'] = (cb) =>
         log.trace "Setting up tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
         tunnel =
+          type: @terminal #readonly or readwrite
           name: "terminal"
           localPort: Constants.LOCAL_TUNNEL_PORT
         @tunnelManager.startTunnel tunnel, cb
@@ -117,6 +118,7 @@ class Dementor extends events.EventEmitter
         return
       log.debug 'Tunnels connected', tunnels
       @ddpClient.addTunnels tunnels, (err) =>
+        console.log "TUNNELS", tunnels
         if err
           log.debug "Error setting up tunnels:", err
           @handleWarning "We could not set up the tunnels; continuing without tunnels."
