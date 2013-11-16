@@ -47,7 +47,7 @@ run = ->
   #For now, hide this option unless there is MADEYE_TERM
   if tty and process.env.MADEYE_TERM
     program.option('-t --terminal', 'Share your terminal output with MadEye (read-only)')
-    program.option('-r --fullTerm', 'Share a read/write terminal within MadEye (premium feature)')
+    program.option('-f --fullTerminal', 'Share a read/write terminal within MadEye (premium feature)')
 
   program.parse(process.argv)
   execute
@@ -57,8 +57,8 @@ run = ->
     tunnel: program.tunnel
     debug: program.debug
     trace: program.trace
-    term: program.term
-    readWriteTerm: program.readWriteTerm
+    terminal: program.terminal
+    fullTerminal: program.fullTerminal
     madeyeUrl: program.madeyeUrl
 
 ###
@@ -122,7 +122,7 @@ execute = (options) ->
 
   #Show tty output on debug or trace loglevel.
   ttyLog = options.debug || options.trace || false
-  if options.readWriteTerm
+  if options.fullTerminal
     ttyServer = new tty.Server
       readonly: false
       cwd: process.cwd()
@@ -141,9 +141,9 @@ execute = (options) ->
   Logger.listen tunnelManager, 'tunnelManager'
 
 
-  if options.readWriteTerm
+  if options.fullTerminal
     term = "readWrite"
-  else if options.term
+  else if options.terminal
     term = "readOnly"
   else
     term = null
@@ -167,7 +167,7 @@ execute = (options) ->
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
     #read only terminal has to wait until madeye/hangout links have been displayed
-    if options.term
+    if options.terminal
       util.puts ""
       util.puts "################################################################################"
       util.puts "## MadEye Terminal    ##########################################################"
