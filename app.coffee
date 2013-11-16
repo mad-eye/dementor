@@ -46,8 +46,8 @@ run = ->
     )
   #For now, hide this option unless there is MADEYE_TERM
   if tty and process.env.MADEYE_TERM
-    program.option('-t --term', 'Share your terminal output with MadEye (read-only)')
-    program.option('-r --readWriteTerm', 'Share a fully powered terminal within MadEye (premium feature)')
+    program.option('-t --terminal', 'Share your terminal output with MadEye (read-only)')
+    program.option('-r --fullTerm', 'Share a read/write terminal within MadEye (premium feature)')
 
   program.parse(process.argv)
   execute
