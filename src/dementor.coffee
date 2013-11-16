@@ -14,11 +14,11 @@ exec = require("child_process").exec
 DdpFiles = require "./ddpFiles"
 Constants = require '../constants'
 Home = require './home'
+request = require 'request'
 
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
   constructor: (options) ->
-    Logger.listen @, 'dementor'
     log.trace "Constructing with directory #{options.directory}"
     @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
@@ -96,35 +96,60 @@ class Dementor extends events.EventEmitter
 
   setupTunnels: ->
     if @terminal
-      log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
-      terminalTunnel =
-        name: "terminal"
-        localPort: Constants.LOCAL_TUNNEL_PORT
-      @tunnelManager.startTunnel terminalTunnel,
-        end: =>
-          terminalTunnel.unavailable = true
-          @ddpClient.updateTunnel terminalTunnel, (err) =>
-            if err
-              log.debug "Error disabling tunnel:", err
-            else
-              log.debug 'Tunnels established successfully.'
-        close: =>
-          terminalTunnel.unavailable = true
-          @ddpClient.updateTunnel terminalTunnel, (err) =>
-            if err
-              log.debug "Error disabling tunnel:", err
-            else
-              log.debug 'Tunnels established successfully.'
-        setup: (remotePort) =>
-          log.debug "Terminal tunnel set up with remotePort #{remotePort}"
-          terminalTunnel.remotePort = remotePort
-          terminalTunnel.unavailable = false
-          @ddpClient.updateTunnel terminalTunnel, (err) =>
-            if err
-              log.debug "Error setting up tunnel:", err
-              @handleWarning "We could not set up the tunnels; continuing without tunnels."
-            else
-              log.debug 'Tunnels established successfully.'
+      @initializeKeys (err, privateKey) ->
+        if err
+          log.error "Error initializing keys; giving up on terminal."
+          return
+
+        log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
+        terminalTunnel =
+          name: "terminal"
+          localPort: Constants.LOCAL_TUNNEL_PORT
+        @tunnelManager.startTunnel terminalTunnel,
+          end: =>
+            terminalTunnel.unavailable = true
+            @ddpClient.updateTunnel terminalTunnel, (err) =>
+              if err
+                log.debug "Error disabling tunnel:", err
+              else
+                log.debug 'Tunnels established successfully.'
+          close: =>
+            terminalTunnel.unavailable = true
+            @ddpClient.updateTunnel terminalTunnel, (err) =>
+              if err
+                log.debug "Error disabling tunnel:", err
+              else
+                log.debug 'Tunnels established successfully.'
+          setup: (remotePort) =>
+            log.debug "Terminal tunnel set up with remotePort #{remotePort}"
+            terminalTunnel.remotePort = remotePort
+            terminalTunnel.unavailable = false
+            @ddpClient.updateTunnel terminalTunnel, (err) =>
+              if err
+                log.debug "Error setting up tunnel:", err
+                @handleWarning "We could not set up the tunnels; continuing without tunnels."
+              else
+                log.debug 'Tunnels established successfully.'
+
+  initializeKeys: (callback) ->
+    @home.getKeys (err, keys) ->
+      return callback err if err
+      if @home.hasAlreadyRegisteredPublicKey()
+        callback null, keys.private
+      else @submitPublicKey keys.public, (err) ->
+        return callback err if err
+        @home.markPublicKeyRegistered()
+        callback null, keys.private
+
+
+  submitPublicKey: (publicKey, callback) ->
+    request
+      url: Settings.azkabanUrl + "/prisonKey"
+      method: 'POST'
+      form: {publicKey}
+    , (err, res, body) ->
+      callback err
+
 
   #####
   # Events from ProjectFiles

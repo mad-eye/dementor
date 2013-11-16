@@ -6,7 +6,10 @@ rimraf = require 'rimraf'
 mkdirp = require 'mkdirp'
 {fileUtils} = require '../util/fileUtils'
 Home = require '../../src/home'
+Logger = require 'pince'
+createKeys = require 'rsa-json'
 
+log = new Logger 'homeTest'
 randomString = -> hat 32, 16
 
 homeDir = fileUtils.homeDir
@@ -44,6 +47,8 @@ describe 'Home', ->
     it 'should not remove files from $MADEYE_HOME if it does exist', ->
       mkdirp homeDir
       filename = _path.join homeDir, randomString()
+      #Need to make sure home dir exists before writing.
+      home.init()
       fs.writeFileSync filename, 'adfsfd'
       home.init()
       assert.ok fs.existsSync filename
@@ -53,7 +58,7 @@ describe 'Home', ->
     heavenId = heavenPath = null
     beforeEach ->
       #Make homeDir
-      (new Home '').init()
+      (new Home 'adscxc').init()
       heavenId = randomString()
       heavenPath = "path/to/heaven/" + randomString()
       _saveProjectId heavenPath, heavenId
@@ -75,4 +80,27 @@ describe 'Home', ->
       home.init()
       home.saveProjectId projectId
       assert.equal home.getProjectId(), projectId
+
+  describe 'getKeys', ->
+    home = null
+    beforeEach ->
+      rimraf.sync homeDir
+      home = new Home randomString()
+      home.init()
+
+    it 'should retrieve existing keys', (done) ->
+      createKeys (err, generatedKeys) ->
+        assert.isNull err
+        home._writeKeys generatedKeys, (err) ->
+          home.getKeys (err, keys) ->
+            assert.ok !err
+            assert.deepEqual keys, generatedKeys
+            done()
+
+    it 'should make and save new keys if no existing keys fweep', (done) ->
+      home.getKeys (err, keys) ->
+        assert.ok !err
+        assert.ok keys.public
+        assert.ok keys.private
+        done()
 

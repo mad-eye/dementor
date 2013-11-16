@@ -23,12 +23,13 @@
     "ssh2": "0.2.12",
     "ddp": "0.3.4",
     "mkdirp": "0.3.5",
-    "pince": "0.0.2"
+    "pince": "0.0.2",
+    "rsa-json": "0.1.0"
   },
   "main": "lib.js",
   "devDependencies": {
     "sinon": "~1.6.0",
-    "mocha": "~1.12.0",
+    "mocha": "~1.14.0",
     "chai": "~1.6.0",
     "node-uuid": "~1.4.0",
     "hat": "0.0.3",

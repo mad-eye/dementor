@@ -33,7 +33,7 @@ describe "Dementor", ->
     #fileUtils.destroyTestArea()
 
   describe "constructor", ->
-    it "should find previously registered projectId fweep", ->
+    it "should find previously registered projectId", ->
       projectId = randomString()
       projectPath = fileUtils.createProject "polyjuice"
       _saveProjectId projectPath, projectId
