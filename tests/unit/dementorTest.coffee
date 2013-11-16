@@ -1,7 +1,6 @@
 _ = require 'underscore'
 {assert} = require 'chai'
 hat = require 'hat'
-wrench = require 'wrench'
 fs = require 'fs'
 _path = require 'path'
 sinon = require 'sinon'
@@ -13,12 +12,17 @@ MockDdpClient = require '../mock/mockDdpClient'
 {errors, errorType} = require '../../madeye-common/common'
 Logger = require 'pince'
 {crc32} = require '../../madeye-common/common'
+Home = require '../../src/home'
 
 randomString = -> hat 32, 16
 
 #TODO: Reduce redundancy with better before/etc hooks.
 
 homeDir = fileUtils.homeDir
+homeDirAbs = _path.resolve homeDir
+process.env.MADEYE_HOME_TEST = homeDirAbs
+_saveProjectId = (projectPath, projectId) ->
+  (new Home projectPath).saveProjectId projectId
 
 describe "Dementor", ->
   before ->
@@ -29,35 +33,27 @@ describe "Dementor", ->
     #fileUtils.destroyTestArea()
 
   describe "constructor", ->
-    registeredDir = fileUtils.testProjectDir 'alreadyRegistered'
-    projectFiles = null
-    before ->
-      fileUtils.mkDirClean registeredDir
-      projectFiles = new ProjectFiles "."
-
-    it "should find previously registered projectId", ->
+    it "should find previously registered projectId fweep", ->
       projectId = randomString()
       projectPath = fileUtils.createProject "polyjuice"
-      projects = {}
-      projects[projectPath] = projectId
-      projectFiles.saveProjectIds projects
+      _saveProjectId projectPath, projectId
 
       dementor = new Dementor
-        directory:projectPath
+        directory: projectPath
         ddpClient: new MockDdpClient
       assert.equal dementor.projectId, projectId
 
     it "should have null projectId if not previously registered", ->
       projectPath = fileUtils.createProject "nothinghere"
       dementor = new Dementor
-        directory:projectPath
+        directory: projectPath
         ddpClient: new MockDdpClient
       assert.equal dementor.projectId, null
 
     it "should set dementor.version", ->
       projectPath = fileUtils.createProject "version"
       dementor = new Dementor
-        directory:projectPath
+        directory: projectPath
         ddpClient: new MockDdpClient
       assert.equal dementor.version, (require '../../package.json').version
 
@@ -91,7 +87,6 @@ describe "Dementor", ->
           directory: projectPath
           ddpClient: ddpClient
         dementor.fileTree.on 'added initial files', ->
-          debugger
           done()
         dementor.enable()
 
@@ -103,7 +98,7 @@ describe "Dementor", ->
         assert.equal dementor.projectId, newProjectId
 
       it 'should save new projectId', ->
-        assert.equal dementor.projectFiles.projectIds()[projectPath], newProjectId
+        assert.equal dementor.home.getProjectId(), newProjectId
 
       it "should populate file tree with files (and ids)", (done) ->
         #Give the async bits time to process.
@@ -168,7 +163,7 @@ describe "Dementor", ->
         dementor = new Dementor
           directory: projectPath
           ddpClient: ddpClient
-        dementor.projectFiles.saveProjectId projectId
+        dementor.home.saveProjectId projectId
 
         dementor = new Dementor
           directory: projectPath
@@ -183,7 +178,7 @@ describe "Dementor", ->
 
       it "should update project files if already registered", ->
         assert.ok dementor.projectId
-        assert.equal dementor.projectFiles.projectIds()[projectPath], dementor.projectId, "Stored projectId differs from dementor's"
+        assert.equal dementor.home.getProjectId(), dementor.projectId, "Stored projectId differs from dementor's"
         assert.equal dementor.projectId, projectId, "Dementor's projectId differs from original."
 
       it "should populate file tree with files (and ids)", (done) ->

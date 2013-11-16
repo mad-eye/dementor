@@ -13,6 +13,7 @@ exec = require("child_process").exec
 #captureProcessOutput = require("./injector/inject").captureProcessOutput
 DdpFiles = require "./ddpFiles"
 Constants = require '../constants'
+Home = require './home'
 
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
@@ -21,7 +22,9 @@ class Dementor extends events.EventEmitter
     log.trace "Constructing with directory #{options.directory}"
     @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
-    @projectId = @projectFiles.getProjectId() unless options.clean
+    @home = new Home options.directory
+    @home.init()
+    @projectId = @home.getProjectId() unless options.clean
 
     @appPort = options.appPort
     captureViaDebugger = options.captureViaDebugger
@@ -80,7 +83,7 @@ class Dementor extends events.EventEmitter
       if warning
         @emit 'message-warning', warning
       @projectId = projectId
-      @projectFiles.saveProjectId projectId
+      @home.saveProjectId projectId
       @emit 'enabled'
       callback()
 

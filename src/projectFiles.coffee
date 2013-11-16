@@ -31,7 +31,6 @@ Logger = require 'pince'
 #
 ###
 
-MADEYE_PROJECTS_FILE = ".madeye_projects"
 log = new Logger 'projectFiles'
 class ProjectFiles extends events.EventEmitter
   constructor: (@directory, ignorepath) ->
@@ -86,29 +85,6 @@ class ProjectFiles extends events.EventEmitter
     filePath = _path.join @directory, filePath
     fs.writeFile filePath, contents, (err) =>
       callback @wrapError err
-
-  homeDir: ->
-    return _path.resolve process.env["MADEYE_HOME"] if process.env["MADEYE_HOME"]
-    envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"
-    return _path.resolve process.env[envVarName]
-
-  projectsDbPath: ->
-    _path.join @homeDir(), MADEYE_PROJECTS_FILE
-
-  saveProjectId: (projectId) ->
-    projectIds = @projectIds()
-    projectIds[@directory] = projectId
-    @saveProjectIds projectIds
-
-  saveProjectIds: (projects) ->
-    fs.writeFileSync @projectsDbPath(), JSON.stringify(projects)
-
-  projectIds: ->
-    return {} unless fs.existsSync @projectsDbPath()
-    JSON.parse fs.readFileSync(@projectsDbPath(), "utf-8")
-
-  getProjectId: ->
-    return @projectIds()[@directory]
 
   shouldInclude: (path) ->
     not @ignoreRules.shouldIgnore path
