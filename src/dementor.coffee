@@ -96,6 +96,7 @@ class Dementor extends events.EventEmitter
       log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
       terminalTunnel =
         name: "terminal"
+        type: @terminal
         localPort: Constants.LOCAL_TUNNEL_PORT
       @tunnelManager.startTunnel terminalTunnel,
         end: =>
