@@ -121,16 +121,6 @@ execute = (options) ->
   #FIXME: Need to handle custom case differently?
   tunnelHost = Settings.tunnelHost
 
-  #Show tty output on debug or trace loglevel.
-  ttyLog = options.debug || options.trace || false
-  if options.fullTerminal
-    ttyServer = new tty.Server
-      readonly: false
-      cwd: process.cwd()
-      log: ttyLog
-
-    ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
-
   ddpClient = new DdpClient
     host: ddpHost
     port: ddpPort
@@ -168,6 +158,9 @@ execute = (options) ->
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
   dementor.once 'terminalEnabled', ->
+    #Show tty output on debug or trace loglevel.
+    ttyLog = options.debug || options.trace || false
+
     #read only terminal has to wait until madeye/hangout links have been displayed
     if options.terminal
       util.puts ""
@@ -190,6 +183,14 @@ execute = (options) ->
       ttyServer.on 'exit', ->
         console.log "the tty server has exited"
         shutdown()
+
+      ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
+
+    if options.fullTerminal
+      ttyServer = new tty.Server
+        readonly: false
+        cwd: process.cwd()
+        log: ttyLog
 
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 
