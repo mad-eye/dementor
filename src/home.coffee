@@ -2,7 +2,6 @@ fs = require 'fs'
 _path = require 'path'
 _ = require 'underscore'
 mkdirp = require 'mkdirp'
-createKeys = require 'rsa-json'
 async = require 'async'
 {exec} = require 'child_process'
 
