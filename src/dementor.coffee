@@ -108,6 +108,7 @@ class Dementor extends events.EventEmitter
         @tunnelManager.setPrivateKey keys.private
         terminalTunnel =
           name: "terminal"
+          type: @terminal
           localPort: Constants.LOCAL_TUNNEL_PORT
         @tunnelManager.startTunnel terminalTunnel,
           error: =>
@@ -186,7 +187,6 @@ class Dementor extends events.EventEmitter
         log.trace "Public key submitted successfully."
         @home.markPublicKeyRegistered()
         callback null
-
 
   #####
   # Events from ProjectFiles
