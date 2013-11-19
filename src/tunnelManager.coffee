@@ -17,17 +17,19 @@ class TunnelManager extends events.EventEmitter
     @tunnels = {}
     @Connection = require 'ssh2'
     @connections = {}
-    @reconnectIntervals = {}
+    @reconnectTimeouts = {}
 
     @connectionOptions =
       host: @tunnelHost
       port: 22
       username: 'prisoner'
-      privateKey: require('fs').readFileSync(ID_FILE_PATH)
+      privateKey: null #Will be supplied later.
 
     #npm installs this with the wrong permissions.
     # fs.chmodSync ID_FILE_PATH, "400"
 
+  setPrivateKey: (privateKey) ->
+    @connectionOptions.privateKey = privateKey
 
   #@param tunnel: {name, localPort, remotePort}
   #@param hooks: map of event names to callbacks for that event
@@ -45,8 +47,8 @@ class TunnelManager extends events.EventEmitter
       log.debug "Connected to #{@connectionOptions.host}"
     connection.on 'ready', =>
       log.trace "Tunnel #{tunnel.name} ready"
-      clearInterval @reconnectIntervals[tunnel.name]
-      delete @reconnectIntervals[tunnel.name]
+      clearTimeout @reconnectTimeouts[tunnel.name]
+      delete @reconnectTimeouts[tunnel.name]
       log.trace "Requesting forwarding for remote port #{tunnel.remotePort}"
       connection.forwardIn remoteAddr, tunnel.remotePort, (err, remotePort) =>
         if err
@@ -54,15 +56,21 @@ class TunnelManager extends events.EventEmitter
           #XXX: This will currently kill things
           connection.emit 'error', err
         else
+          #remotePort isn't populated if we supplied it with a port.
+          #So either tunnel.remotePort needs to be replaced with remotePort,
+          #or vice-versa.
           if remotePort
             tunnel.remotePort = remotePort
-          #remotePort isn't populated if we supplied it with a port.
           else
             remotePort = tunnel.remotePort
           log.debug "Remote forwarding port: #{remotePort}"
           hooks.setup remotePort
     connection.on 'error', (err) =>
-      log.warn "Tunnel #{tunnel.name} had error:", err
+      if err.level == 'authentication'
+        log.debug "Authentication error for tunnel #{tunnel.name}:", err
+        hooks.error err
+      else
+        log.warn "Tunnel #{tunnel.name} had error:", err
     connection.on 'end', =>
       log.debug "Tunnel #{tunnel.name} ending"
       hooks.end?()
@@ -72,11 +80,20 @@ class TunnelManager extends events.EventEmitter
       if hadError
         log.warn "Closing had error:", hadError
       unless @shuttingDown
-        log.trace "Setting up reconnection interval for #{tunnel.name}"
-        @reconnectIntervals[tunnel.name] = setInterval =>
+        log.trace "Setting up reconnection timeout for #{tunnel.name}"
+        clearTimeout @reconnectTimeouts[tunnel.name]
+        @reconnectTimeouts[tunnel.name] = setTimeout =>
           log.trace "Trying to reopen tunnel #{tunnel.name}"
           @_openConnection tunnel, hooks
         , 10*1000
+    connection.on 'debug', (msg) ->
+      log.trace msg
+
+    connection.on 'keyboard-interactive', ->
+      log.debug "(keyboard-interactive)", arguments
+
+    connection.on 'change password', ->
+      log.debug "(change password)", arguments
 
     connection.on 'tcp connection', (info, accept, reject) =>
       log.trace "tcp incoming connection:", util.inspect info

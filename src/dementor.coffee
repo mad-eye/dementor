@@ -15,6 +15,8 @@ DdpFiles = require "./ddpFiles"
 Constants = require '../constants'
 Home = require './home'
 request = require 'request'
+#XXX: Should remove this Settings?
+{Settings} = require '../madeye-common/common'
 
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
@@ -94,61 +96,96 @@ class Dementor extends events.EventEmitter
     @ddpClient.shutdown ->
       callback?()
 
+  hadAuthenticationError = false
   setupTunnels: ->
     if @terminal
-      @initializeKeys (err, privateKey) ->
+      @initializeKeys (err, keys) =>
         if err
           log.error "Error initializing keys; giving up on terminal."
           return
 
         log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
+        @tunnelManager.setPrivateKey keys.private
         terminalTunnel =
           name: "terminal"
           localPort: Constants.LOCAL_TUNNEL_PORT
         @tunnelManager.startTunnel terminalTunnel,
+          error: =>
+            #Authentication errors, for now
+            if hadAuthenticationError
+              log.warn "Could not authenticate for tunnels; skipping tunnels."
+              @tunnelManager.shutdown()
+              return
+            else
+              hadAuthenticationError = true
+              log.debug "Had authentication error establishing tunnels, submitting public key again."
+              @submitPublicKey keys.public, (err) =>
+                if err
+                  log.warn "Could not authenticate for tunnels; skipping tunnels."
+                  @tunnelManager.shutdown()
+                  return
+                #XXX: TunnelManager is still trying to reconnect.  A little hacky,
+                #but we'll try it for now.
+                log.trace "Submitted public key.  Waiting for reconnet"
+
           end: =>
             terminalTunnel.unavailable = true
             @ddpClient.updateTunnel terminalTunnel, (err) =>
               if err
                 log.debug "Error disabling tunnel:", err
               else
-                log.debug 'Tunnels established successfully.'
+                log.debug 'Tunnel disabled by connection end.'
           close: =>
             terminalTunnel.unavailable = true
             @ddpClient.updateTunnel terminalTunnel, (err) =>
               if err
                 log.debug "Error disabling tunnel:", err
               else
-                log.debug 'Tunnels established successfully.'
+                log.debug 'Tunnel disabled by connection close.'
           setup: (remotePort) =>
             log.debug "Terminal tunnel set up with remotePort #{remotePort}"
+            @emit 'terminalEnabled'
             terminalTunnel.remotePort = remotePort
             terminalTunnel.unavailable = false
             @ddpClient.updateTunnel terminalTunnel, (err) =>
               if err
                 log.debug "Error setting up tunnel:", err
                 @handleWarning "We could not set up the tunnels; continuing without tunnels."
+                @tunnelManager.shutdown()
               else
                 log.debug 'Tunnels established successfully.'
 
   initializeKeys: (callback) ->
-    @home.getKeys (err, keys) ->
+    @home.getKeys (err, keys) =>
       return callback err if err
+      log.trace 'Found keys', keys
       if @home.hasAlreadyRegisteredPublicKey()
+        log.trace "Public key already registered"
         callback null, keys.private
-      else @submitPublicKey keys.public, (err) ->
-        return callback err if err
-        @home.markPublicKeyRegistered()
-        callback null, keys.private
+      else
+        log.debug "Registering public key"
+        @submitPublicKey keys.public, (err) =>
+          callback err, keys
 
 
+  #callback: (err) ->
   submitPublicKey: (publicKey, callback) ->
+    url = Settings.azkabanUrl + "/prisonKey"
+    log.debug "Submitting public key to", url
     request
-      url: Settings.azkabanUrl + "/prisonKey"
+      url: url
       method: 'POST'
       form: {publicKey}
-    , (err, res, body) ->
-      callback err
+    , (err, res, body) =>
+      if err
+        callback err
+      else if res.statusCode != 200
+        log.debug "Response had bad code:", res.statusCode
+        callback errors.new 'NetworkError'
+      else
+        log.trace "Public key submitted successfully."
+        @home.markPublicKeyRegistered()
+        callback null
 
 
   #####

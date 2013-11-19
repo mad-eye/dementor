@@ -166,6 +166,7 @@ execute = (options) ->
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
+  dementor.once 'terminalEnabled', ->
     #read only terminal has to wait until madeye/hangout links have been displayed
     if options.term
       util.puts ""

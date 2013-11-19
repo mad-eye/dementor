@@ -4,10 +4,10 @@ _ = require 'underscore'
 mkdirp = require 'mkdirp'
 createKeys = require 'rsa-json'
 async = require 'async'
+{exec} = require 'child_process'
 
 MADEYE_HOME = '.madeye'
 PROJECTS_FILE = '.madeye_projects'
-KEY_FILE = '.madeye_keys'
 KEY_TOUCH_FILE = '.madeye_keys_registered.ok'
 
 log = new Logger 'home'
@@ -16,8 +16,10 @@ class Home
     @homeDir = process.env["MADEYE_HOME_TEST"] ? _path.join(__systemHomeDir(), MADEYE_HOME)
     log.trace "Using madeye home #{@homeDir}"
     @projectsDb = _path.join @homeDir, PROJECTS_FILE
-    @keyFile = _path.join @homeDir, KEY_FILE
     @keysRegisteredTouchFile = _path.join @homeDir, KEY_TOUCH_FILE
+    @privateKeyFile = _path.join @homeDir, 'id_rsa'
+    @publicKeyFile = @privateKeyFile + '.pub'
+
 
   init: ->
     mkdirp.sync @homeDir
@@ -43,32 +45,27 @@ class Home
 
   #callback: (err, keys) ->
   getKeys: (callback) ->
-    #Define this here; we need it in a couple places
-    makeNewKeys = (cb) =>
+    unless @_hasKeys()
       log.trace "Making new RSA keys"
       @_clearPublicKeyRegistered()
-      createKeys (err, newKeys) =>
+      __generateKeys @privateKeyFile, (err) =>
         return cb err if err
-        @_writeKeys newKeys, (err) ->
-          cb err, newKeys
+        @_readKeys callback
+    else
+      @_readKeys callback
 
-    fs.exists @keyFile, (exists) =>
-      unless exists
-        makeNewKeys callback
-      else
-        log.trace "Keys exist, reading"
-        fs.readFile @keyFile, 'utf-8', (err, contents) ->
-          return callback err if err
-          try
-            keys = JSON.parse contents
-            callback null, keys
-          catch e
-            log.debug "Malformed keyfile found. Resetting keys"
-            makeNewKeys callback
+  #callback: err, keys={public:, private:}
+  _readKeys: (callback) ->
+    async.parallel
+      private: (cb) =>
+        fs.readFile @privateKeyFile, 'utf-8', cb
+      public: (cb) =>
+        fs.readFile @publicKeyFile, 'utf-8', cb
+    , callback
 
-  _writeKeys: (keys, callback=->) ->
-    log.trace "Writing keys to #{@keyFile}"
-    fs.writeFile @keyFile, JSON.stringify(keys), {mode: 0o600}, callback
+  _hasKeys: ->
+    return false unless fs.existsSync @privateKeyFile
+    return fs.existsSync @publicKeyFile
 
   hasAlreadyRegisteredPublicKey: ->
     fs.existsSync @keysRegisteredTouchFile
@@ -89,6 +86,9 @@ __systemHomeDir = ->
   envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"
   return _path.resolve process.env[envVarName]
 
+#callback: (err) ->
+__generateKeys = (privateKeyFile, callback) ->
+  exec "ssh-keygen -f #{privateKeyFile} -C tunnel_key -N '' -q -t rsa", callback
 
 
 module.exports = Home
