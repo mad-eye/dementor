@@ -7,7 +7,6 @@ mkdirp = require 'mkdirp'
 {fileUtils} = require '../util/fileUtils'
 Home = require '../../src/home'
 Logger = require 'pince'
-createKeys = require 'rsa-json'
 
 log = new Logger 'homeTest'
 randomString = -> hat 32, 16
@@ -89,13 +88,13 @@ describe 'Home', ->
       home.init()
 
     it 'should retrieve existing keys', (done) ->
-      createKeys (err, generatedKeys) ->
+      home._generateKeys (err) ->
         assert.isNull err
-        home._writeKeys generatedKeys, (err) ->
-          home.getKeys (err, keys) ->
-            assert.ok !err
-            assert.deepEqual keys, generatedKeys
-            done()
+        home.getKeys (err, keys) ->
+          assert.ok !err
+          assert.ok keys.public
+          assert.ok keys.private
+          done()
 
     it 'should make and save new keys if no existing keys fweep', (done) ->
       home.getKeys (err, keys) ->

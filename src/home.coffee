@@ -48,7 +48,7 @@ class Home
     unless @_hasKeys()
       log.trace "Making new RSA keys"
       @_clearPublicKeyRegistered()
-      __generateKeys @privateKeyFile, (err) =>
+      @_generateKeys (err) =>
         return cb err if err
         @_readKeys callback
     else
@@ -82,13 +82,14 @@ class Home
       return if err.code == "ENOENT"
       throw err
 
+  #callback: (err) ->
+  _generateKeys: (callback) ->
+    exec "ssh-keygen -f #{@privateKeyFile} -C tunnel_key -N '' -q -t rsa", callback
+
 __systemHomeDir = ->
   envVarName = if process.platform == "win32" then "USERPROFILE" else "HOME"
   return _path.resolve process.env[envVarName]
 
-#callback: (err) ->
-__generateKeys = (privateKeyFile, callback) ->
-  exec "ssh-keygen -f #{privateKeyFile} -C tunnel_key -N '' -q -t rsa", callback
 
 
 module.exports = Home
