@@ -15,8 +15,6 @@ DdpFiles = require "./ddpFiles"
 Constants = require '../constants'
 Home = require './home'
 request = require 'request'
-#XXX: Should remove this Settings?
-{Settings} = require '../madeye-common/common'
 
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
@@ -38,6 +36,8 @@ class Dementor extends events.EventEmitter
     @setupDdpClient()
     @fileTree = new FileTree @ddpClient, @projectFiles, new DdpFiles
     @version = require('../package.json').version
+
+    @azkabanUrl = options.azkabanUrl
 
   handleWarning: (msg) ->
     return unless msg?
@@ -171,7 +171,7 @@ class Dementor extends events.EventEmitter
 
   #callback: (err) ->
   submitPublicKey: (publicKey, callback) ->
-    url = Settings.azkabanUrl + "/prisonKey"
+    url = @azkabanUrl + "/prisonKey"
     log.debug "Submitting public key to", url
     request
       url: url

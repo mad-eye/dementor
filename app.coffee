@@ -148,6 +148,7 @@ execute = (options) ->
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
     term: term
+    azkabanUrl: azkabanUrl
 
 
   dementor.once 'enabled', ->
