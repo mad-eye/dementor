@@ -6,7 +6,6 @@ util = require 'util'
 _path = require 'path'
 Logger = require 'pince'
 
-ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
 remoteAddr = '0.0.0.0' #FIXME: This accepts all IPV4 connections.  Generalize.
 
 log = new Logger 'tunnelManager'
@@ -18,15 +17,13 @@ class TunnelManager extends events.EventEmitter
     @Connection = require 'ssh2'
     @connections = {}
     @reconnectTimeouts = {}
+    @backoffCounter = 2
 
     @connectionOptions =
       host: @tunnelHost
       port: 22
       username: 'prisoner'
       privateKey: null #Will be supplied later.
-
-    #npm installs this with the wrong permissions.
-    # fs.chmodSync ID_FILE_PATH, "400"
 
   setPrivateKey: (privateKey) ->
     @connectionOptions.privateKey = privateKey
@@ -39,7 +36,7 @@ class TunnelManager extends events.EventEmitter
     @tunnels[tunnel.name] = tunnel
     @_openConnection tunnel, hooks
 
-  #hooks: {close:->, end:->}
+  #hooks: {close:->, error: (err)->, setupComplete: (remotePort)->}
   _openConnection: (tunnel, hooks) ->
     #Useful flag to disable known hosts checking: -oStrictHostKeyChecking=no
     @connections[tunnel.name] = connection = new @Connection
@@ -49,6 +46,7 @@ class TunnelManager extends events.EventEmitter
       log.trace "Tunnel #{tunnel.name} ready"
       clearTimeout @reconnectTimeouts[tunnel.name]
       delete @reconnectTimeouts[tunnel.name]
+      @backoffCounter = 2
       log.trace "Requesting forwarding for remote port #{tunnel.remotePort}"
       connection.forwardIn remoteAddr, tunnel.remotePort, (err, remotePort) =>
         if err
@@ -64,7 +62,7 @@ class TunnelManager extends events.EventEmitter
           else
             remotePort = tunnel.remotePort
           log.debug "Remote forwarding port: #{remotePort}"
-          hooks.setup remotePort
+          hooks.setupComplete remotePort
     connection.on 'error', (err) =>
       if err.level == 'authentication'
         log.debug "Authentication error for tunnel #{tunnel.name}:", err
@@ -73,19 +71,18 @@ class TunnelManager extends events.EventEmitter
         log.warn "Tunnel #{tunnel.name} had error:", err
     connection.on 'end', =>
       log.debug "Tunnel #{tunnel.name} ending"
-      hooks.end?()
     connection.on 'close', (hadError) =>
       log.debug "Tunnel #{tunnel.name} closing"
       hooks.close?()
       if hadError
-        log.warn "Closing had error:", hadError
+        log.warn "Tunnel closing had error"
       unless @shuttingDown
         log.trace "Setting up reconnection timeout for #{tunnel.name}"
         clearTimeout @reconnectTimeouts[tunnel.name]
         @reconnectTimeouts[tunnel.name] = setTimeout =>
           log.trace "Trying to reopen tunnel #{tunnel.name}"
           @_openConnection tunnel, hooks
-        , 10*1000
+        , (@backoffCounter++)*1000
     connection.on 'debug', (msg) ->
       log.trace msg
 

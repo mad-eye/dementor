@@ -96,46 +96,49 @@ class Dementor extends events.EventEmitter
     @ddpClient.shutdown ->
       callback?()
 
+  #Prevent infinite loop of attempting to authenticate if there's a problem
+  #We'll mark hadAuthenticationError=true when we have one, and on the second
+  #one we'll just give up. The first error can simply be a missing key on the
+  #prison server. The second error is an unknown unknown so we bail.
   hadAuthenticationError = false
+  
   setupTunnels: ->
     if @terminal
       @initializeKeys (err, keys) =>
         if err
-          log.error "Error initializing keys; giving up on terminal."
+          log.info "Error initializing keys; giving up on terminal."
+          @handleWarning "We could not set up the terminal; continuing without it."
           return
 
-        log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
         @tunnelManager.setPrivateKey keys.private
         terminalTunnel =
           name: "terminal"
           type: @terminal
           localPort: Constants.LOCAL_TUNNEL_PORT
+        log.trace "Setting up terminal tunnel on port #{terminalTunnel.localPort}"
         @tunnelManager.startTunnel terminalTunnel,
           error: =>
             #Authentication errors, for now
             if hadAuthenticationError
+              #We've already had one authentication error; bail.
               log.warn "Could not authenticate for tunnels; skipping tunnels."
+              @handleWarning "We could not set up the terminal; continuing without it."
               @tunnelManager.shutdown()
               return
             else
+              #Try again, but mark that we've had at least one error.
               hadAuthenticationError = true
               log.debug "Had authentication error establishing tunnels, submitting public key again."
               @submitPublicKey keys.public, (err) =>
                 if err
                   log.warn "Could not authenticate for tunnels; skipping tunnels."
+                  @handleWarning "We could not set up the terminal; continuing without it."
                   @tunnelManager.shutdown()
                   return
                 #XXX: TunnelManager is still trying to reconnect.  A little hacky,
                 #but we'll try it for now.
                 log.trace "Submitted public key.  Waiting for reconnet"
 
-          end: =>
-            terminalTunnel.unavailable = true
-            @ddpClient.updateTunnel terminalTunnel, (err) =>
-              if err
-                log.debug "Error disabling tunnel:", err
-              else
-                log.debug 'Tunnel disabled by connection end.'
           close: =>
             terminalTunnel.unavailable = true
             @ddpClient.updateTunnel terminalTunnel, (err) =>
@@ -143,7 +146,7 @@ class Dementor extends events.EventEmitter
                 log.debug "Error disabling tunnel:", err
               else
                 log.debug 'Tunnel disabled by connection close.'
-          setup: (remotePort) =>
+          setupComplete: (remotePort) =>
             log.debug "Terminal tunnel set up with remotePort #{remotePort}"
             @emit 'terminalEnabled'
             terminalTunnel.remotePort = remotePort
@@ -151,11 +154,12 @@ class Dementor extends events.EventEmitter
             @ddpClient.updateTunnel terminalTunnel, (err) =>
               if err
                 log.debug "Error setting up tunnel:", err
-                @handleWarning "We could not set up the tunnels; continuing without tunnels."
+                @handleWarning "We could not set up the terminal; continuing without it."
                 @tunnelManager.shutdown()
               else
                 log.debug 'Tunnels established successfully.'
 
+  #callback: (err, keys={public:, private}) ->
   initializeKeys: (callback) ->
     @home.getKeys (err, keys) =>
       return callback err if err
@@ -167,7 +171,6 @@ class Dementor extends events.EventEmitter
         log.debug "Registering public key"
         @submitPublicKey keys.public, (err) =>
           callback err, keys
-
 
   #callback: (err) ->
   submitPublicKey: (publicKey, callback) ->

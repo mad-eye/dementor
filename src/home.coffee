@@ -19,7 +19,6 @@ class Home
     @privateKeyFile = _path.join @homeDir, 'id_rsa'
     @publicKeyFile = @privateKeyFile + '.pub'
 
-
   init: ->
     mkdirp.sync @homeDir
 
@@ -38,10 +37,10 @@ class Home
       log.warn "Projects file #{@projectsDb} malformed."
       return {}
 
-
   getProjectId: ->
     return @_getProjectIds()[@directory]
 
+  #get keys that exist or create new keys
   #callback: (err, keys) ->
   getKeys: (callback) ->
     unless @_hasKeys()
