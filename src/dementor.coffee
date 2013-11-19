@@ -161,7 +161,7 @@ class Dementor extends events.EventEmitter
       log.trace 'Found keys', keys
       if @home.hasAlreadyRegisteredPublicKey()
         log.trace "Public key already registered"
-        callback null, keys.private
+        callback null, keys
       else
         log.debug "Registering public key"
         @submitPublicKey keys.public, (err) =>
