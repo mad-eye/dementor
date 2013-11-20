@@ -1,5 +1,6 @@
 events = require 'events'
 net = require 'net'
+request = require 'request'
 Tunnel = require './tunnel'
 Logger = require 'pince'
 
@@ -34,7 +35,14 @@ class TunnelManager extends events.EventEmitter
     tunnel = @tunnels[tunnelData.name] = new Tunnel tunnelData
     log.debug "Starting tunnel #{tunnel.name} for local port #{tunnel.localPort}"
 
+    #Prevent infinite loop of attempting to authenticate if there's a problem
+    #We'll mark hadAuthenticationError=true when we have one, and on the second
+    #one we'll just give up. The first error can simply be a missing key on the
+    #prison server. The second error is an unknown unknown so we bail.
+    hadAuthenticationError = false
+
     tunnel.on 'ready', (remotePort) =>
+      hadAuthenticationError = false
       clearTimeout @reconnectTimeouts[tunnel.name]
       delete @reconnectTimeouts[tunnel.name]
       @backoffCounter = 2
@@ -42,7 +50,7 @@ class TunnelManager extends events.EventEmitter
 
     tunnel.on 'close', =>
       hooks.close()
-      unless @shuttingDown
+      unless @shuttingDown or hadAuthenticationError
         log.trace "Setting up reconnection timeout for #{tunnel.name}"
         clearTimeout @reconnectTimeouts[tunnel.name]
         @reconnectTimeouts[tunnel.name] = setTimeout =>
@@ -50,7 +58,24 @@ class TunnelManager extends events.EventEmitter
           tunnel.connect()
         , (@backoffCounter++)*1000
 
-    tunnel.on 'error', hooks.error
+    tunnel.on 'error', (err) =>
+      if hadAuthenticationError
+        #We've already had one authentication error; bail.
+        log.warn "Could not authenticate for tunnels; skipping tunnels."
+        hooks.error err
+        return
+      else
+        #Try again, but mark that we've had at least one error.
+        hadAuthenticationError = true
+        log.debug "Had authentication error establishing tunnels, submitting public key again."
+        @home.clearPublicKeyRegistered()
+        @initializeKeys (err) =>
+          if err
+            log.warn "Could not authenticate for tunnels; skipping tunnels."
+            hooks.error err
+            return
+          log.trace "Submitted public key.  Reconnecting"
+          tunnel.connect()
 
     tunnel.open @connectionOptions
 

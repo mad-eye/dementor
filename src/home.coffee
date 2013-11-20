@@ -45,7 +45,7 @@ class Home
   getKeys: (callback) ->
     unless @_hasKeys()
       log.trace "Making new RSA keys"
-      @_clearPublicKeyRegistered()
+      @clearPublicKeyRegistered()
       @_generateKeys (err) =>
         return cb err if err
         @_readKeys callback
@@ -72,7 +72,7 @@ class Home
     log.trace 'Marking key as registered'
     fs.writeFileSync @keysRegisteredTouchFile, ''
 
-  _clearPublicKeyRegistered: ->
+  clearPublicKeyRegistered: ->
     try
       fs.unlinkSync @keysRegisteredTouchFile
     catch err

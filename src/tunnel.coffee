@@ -30,7 +30,7 @@ class Tunnel extends EventEmitter
       @log.trace "Requesting forwarding for remote port #{@remotePort}"
       connection.forwardIn remoteAddr, @remotePort, (err, remotePort) =>
         if err
-          @log.warn "Error opening tunnel #{tunnel.name}:", err
+          @log.warn "Error opening tunnel:", err
           #XXX: This will currently kill things
           @emit 'error', err
         else
@@ -52,7 +52,7 @@ class Tunnel extends EventEmitter
         @log.warn "Connection error:", err
 
     connection.on 'close', (hadError) =>
-      @log.debug "Tunnel #{tunnel.name} closing"
+      @log.debug "Tunnel closing"
       @emit 'close'
       if hadError
         @log.warn "Tunnel closing had error"
@@ -61,7 +61,7 @@ class Tunnel extends EventEmitter
       @log.trace msg
 
     connection.on 'end', =>
-      @log.debug "Tunnel #{tunnel.name} ending"
+      @log.debug "Tunnel ending"
 
     connection.on 'keyboard-interactive', ->
       @log.debug "(keyboard-interactive)", arguments

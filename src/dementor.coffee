@@ -13,7 +13,6 @@ exec = require("child_process").exec
 #captureProcessOutput = require("./injector/inject").captureProcessOutput
 DdpFiles = require "./ddpFiles"
 Constants = require '../constants'
-request = require 'request'
 
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
@@ -92,12 +91,6 @@ class Dementor extends events.EventEmitter
     @ddpClient.shutdown ->
       callback?()
 
-  #Prevent infinite loop of attempting to authenticate if there's a problem
-  #We'll mark hadAuthenticationError=true when we have one, and on the second
-  #one we'll just give up. The first error can simply be a missing key on the
-  #prison server. The second error is an unknown unknown so we bail.
-  hadAuthenticationError = false
-  
   setupTunnels: ->
     if @terminal
       @tunnelManager.init (err) =>
@@ -112,27 +105,12 @@ class Dementor extends events.EventEmitter
           localPort: Constants.LOCAL_TUNNEL_PORT
         log.trace "Setting up terminal tunnel on port #{terminalTunnel.localPort}"
         @tunnelManager.startTunnel terminalTunnel,
-          error: =>
+          error: (err) =>
             #Authentication errors, for now
-            if hadAuthenticationError
-              #We've already had one authentication error; bail.
-              log.warn "Could not authenticate for tunnels; skipping tunnels."
-              @handleWarning "We could not set up the terminal; continuing without it."
-              @tunnelManager.shutdown()
-              return
-            else
-              #Try again, but mark that we've had at least one error.
-              hadAuthenticationError = true
-              log.debug "Had authentication error establishing tunnels, submitting public key again."
-              @submitPublicKey keys.public, (err) =>
-                if err
-                  log.warn "Could not authenticate for tunnels; skipping tunnels."
-                  @handleWarning "We could not set up the terminal; continuing without it."
-                  @tunnelManager.shutdown()
-                  return
-                #XXX: TunnelManager is still trying to reconnect.  A little hacky,
-                #but we'll try it for now.
-                log.trace "Submitted public key.  Waiting for reconnet"
+            log.warn "Could not authenticate for tunnels; skipping tunnels."
+            @handleWarning "We could not set up the terminal; continuing without it."
+            @tunnelManager.shutdown()
+            return
 
           close: =>
             terminalTunnel.unavailable = true
@@ -141,6 +119,7 @@ class Dementor extends events.EventEmitter
                 log.debug "Error disabling tunnel:", err
               else
                 log.debug 'Tunnel disabled by connection close.'
+
           ready: (remotePort) =>
             log.debug "Terminal tunnel set up with remotePort #{remotePort}"
             @emit 'terminalEnabled'
