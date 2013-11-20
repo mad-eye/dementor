@@ -1,116 +1,123 @@
 events = require 'events'
 net = require 'net'
-{spawn, exec} = require 'child_process'
-fs = require 'fs'
-util = require 'util'
-_path = require 'path'
+request = require 'request'
+Tunnel = require './tunnel'
 Logger = require 'pince'
-
-ID_FILE_PATH = _path.normalize "#{__dirname}/../lib/id_rsa"
-remoteAddr = '0.0.0.0' #FIXME: This accepts all IPV4 connections.  Generalize.
 
 log = new Logger 'tunnelManager'
 class TunnelManager extends events.EventEmitter
-  constructor: (@tunnelHost) ->
+  constructor: ({@tunnelHost, @home, @azkabanUrl}) ->
     log.trace 'Constructing TunnelManager'
     @shuttingDown = false
     @tunnels = {}
-    @Connection = require 'ssh2'
-    @connections = {}
-    @reconnectIntervals = {}
+    @reconnectTimeouts = {}
+    @backoffCounter = 2
 
     @connectionOptions =
       host: @tunnelHost
       port: 22
       username: 'prisoner'
-      privateKey: require('fs').readFileSync(ID_FILE_PATH)
+      privateKey: null #Will be supplied later.
 
-    #npm installs this with the wrong permissions.
-    # fs.chmodSync ID_FILE_PATH, "400"
+  #callback: (err) ->
+  init: (callback) ->
+    @initializeKeys (err, keys) =>
+      return callback err if err
+      @setPrivateKey keys.private
+      callback()
 
+  setPrivateKey: (privateKey) ->
+    @connectionOptions.privateKey = privateKey
 
   #@param tunnel: {name, localPort, remotePort}
   #@param hooks: map of event names to callbacks for that event
-  startTunnel: (tunnel, hooks) ->
+  startTunnel: (tunnelData, hooks) ->
+    tunnel = @tunnels[tunnelData.name] = new Tunnel tunnelData
     log.debug "Starting tunnel #{tunnel.name} for local port #{tunnel.localPort}"
-    tunnel.remotePort ?= 0
-    @tunnels[tunnel.name] = tunnel
-    @_openConnection tunnel, hooks
 
-  #hooks: {close:->, end:->}
-  _openConnection: (tunnel, hooks) ->
-    #Useful flag to disable known hosts checking: -oStrictHostKeyChecking=no
-    @connections[tunnel.name] = connection = new @Connection
-    connection.on 'connect', =>
-      log.debug "Connected to #{@connectionOptions.host}"
-    connection.on 'ready', =>
-      log.trace "Tunnel #{tunnel.name} ready"
-      clearInterval @reconnectIntervals[tunnel.name]
-      delete @reconnectIntervals[tunnel.name]
-      log.trace "Requesting forwarding for remote port #{tunnel.remotePort}"
-      connection.forwardIn remoteAddr, tunnel.remotePort, (err, remotePort) =>
-        if err
-          log.warn "Error opening tunnel #{tunnel.name}:", err
-          #XXX: This will currently kill things
-          connection.emit 'error', err
-        else
-          if remotePort
-            tunnel.remotePort = remotePort
-          #remotePort isn't populated if we supplied it with a port.
-          else
-            remotePort = tunnel.remotePort
-          log.debug "Remote forwarding port: #{remotePort}"
-          hooks.setup remotePort
-    connection.on 'error', (err) =>
-      log.warn "Tunnel #{tunnel.name} had error:", err
-    connection.on 'end', =>
-      log.debug "Tunnel #{tunnel.name} ending"
-      hooks.end?()
-    connection.on 'close', (hadError) =>
-      log.debug "Tunnel #{tunnel.name} closing"
-      hooks.close?()
-      if hadError
-        log.warn "Closing had error:", hadError
-      unless @shuttingDown
-        log.trace "Setting up reconnection interval for #{tunnel.name}"
-        @reconnectIntervals[tunnel.name] = setInterval =>
+    #Prevent infinite loop of attempting to authenticate if there's a problem
+    #We'll mark hadAuthenticationError=true when we have one, and on the second
+    #one we'll just give up. The first error can simply be a missing key on the
+    #prison server. The second error is an unknown unknown so we bail.
+    hadAuthenticationError = false
+
+    tunnel.on 'ready', (remotePort) =>
+      hadAuthenticationError = false
+      clearTimeout @reconnectTimeouts[tunnel.name]
+      delete @reconnectTimeouts[tunnel.name]
+      @backoffCounter = 2
+      hooks.ready remotePort
+
+    tunnel.on 'close', =>
+      hooks.close()
+      unless @shuttingDown or hadAuthenticationError
+        log.trace "Setting up reconnection timeout for #{tunnel.name}"
+        clearTimeout @reconnectTimeouts[tunnel.name]
+        @reconnectTimeouts[tunnel.name] = setTimeout =>
           log.trace "Trying to reopen tunnel #{tunnel.name}"
-          @_openConnection tunnel, hooks
-        , 10*1000
+          tunnel.open()
+        , (@backoffCounter++)*1000
 
-    connection.on 'tcp connection', (info, accept, reject) =>
-      log.trace "tcp incoming connection:", util.inspect info
-      stream = accept()
-      @_handleIncomingStream stream, tunnel
+    tunnel.on 'error', (err) =>
+      if hadAuthenticationError
+        #We've already had one authentication error; bail.
+        log.warn "Could not authenticate for tunnels; skipping tunnels."
+        hooks.error err
+        return
+      else
+        #Try again, but mark that we've had at least one error.
+        hadAuthenticationError = true
+        log.debug "Had authentication error establishing tunnels, submitting public key again."
+        @home.clearPublicKeyRegistered()
+        @initializeKeys (err) =>
+          if err
+            log.warn "Could not authenticate for tunnels; skipping tunnels."
+            hooks.error err
+            return
+          log.trace "Submitted public key.  Reconnecting"
+          tunnel.open()
 
-    connection.connect @connectionOptions
+    tunnel.open @connectionOptions
 
-  _handleIncomingStream: (stream, {name, localPort}) ->
-    stream.on 'data', (data) =>
-      #log.trace "[#{name}] Data received"
-      0
-    stream.on 'end', =>
-      log.trace "[#{name}] EOF"
-    stream.on 'error', (err) =>
-      log.warn "[#{name}] error:", err
-    stream.on 'close', (hadErr) =>
-      log.trace "[#{name}] closed", (if hadErr then "with error")
+  #callback: (err, keys={public:, private}) ->
+  initializeKeys: (callback) ->
+    @home.getKeys (err, keys) =>
+      return callback err if err
+      if @home.hasAlreadyRegisteredPublicKey()
+        log.trace "Public key already registered"
+        callback null, keys
+      else
+        log.debug "Registering public key"
+        @submitPublicKey keys.public, (err) =>
+          callback err, keys
 
-    log.trace "Pausing stream"
-    stream.pause()
-    log.trace "Forwarding to localhost:#{localPort}"
-    socket = net.connect localPort, 'localhost', =>
-      stream.pipe socket
-      socket.pipe stream
-      stream.resume()
-      log.trace "Resuming stream"
+  #callback: (err) ->
+  submitPublicKey: (publicKey, callback) ->
+    url = @azkabanUrl + "/prisonKey"
+    log.debug "Submitting public key to", url
+    request
+      url: url
+      method: 'POST'
+      form: {publicKey}
+    , (err, res, body) =>
+      if err
+        callback err
+      else if res.statusCode != 200
+        log.debug "Response had bad code:", res.statusCode
+        callback errors.new 'NetworkError'
+      else
+        log.trace "Public key submitted successfully."
+        @home.markPublicKeyRegistered()
+        callback null
+
+
 
   shutdown: (callback) ->
     log.trace 'Shutting down TunnelManager'
     @shuttingDown = true
-    for name, connection in @connections
+    for name, tunnel in @tunnels
       log.trace "Killing tunnel #{name}"
-      connection.end()
+      tunnel.shutdown()
     process.nextTick (callback ? ->)
 
 module.exports = TunnelManager

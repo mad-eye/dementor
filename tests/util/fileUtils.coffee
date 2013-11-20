@@ -1,25 +1,26 @@
-wrench = require 'wrench'
 fs = require 'fs'
 _path = require 'path'
 uuid = require 'node-uuid'
 FileTree = require '../../src/fileTree'
 DdpFiles = require "../../src/ddpFiles"
+rimraf = require 'rimraf'
+mkdirp = require 'mkdirp'
 
 TEST_AREA = ".test_area"
 class FileUtils
   @mkDir : (dir) ->
     unless fs.existsSync dir
-      wrench.mkdirSyncRecursive dir
+      mkdirp.sync dir
 
   @mkDirClean : (dir) ->
     if fs.existsSync dir
-      wrench.rmdirSyncRecursive(dir)
-    wrench.mkdirSyncRecursive dir
+      rimraf.sync(dir)
+    mkdirp.sync dir
 
   @testProjectDir: (projName) ->
     return _path.join(TEST_AREA, projName)
 
-  @homeDir : _path.join TEST_AREA, "fake_home"
+  @homeDir : _path.join TEST_AREA, ".madeye"
 
   @createProject : (name, fileMap) ->
     projectDir = @testProjectDir name
@@ -30,11 +31,11 @@ class FileUtils
 
   @createFileTree : (root, filetree) ->
     unless fs.existsSync root
-      wrench.mkdirSyncRecursive root
+      mkdirp.sync root
     for key, value of filetree
       if typeof value == "string"
         filepath = _path.join(root, key)
-        wrench.mkdirSyncRecursive _path.dirname filepath
+        mkdirp.sync _path.dirname filepath
         fs.writeFileSync(filepath, value)
       else
         @createFileTree(_path.join(root, key), value)
@@ -80,7 +81,7 @@ class FileUtils
 
   @destroyTestArea: () ->
     if fs.existsSync TEST_AREA
-      wrench.rmdirSyncRecursive TEST_AREA
+      rimraf.sync TEST_AREA
 
 
 exports.fileUtils = FileUtils

@@ -1,6 +1,7 @@
 Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
 TunnelManager = require './src/tunnelManager'
+Home = require './src/home'
 {Settings} = require './madeye-common/common'
 Logger = require 'pince'
 util = require 'util'
@@ -121,24 +122,16 @@ execute = (options) ->
   #FIXME: Need to handle custom case differently?
   tunnelHost = Settings.tunnelHost
 
-  #Show tty output on debug or trace loglevel.
-  ttyLog = options.debug || options.trace || false
-  if options.fullTerminal
-    ttyServer = new tty.Server
-      readonly: false
-      cwd: process.cwd()
-      log: ttyLog
-
-    ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
-
   ddpClient = new DdpClient
     host: ddpHost
     port: ddpPort
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
+  home = new Home options.directory
+  home.init()
 
-  tunnelManager = new TunnelManager tunnelHost
+  tunnelManager = new TunnelManager {tunnelHost, home, azkabanUrl}
   Logger.listen tunnelManager, 'tunnelManager'
 
 
@@ -158,6 +151,7 @@ execute = (options) ->
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
     term: term
+    home: home
 
 
   dementor.once 'enabled', ->
@@ -166,6 +160,10 @@ execute = (options) ->
 
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
+
+  dementor.once 'terminalEnabled', ->
+    #Show tty output on debug or trace loglevel.
+    ttyLog = options.debug || options.trace || false
 
     #read only terminal has to wait until madeye/hangout links have been displayed
     if options.terminal
@@ -189,6 +187,14 @@ execute = (options) ->
       ttyServer.on 'exit', ->
         console.log "the tty server has exited"
         shutdown()
+
+      ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
+
+    if options.fullTerminal
+      ttyServer = new tty.Server
+        readonly: false
+        cwd: process.cwd()
+        log: ttyLog
 
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
 

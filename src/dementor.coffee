@@ -17,11 +17,11 @@ Constants = require '../constants'
 log = new Logger 'dementor'
 class Dementor extends events.EventEmitter
   constructor: (options) ->
-    Logger.listen @, 'dementor'
     log.trace "Constructing with directory #{options.directory}"
     @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
-    @projectId = @projectFiles.getProjectId() unless options.clean
+    @home = options.home
+    @projectId = @home.getProjectId() unless options.clean
 
     @appPort = options.appPort
     captureViaDebugger = options.captureViaDebugger
@@ -80,7 +80,7 @@ class Dementor extends events.EventEmitter
       if warning
         @emit 'message-warning', warning
       @projectId = projectId
-      @projectFiles.saveProjectId projectId
+      @home.saveProjectId projectId
       @emit 'enabled'
       callback()
 
@@ -93,36 +93,45 @@ class Dementor extends events.EventEmitter
 
   setupTunnels: ->
     if @terminal
-      log.trace "Setting up terminal tunnel on port #{Constants.LOCAL_TUNNEL_PORT}"
-      terminalTunnel =
-        name: "terminal"
-        type: @terminal
-        localPort: Constants.LOCAL_TUNNEL_PORT
-      @tunnelManager.startTunnel terminalTunnel,
-        end: =>
-          terminalTunnel.unavailable = true
-          @ddpClient.updateTunnel terminalTunnel, (err) =>
-            if err
-              log.debug "Error disabling tunnel:", err
-            else
-              log.debug 'Tunnels established successfully.'
-        close: =>
-          terminalTunnel.unavailable = true
-          @ddpClient.updateTunnel terminalTunnel, (err) =>
-            if err
-              log.debug "Error disabling tunnel:", err
-            else
-              log.debug 'Tunnels established successfully.'
-        setup: (remotePort) =>
-          log.debug "Terminal tunnel set up with remotePort #{remotePort}"
-          terminalTunnel.remotePort = remotePort
-          terminalTunnel.unavailable = false
-          @ddpClient.updateTunnel terminalTunnel, (err) =>
-            if err
-              log.debug "Error setting up tunnel:", err
-              @handleWarning "We could not set up the tunnels; continuing without tunnels."
-            else
-              log.debug 'Tunnels established successfully.'
+      @tunnelManager.init (err) =>
+        if err
+          log.info "Error initializing tunnelManager; giving up on terminal."
+          @handleWarning "We could not set up the terminal; continuing without it."
+          return
+
+        terminalTunnel =
+          name: "terminal"
+          type: @terminal
+          localPort: Constants.LOCAL_TUNNEL_PORT
+        log.trace "Setting up terminal tunnel on port #{terminalTunnel.localPort}"
+        @tunnelManager.startTunnel terminalTunnel,
+          error: (err) =>
+            #Authentication errors, for now
+            log.warn "Could not authenticate for tunnels; skipping tunnels."
+            @handleWarning "We could not set up the terminal; continuing without it."
+            @tunnelManager.shutdown()
+            return
+
+          close: =>
+            terminalTunnel.unavailable = true
+            @ddpClient.updateTunnel terminalTunnel, (err) =>
+              if err
+                log.debug "Error disabling tunnel:", err
+              else
+                log.debug 'Tunnel disabled by connection close.'
+
+          ready: (remotePort) =>
+            log.debug "Terminal tunnel set up with remotePort #{remotePort}"
+            @emit 'terminalEnabled'
+            terminalTunnel.remotePort = remotePort
+            terminalTunnel.unavailable = false
+            @ddpClient.updateTunnel terminalTunnel, (err) =>
+              if err
+                log.debug "Error setting up tunnel:", err
+                @handleWarning "We could not set up the terminal; continuing without it."
+                @tunnelManager.shutdown()
+              else
+                log.debug 'Tunnels established successfully.'
 
   #####
   # Events from ProjectFiles
