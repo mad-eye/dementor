@@ -3,6 +3,7 @@ net = require 'net'
 request = require 'request'
 Tunnel = require './tunnel'
 Logger = require 'pince'
+{errors} = require '../madeye-common/common'
 
 log = new Logger 'tunnelManager'
 class TunnelManager extends events.EventEmitter
