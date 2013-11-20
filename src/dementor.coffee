@@ -13,7 +13,6 @@ exec = require("child_process").exec
 #captureProcessOutput = require("./injector/inject").captureProcessOutput
 DdpFiles = require "./ddpFiles"
 Constants = require '../constants'
-Home = require './home'
 request = require 'request'
 
 log = new Logger 'dementor'
@@ -22,8 +21,7 @@ class Dementor extends events.EventEmitter
     log.trace "Constructing with directory #{options.directory}"
     @projectFiles = options.projectFiles ? new ProjectFiles(options.directory, options.ignorefile)
     @projectName = _path.basename options.directory
-    @home = new Home options.directory
-    @home.init()
+    @home = options.home
     @projectId = @home.getProjectId() unless options.clean
 
     @appPort = options.appPort
@@ -36,8 +34,6 @@ class Dementor extends events.EventEmitter
     @setupDdpClient()
     @fileTree = new FileTree @ddpClient, @projectFiles, new DdpFiles
     @version = require('../package.json').version
-
-    @azkabanUrl = options.azkabanUrl
 
   handleWarning: (msg) ->
     return unless msg?
@@ -104,13 +100,12 @@ class Dementor extends events.EventEmitter
   
   setupTunnels: ->
     if @terminal
-      @initializeKeys (err, keys) =>
+      @tunnelManager.init (err) =>
         if err
           log.info "Error initializing keys; giving up on terminal."
           @handleWarning "We could not set up the terminal; continuing without it."
           return
 
-        @tunnelManager.setPrivateKey keys.private
         terminalTunnel =
           name: "terminal"
           type: @terminal
@@ -146,7 +141,7 @@ class Dementor extends events.EventEmitter
                 log.debug "Error disabling tunnel:", err
               else
                 log.debug 'Tunnel disabled by connection close.'
-          setupComplete: (remotePort) =>
+          ready: (remotePort) =>
             log.debug "Terminal tunnel set up with remotePort #{remotePort}"
             @emit 'terminalEnabled'
             terminalTunnel.remotePort = remotePort
@@ -158,38 +153,6 @@ class Dementor extends events.EventEmitter
                 @tunnelManager.shutdown()
               else
                 log.debug 'Tunnels established successfully.'
-
-  #callback: (err, keys={public:, private}) ->
-  initializeKeys: (callback) ->
-    @home.getKeys (err, keys) =>
-      return callback err if err
-      log.trace 'Found keys', keys
-      if @home.hasAlreadyRegisteredPublicKey()
-        log.trace "Public key already registered"
-        callback null, keys
-      else
-        log.debug "Registering public key"
-        @submitPublicKey keys.public, (err) =>
-          callback err, keys
-
-  #callback: (err) ->
-  submitPublicKey: (publicKey, callback) ->
-    url = @azkabanUrl + "/prisonKey"
-    log.debug "Submitting public key to", url
-    request
-      url: url
-      method: 'POST'
-      form: {publicKey}
-    , (err, res, body) =>
-      if err
-        callback err
-      else if res.statusCode != 200
-        log.debug "Response had bad code:", res.statusCode
-        callback errors.new 'NetworkError'
-      else
-        log.trace "Public key submitted successfully."
-        @home.markPublicKeyRegistered()
-        callback null
 
   #####
   # Events from ProjectFiles

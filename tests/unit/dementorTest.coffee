@@ -41,6 +41,7 @@ describe "Dementor", ->
       dementor = new Dementor
         directory: projectPath
         ddpClient: new MockDdpClient
+        home: new Home projectPath
       assert.equal dementor.projectId, projectId
 
     it "should have null projectId if not previously registered", ->
@@ -48,6 +49,7 @@ describe "Dementor", ->
       dementor = new Dementor
         directory: projectPath
         ddpClient: new MockDdpClient
+        home: new Home projectPath
       assert.equal dementor.projectId, null
 
     it "should set dementor.version", ->
@@ -55,6 +57,7 @@ describe "Dementor", ->
       dementor = new Dementor
         directory: projectPath
         ddpClient: new MockDdpClient
+        home: new Home projectPath
       assert.equal dementor.version, (require '../../package.json').version
 
   describe "enable", ->
@@ -86,6 +89,7 @@ describe "Dementor", ->
         dementor = new Dementor
           directory: projectPath
           ddpClient: ddpClient
+          home: new Home projectPath
         dementor.fileTree.on 'added initial files', ->
           done()
         dementor.enable()
@@ -114,30 +118,6 @@ describe "Dementor", ->
           done()
         , 100
 
-    ###
-    describe "with outdated NodeJs"
-      targetFileTree = null
-      before (done) ->
-        fileMap = fileUtils.defaultFileMap
-        targetFileTree = fileUtils.constructFileTree fileMap, "."
-        projectPath = fileUtils.createProject "outdatedNodeJsTest-#{randomString()}", fileMap
-        warningMsg = "its not right!"
-        httpClient = new MockHttpClient (options, params, callback) ->
-          assert.equal options.json?['nodeVersion'], process.version
-          projectName = options.json?['projectName']
-          files = options.json?['files']
-          callback null, {project: {_id:uuid.v4(), name:projectName}, files:files, warning: warningMsg}
-            
-        dementor = new Dementor
-          directory: projectPath
-          httpClient: httpClient
-          socket: new MockSocket
-        dementor.on 'warn', (msg) ->
-          assert.equal msg, warningMsg
-          done()
-        dementor.enable()
-    ###
-
     describe "when already registered", ->
       targetFileTree = projectId = null
       before (done) ->
@@ -163,11 +143,13 @@ describe "Dementor", ->
         dementor = new Dementor
           directory: projectPath
           ddpClient: ddpClient
+          home: new Home projectPath
         dementor.home.saveProjectId projectId
 
         dementor = new Dementor
           directory: projectPath
           ddpClient: ddpClient
+          home: new Home projectPath
         dementor.fileTree.on 'added initial files', ->
           done()
         dementor.enable()
@@ -213,6 +195,7 @@ describe "Dementor", ->
         directory: randomString()
         projectFiles: projectFiles
         ddpClient: ddpClient
+        home: new Home ''
 
 
     checkCommandError = (reason, commandId) ->
@@ -284,6 +267,7 @@ describe "Dementor", ->
         directory: randomString()
         projectFiles: projectFiles
         ddpClient: ddpClient
+        home: new Home ''
 
 
     checkCommandError = (reason, commandId) ->

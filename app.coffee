@@ -1,6 +1,7 @@
 Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
 TunnelManager = require './src/tunnelManager'
+Home = require './src/home'
 {Settings} = require './madeye-common/common'
 Logger = require 'pince'
 util = require 'util'
@@ -127,8 +128,10 @@ execute = (options) ->
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
+  home = new Home options.directory
+  home.init()
 
-  tunnelManager = new TunnelManager tunnelHost
+  tunnelManager = new TunnelManager {tunnelHost, home, azkabanUrl}
   Logger.listen tunnelManager, 'tunnelManager'
 
 
@@ -148,7 +151,7 @@ execute = (options) ->
     appPort: options.appPort
     captureViaDebugger: options.captureViaDebugger
     term: term
-    azkabanUrl: azkabanUrl
+    home: home
 
 
   dementor.once 'enabled', ->
