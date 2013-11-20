@@ -95,7 +95,7 @@ class Dementor extends events.EventEmitter
     if @terminal
       @tunnelManager.init (err) =>
         if err
-          log.info "Error initializing keys; giving up on terminal."
+          log.info "Error initializing tunnelManager; giving up on terminal."
           @handleWarning "We could not set up the terminal; continuing without it."
           return
 

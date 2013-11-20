@@ -55,7 +55,7 @@ class TunnelManager extends events.EventEmitter
         clearTimeout @reconnectTimeouts[tunnel.name]
         @reconnectTimeouts[tunnel.name] = setTimeout =>
           log.trace "Trying to reopen tunnel #{tunnel.name}"
-          tunnel.connect()
+          tunnel.open()
         , (@backoffCounter++)*1000
 
     tunnel.on 'error', (err) =>
@@ -75,16 +75,14 @@ class TunnelManager extends events.EventEmitter
             hooks.error err
             return
           log.trace "Submitted public key.  Reconnecting"
-          tunnel.connect()
+          tunnel.open()
 
     tunnel.open @connectionOptions
-
 
   #callback: (err, keys={public:, private}) ->
   initializeKeys: (callback) ->
     @home.getKeys (err, keys) =>
       return callback err if err
-      log.trace 'Found keys', keys
       if @home.hasAlreadyRegisteredPublicKey()
         log.trace "Public key already registered"
         callback null, keys

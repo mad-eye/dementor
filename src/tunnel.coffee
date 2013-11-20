@@ -18,7 +18,10 @@ class Tunnel extends EventEmitter
     @connection.end()
     process.nextTick (callback ? ->)
 
-  open: (@connectionOptions) ->
+  #Must call this the first time with connectionOptions.
+  #Later invocations will use the old connectionOptions if none are passed.
+  open: (connectionOptions) ->
+    @connectionOptions = connectionOptions if connectionOptions
     #Useful flag to disable known hosts checking: -oStrictHostKeyChecking=no
     connection = @connection = new Connection
 
@@ -74,9 +77,6 @@ class Tunnel extends EventEmitter
       stream = accept()
       @_handleIncomingStream stream
 
-    @connect()
-
-  connect: ->
     @connection.connect @connectionOptions
 
   _handleIncomingStream: (stream) ->
