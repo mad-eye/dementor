@@ -82,7 +82,7 @@ execute = (options) ->
     else 'info'
 
   Logger.setLevel logLevel
-  Logger.onError (msgs...) ->
+  Logger.onError (msgs) ->
     msgs.unshift clc.red('ERROR:')
     console.error.apply console, msgs
     shutdown(1)
