@@ -185,7 +185,7 @@ execute = (options) ->
         prompt: "$PS1(madeye) "
 
       ttyServer.on 'exit', ->
-        console.log "the tty server has exited"
+        console.log("Exiting MadEye. Restart your session with `madeye --terminal`");
         shutdown()
 
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
