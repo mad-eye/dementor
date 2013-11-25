@@ -1,3 +1,6 @@
 [submodule "madeye-common"]
 	path = madeye-common
 	url = https://github.com/mad-eye/madeye-common.git
+[submodule "ttyjs"]
+	path = ttyjs
+	url = git@github.com:mad-eye/tty.js.git

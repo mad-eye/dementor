@@ -15,8 +15,9 @@ debug = false
 log = new Logger name:'app'
 
 try
-  tty = require 'tty.js'
+  tty = require './ttyjs'
 catch e
+  log.debug "tty not loaded due to error:", e
   #No tty.js, so no terminal for you!
 
 getMeteorPid = (meteorPort, callback)->
