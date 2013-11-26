@@ -64,9 +64,8 @@ describe 'TunnelManager', ->
         assert.isTrue hooks.error.called
         assert.deepEqual hooks.error.args[0], [err]
 
-
     describe 'on tunnel close', ->
-      tunnelManager = hooks = fakeTunnel = null
+      tunnelManager = hooks = fakeTunnel = clock = null
       beforeEach ->
         home = createFakeHome()
         tunnelManager = new TunnelManager {home}
@@ -74,7 +73,11 @@ describe 'TunnelManager', ->
         tunnelManager._makeTunnel = -> fakeTunnel
         hooks = createHookSpies()
         tunnelManager.startTunnel {}, hooks
-        
+        clock = null
+
+      afterEach ->
+        clock?.restore()
+
       it 'should set up reconnect if not preceeded by an auth error', ->
         #It's called once in startTunnel
         assert.isTrue fakeTunnel.open.calledOnce
@@ -84,7 +87,7 @@ describe 'TunnelManager', ->
         #tunnel.open is called once in startTunnel; check for more calls
         #The exact number of additional calls is an implementation detail.
         assert.isTrue fakeTunnel.open.callCount > 1, "Open was called #{fakeTunnel.open.callCount} times"
-        
+
       it 'should not set reconnect if preceeded by an auth error', ->
         #It's called once in startTunnel
         assert.isTrue fakeTunnel.open.calledOnce
@@ -97,14 +100,18 @@ describe 'TunnelManager', ->
         assert.isTrue fakeTunnel.open.calledOnce, "Open was called #{fakeTunnel.open.callCount} times"
 
     describe 'on tunnel ready', ->
-      tunnelManager = hooks = fakeTunnel = null
+      tunnelManager = hooks = fakeTunnel = clock = null
       beforeEach ->
         tunnelManager = new TunnelManager {}
         fakeTunnel = createFakeTunnel()
         tunnelManager._makeTunnel = -> fakeTunnel
         hooks = createHookSpies()
         tunnelManager.startTunnel {}, hooks
-        
+        clock = null
+
+      afterEach ->
+        clock?.restore()
+
       it 'should call hooks.ready with remotePort when tunnel emits ready with remotePort', ->
         fakeTunnel.emit 'ready', 1234
         assert.isTrue hooks.ready.calledOnce
@@ -133,5 +140,4 @@ describe 'TunnelManager', ->
         assert.isTrue tunnel1.shutdown.called
         assert.isTrue tunnel2.shutdown.called
         done()
-      
       

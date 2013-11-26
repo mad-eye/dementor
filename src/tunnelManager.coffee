@@ -98,7 +98,6 @@ class TunnelManager extends events.EventEmitter
 
   #callback: (err) ->
   submitPublicKey: (publicKey, callback) ->
-    log.debug "SUBMIT PUBLIC KEY"
     url = @azkabanUrl + "/prisonKey"
     log.debug "Submitting public key to", url
     request
