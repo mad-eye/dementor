@@ -47,7 +47,7 @@ run = ->
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
     )
   #For now, hide this option unless there is MADEYE_TERM
-  if tty and process.env.MADEYE_TERM
+  if tty
     program.option('-t --terminal', 'Share your terminal output with MadEye (read-only)')
     if process.env.MADEYE_FULL_TERMINAL
       program.option('-f --fullTerminal', 'Share a read/write terminal within MadEye (premium feature)')
