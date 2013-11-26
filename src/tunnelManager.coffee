@@ -30,10 +30,14 @@ class TunnelManager extends events.EventEmitter
   setPrivateKey: (privateKey) ->
     @connectionOptions.privateKey = privateKey
 
+  #This can be stubbed out for tests
+  _makeTunnel: (tunnelData) ->
+    new Tunnel tunnelData
+
   #@param tunnel: {name, localPort, remotePort}
   #@param hooks: map of event names to callbacks for that event
   startTunnel: (tunnelData, hooks) ->
-    tunnel = @tunnels[tunnelData.name] = new Tunnel tunnelData
+    tunnel = @tunnels[tunnelData.name] = @_makeTunnel tunnelData
     log.debug "Starting tunnel #{tunnel.name} for local port #{tunnel.localPort}"
 
     #Prevent infinite loop of attempting to authenticate if there's a problem
@@ -94,6 +98,7 @@ class TunnelManager extends events.EventEmitter
 
   #callback: (err) ->
   submitPublicKey: (publicKey, callback) ->
+    log.debug "SUBMIT PUBLIC KEY"
     url = @azkabanUrl + "/prisonKey"
     log.debug "Submitting public key to", url
     request
@@ -111,12 +116,10 @@ class TunnelManager extends events.EventEmitter
         @home.markPublicKeyRegistered()
         callback null
 
-
-
   shutdown: (callback) ->
     log.trace 'Shutting down TunnelManager'
     @shuttingDown = true
-    for name, tunnel in @tunnels
+    for name, tunnel of @tunnels
       log.trace "Killing tunnel #{name}"
       tunnel.shutdown()
     process.nextTick (callback ? ->)
