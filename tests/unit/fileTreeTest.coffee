@@ -394,9 +394,35 @@ describe "FileTree", ->
       tree.addWatchedFile file
       assert.isTrue ddpClient.addFile.calledWith file
 
+    it 'should add the parent dir if the grandparent dir is active', (done) ->
+      tree.activeDirs['one'] = true
+      tree.addWatchedFile file
+      setTimeout ->
+        #Give projectFiles time to return
+        assert.isTrue ddpClient.addFile.calledWith parentDir
+        done()
+      , 10
+
     it 'should not add anything if neither dir is active', ->
       tree.addWatchedFile file
       assert.isFalse ddpClient.addFile.called
+
+    it 'should add only one dir for two child files', (done) ->
+      file1 =
+        path: 'one/' + uuid.v4()
+        isDir: false
+      file2 =
+        path: 'one/' + uuid.v4()
+        isDir: false
+      tree.addWatchedFile file1
+      process.nextTick ->
+        tree.addWatchedFile file2
+      setTimeout ->
+        #Give projectFiles time to return
+        assert.isTrue ddpClient.addFile.calledOnce
+        done()
+      , 10
+      
 
   describe 'isActiveDir', ->
     fileTree = null
