@@ -42,7 +42,7 @@ describe 'TunnelManager', ->
         assert.isTrue home.clearPublicKeyRegistered.called
         assert.isTrue home.getKeys.called
         
-      it 'should on the first error send submit keys request fweep!', ->
+      it 'should on the first error send submit keys request!', ->
         Logger.setLevel 'trace'
         home.hasAlreadyRegisteredPublicKey = sinon.stub()
         home.hasAlreadyRegisteredPublicKey.returns false

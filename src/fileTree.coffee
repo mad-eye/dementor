@@ -29,28 +29,14 @@ class FileTree extends EventEmitter
     log.debug "Loaded directory", directory
     @emit 'added initial files' if directory == '.' #this is the first dir
 
-  #we are assuming that the watcher does not notice dirs, so complete
-  #missing parent dirs
   # When a filesystem event happens:
   # if the file's parent is in activeDirs, handle normally.
-  # else if the file's grandparent is in activeDirs, add the parent.
-  #   (this means getting the info for a directory)
   # else ignore the event.
   addWatchedFile: (file) ->
     return unless file
     parentPath = findParentPath file.path
-    grandparentPath = findParentPath parentPath
     #TODO: Make hasActiveDir
-    if @isActiveDir parentPath
-      @_addFsFile file
-    #XXX: Make sure we handle root dir correctly
-    else if @isActiveDir grandparentPath
-      @projectFiles.makeFileData parentPath, (err, data) =>
-        return log.warn @projectFiles.wrapError err if err
-        @_addParentDir data
-    else
-      #We aren't watching this file, move along
-      0
+    @_addFsFile file if @isActiveDir parentPath
 
   #Add a file that we find on the file system
   _addFsFile: (file) ->

@@ -96,7 +96,7 @@ describe 'Home', ->
           assert.ok keys.private
           done()
 
-    it 'should make and save new keys if no existing keys fweep', (done) ->
+    it 'should make and save new keys if no existing keys', (done) ->
       home.getKeys (err, keys) ->
         assert.ok !err
         assert.ok keys.public

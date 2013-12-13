@@ -1,11 +1,16 @@
 fs = require 'fs'
+util = require 'util'
 _path = require 'path'
 {assert} = require 'chai'
 uuid = require 'node-uuid'
 {fileUtils} = require '../util/fileUtils'
 {ProjectFiles} = require '../../src/projectFiles'
 events = require 'events'
+hat = require 'hat'
+Logger = require 'pince'
 
+log = new Logger 'projectFilesTest'
+randomString = -> hat 32, 16
 
 homeDir = fileUtils.homeDir
 process.env["MADEYE_HOME"] = _path.resolve homeDir
@@ -224,19 +229,17 @@ describe 'ProjectFiles', ->
 
   describe "watchFileTree", ->
     projectFiles = projectDir = watcher = null
-    before ->
-      projectDir = _path.resolve fileUtils.createProject 'watchFileTree', fileUtils.defaultFileMap
+    beforeEach (done) ->
+      projectDir = _path.resolve fileUtils.createProject "watchFileTree-#{randomString()}",
+        fileUtils.defaultFileMap
       projectFiles = new ProjectFiles projectDir
-      projectFiles.fileWatcher =
-        watch: (directory) ->
-          watcher = new events.EventEmitter
-          watcher.directory = directory
-          return watcher
+      #XXX: FRAGILE Have to let the initial fs events fly past
+      setTimeout ->
+        done()
+      , 200
 
-    beforeEach ->
-      resetHome()
-      projectFiles.removeAllListeners 'stop'
-      projectFiles.removeAllListeners 'file added'
+    afterEach ->
+      projectFiles.removeAllListeners()
 
     makeFile = (fileName) ->
       filePath = _path.join projectDir, fileName
@@ -245,69 +248,58 @@ describe 'ProjectFiles', ->
 
     makeDir = (dirName) ->
       dirPath = _path.join projectDir, dirName
-      fs.mkdir dirPath
+      fs.mkdirSync dirPath
       return _path.resolve dirPath
 
-    ###
-    #FIXME: Very strange error sometimes on this test
-    #It is caused somehow by deleted/recreating the test dir.
-    1) ProjectFiles watchFileTree should notice when i add a file:
-      
-      actual expected
-      
-      4f1e7bac54d6fc2c-7c3497e2-4fd14b3c-bea189d3-4b8b11bd965095bdbfd6c18c
-      
-  AssertionError: "54d6fc2c-97e2-4b3c-89d3-95bdbfd6c18c" == "4f1e7bac-7c34-4fd1-bea1-4b8b11bd9650"
-      at MockIoSocket.mockSocket.onEmit (/Users/jag/Dropbox/madeye/dementor/tests/unit/dementorTest.coffee:442:20)
-      at MockIoSocket.emit (/Users/jag/Dropbox/madeye/dementor/node_modules/madeye-common/tests/mock/MockIoSocket.coffee:32:55)
-      at ProjectFiles.Dementor.watchProject (/Users/jag/Dropbox/madeye/dementor/src/dementor.coffee:131:29)
-      at ProjectFiles.EventEmitter.emit (events.js:96:17)
-      at StatWatcher.ProjectFiles.watchFileTree (/Users/jag/Dropbox/madeye/dementor/src/projectFiles.coffee:265:22)
-      at StatWatcher.EventEmitter.emit (events.js:96:17)
-      at exports.StatWatcher.StatWatcher.statPath (/Users/jag/Dropbox/madeye/dementor/node_modules/watch-tree-maintained/lib/watchers/stat.js:102:21)
-      at Object.oncomplete (fs.js:297:15)
-    ###
     it "should notice when i add a file", (done) ->
-      fileName = 'file.txt'
-      filePath = makeFile fileName
+      fileName = "file#{randomString()}.txt"
+      projectFiles.watchFileTree()
       projectFiles.on 'file added', (file) ->
         assert.equal file.path, fileName
         assert.equal file.isDir, false
         done()
-      projectFiles.watchFileTree()
-      watcher.emit 'add', filePath
+      makeFile fileName
 
-    #FIXME: Same strange error here
     it "should ignore cruft ~ files", (done) ->
-      #TODO include a few other file types here (i.e. garbage.swp)
-      fileName = 'file.txt~'
-      filePath = makeFile fileName
-      projectFiles.on 'file added', (data) ->
+      fileName = "file#{randomString()}.txt~"
+      projectFiles.on 'file added', (file) ->
         assert.fail "Should not notice file."
-      projectFiles.on 'stop', (data) ->
-        done()
       projectFiles.watchFileTree()
-      watcher.emit 'add', filePath
-      projectFiles.emit 'stop'
+      makeFile fileName
+      setTimeout done, 250
 
     it "should ignore cruft .swp files", (done) ->
-      #TODO include a few other file types here (i.e. garbage.swp)
-      fileName = '.file.txt.swp'
-      filePath = makeFile fileName
-      projectFiles.on 'file added', (data) ->
+      fileName = "file#{randomString()}.swp"
+      projectFiles.on 'file added', (file) ->
         assert.fail "Should not notice file."
-      projectFiles.on 'stop', (data) ->
-        done()
       projectFiles.watchFileTree()
-      watcher.emit 'add', filePath
-      projectFiles.emit 'stop'
+      makeFile fileName
+      setTimeout done, 250
 
-    #XXX: Chokidar does not notice added directories.
-    it "should notice when I add a directory"
+    it "should notice when I add a directory", (done) ->
+      dirName = "dir1#{randomString()}"
+      projectFiles.watchFileTree()
+      projectFiles.on 'file added', (file) ->
+        assert.equal file.path, dirName
+        assert.equal file.isDir, true
+        done()
+      makeDir dirName
 
-    it "should notice when i delete a file"
+    it "should notice when i delete a file", (done) ->
+      filePath = 'dir2/moderateFile'
+      projectFiles.watchFileTree()
+      projectFiles.on 'file removed', (path) ->
+        assert.equal path, filePath
+        done()
+      fs.unlinkSync _path.join projectDir, filePath
 
-    it "should notice when i change a file"
+    it "should notice when i remove a directory", (done) ->
+      dirPath = 'dir1'
+      projectFiles.watchFileTree()
+      projectFiles.on 'file removed', (path) ->
+        assert.equal path, dirPath
+        done()
+      fs.rmdirSync _path.join projectDir, dirPath
 
     it "should ignore the .git directory"
 

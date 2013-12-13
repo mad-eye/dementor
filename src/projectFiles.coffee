@@ -106,6 +106,8 @@ class ProjectFiles extends events.EventEmitter
         return !@shouldInclude path
       ignoreInitial: true
     @watcher = @fileWatcher.watch @directory, options
+    @watcher.on 'all', (event, path) =>
+      log.trace "File event: #{event} for #{path}"
     @watcher.on "error", (error) =>
       @_handleScanError error, (err) =>
         log.error err if err
@@ -115,6 +117,13 @@ class ProjectFiles extends events.EventEmitter
         return log.error err if err
         return unless file
         log.debug "Local file added:", file.path
+        @emit 'file added', file
+
+    @watcher.on "addDir", (path, stats) =>
+      @makeFileData path, (err, file) =>
+        return log.error err if err
+        return unless file
+        log.debug "Local dir added:", file.path
         @emit 'file added', file
 
     @watcher.on "change", (path, stats) =>
@@ -130,7 +139,11 @@ class ProjectFiles extends events.EventEmitter
       log.debug "Local file removed:", relativePath
       @emit 'file removed', relativePath
 
-    #TODO: Moved
+    @watcher.on "unlinkDir", (path) =>
+      relativePath = @cleanPath path
+      return unless @shouldInclude relativePath
+      log.debug "Local dir removed:", relativePath
+      @emit 'file removed', relativePath
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
