@@ -39,7 +39,7 @@ run = ->
     .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
-#    .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
+    .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
@@ -162,7 +162,12 @@ execute = (options) ->
     util.puts "View your project with MadEye at " + clc.bold apogeeUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
-  dementor.once 'terminalEnabled', ->
+  dementor.once 'webTunnel enabled', (port) ->
+    util.puts "You are sharing port " + clc.bold(options.tunnel) +
+      " at " + clc.bold("#{Settings.tunnelHost}:#{port}")
+
+  dementor.once 'terminal enabled', (port) ->
+    #TODO: Clean this up.
     #Show tty output on debug or trace loglevel.
     ttyLog = options.debug || options.trace || false
 

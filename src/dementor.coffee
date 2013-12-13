@@ -92,46 +92,59 @@ class Dementor extends events.EventEmitter
       callback?()
 
   setupTunnels: ->
-    if @terminal
-      @tunnelManager.init (err) =>
-        if err
-          log.info "Error initializing tunnelManager; giving up on terminal."
-          @handleWarning "We could not set up the terminal; continuing without it."
-          return
+    return unless @terminal or @tunnel
+    @tunnelManager.init (err) =>
+      if err
+        log.info "Error initializing tunnelManager; giving up on terminal."
+        @handleWarning "We could not set up the terminal; continuing without it."
+        return
 
+
+      if @terminal
         terminalTunnel =
           name: "terminal"
           type: @terminal
           localPort: Constants.LOCAL_TUNNEL_PORT
         log.trace "Setting up terminal tunnel on port #{terminalTunnel.localPort}"
-        @tunnelManager.startTunnel terminalTunnel,
-          error: (err) =>
-            #Authentication errors, for now
-            log.warn "Could not authenticate for tunnels; skipping tunnels."
-            @handleWarning "We could not set up the terminal; continuing without it."
+        @openTunnel terminalTunnel,
+
+      if @tunnel
+        webTunnel =
+          name: "webTunnel"
+          localPort: @tunnel
+        log.trace "Setting up webTunnel on port #{webTunnel.localPort}"
+        @openTunnel webTunnel
+
+  openTunnel: (tunnel, callbacks) ->
+    @tunnelManager.startTunnel tunnel,
+      error: (err) =>
+        #Authentication errors, for now
+        log.warn "Could not authenticate for tunnels; skipping tunnels."
+        @handleWarning "We could not set up the #{tunnel.name}; continuing without it."
+        @tunnelManager.shutdown()
+        return
+
+      close: =>
+        tunnel.unavailable = true
+        @ddpClient.updateTunnel tunnel, (err) =>
+          if err
+            log.debug "Error disabling tunnel:", err
+          else
+            log.debug 'Tunnel disabled by connection close.'
+
+      ready: (remotePort) =>
+        log.debug "Tunnel #{tunnel.name} set up with remotePort #{remotePort}"
+        @emit "#{tunnel.name} enabled", remotePort
+        tunnel.remotePort = remotePort
+        tunnel.unavailable = false
+        @ddpClient.updateTunnel tunnel, (err) =>
+          if err
+            log.debug "Error setting up tunnel:", err
+            @handleWarning "We could not set up the #{tunnel.name}; continuing without it."
             @tunnelManager.shutdown()
-            return
+          else
+            log.debug "Tunnel #{tunnel.name} established successfully."
 
-          close: =>
-            terminalTunnel.unavailable = true
-            @ddpClient.updateTunnel terminalTunnel, (err) =>
-              if err
-                log.debug "Error disabling tunnel:", err
-              else
-                log.debug 'Tunnel disabled by connection close.'
-
-          ready: (remotePort) =>
-            log.debug "Terminal tunnel set up with remotePort #{remotePort}"
-            @emit 'terminalEnabled'
-            terminalTunnel.remotePort = remotePort
-            terminalTunnel.unavailable = false
-            @ddpClient.updateTunnel terminalTunnel, (err) =>
-              if err
-                log.debug "Error setting up tunnel:", err
-                @handleWarning "We could not set up the terminal; continuing without it."
-                @tunnelManager.shutdown()
-              else
-                log.debug 'Tunnels established successfully.'
 
   #####
   # Events from ProjectFiles
