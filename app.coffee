@@ -26,6 +26,13 @@ getMeteorPid = (meteorPort, callback)->
     callback null, _s.trim(stdout)
 
 run = ->
+  #Check to see if we are already in a madeye session -- don't cross the streams!
+  if process.env.MADEYE_ACTIVE
+    console.error "You are already in the terminal of a MadEye session!"
+    console.error "Too far down that path lies Limbo..."
+    console.error "Quit your existing MadEye session by pressing ^D."
+    process.exit 1
+
   program = require 'commander'
 
   #TODO should be able to grab last arugment and use it as filename/dir
@@ -189,9 +196,10 @@ execute = (options) ->
         cwd: process.cwd()
         log: ttyLog
         prompt: "$PS1(madeye) "
+        commands: ['export MADEYE_ACTIVE=1']
 
       ttyServer.on 'exit', ->
-        console.log("Exiting MadEye. Restart your session with `madeye --terminal`");
+        console.log("Exiting MadEye. Restart your session with `madeye --terminal`")
         shutdown()
 
       ttyServer.listen Constants.LOCAL_TUNNEL_PORT, "localhost"
