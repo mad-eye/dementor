@@ -81,7 +81,7 @@ class DdpClient extends EventEmitter
     @ddpClient.on 'socket-error', (error) =>
       #faye-websocket produces a huge number of these on disconnect. Just ignore unless we are actively connecting.
       if @state == 'connecting' #We haven't connected yet
-        log.debug "Error while connecting:", error
+        log.debug "Error while connecting:", error.message ? error
         log.error "Unable to connect to server; please try again later."
     @ddpClient.on 'connected', =>
       @state = 'connected'
