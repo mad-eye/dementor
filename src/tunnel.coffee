@@ -77,6 +77,7 @@ class Tunnel extends EventEmitter
       stream = accept()
       @_handleIncomingStream stream
 
+    @log.trace "Connecting to #{@connectionOptions.host}:#{@connectionOptions.port}"
     @connection.connect @connectionOptions
 
   _handleIncomingStream: (stream) ->
