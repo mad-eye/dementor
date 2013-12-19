@@ -75,17 +75,14 @@ class DdpClient extends EventEmitter
     @ddpClient.on 'message', (msg) =>
       log.trace 'Ddp message: ' + msg
     @ddpClient.on 'socket-close', (code, message) =>
+      #TODO: Check if connecting, if so close (we view error on connecting as fatal)
       @state = 'reconnecting'
       log.debug "DDP closed: [#{code}] #{message}"
     @ddpClient.on 'socket-error', (error) =>
-      #Get this when apogee goes down: {"code":"ECONNREFUSED","errno":"ECONNREFUSED","syscall":"connect"}
-      if @state == 'reconnecting' and error.code == 'ECONNREFUSED'
-        log.trace "Socket error while not connected:", error
-      else if @state == 'connecting' #We haoven't connected yet
+      #faye-websocket produces a huge number of these on disconnect. Just ignore unless we are actively connecting.
+      if @state == 'connecting' #We haven't connected yet
         log.debug "Error while connecting:", error
         log.error "Unable to connect to server; please try again later."
-      else
-        log.warn "Socket error:", error
     @ddpClient.on 'connected', =>
       @state = 'connected'
       log.trace "ddpClient connected"
