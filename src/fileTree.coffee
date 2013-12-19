@@ -29,6 +29,8 @@ class FileTree extends EventEmitter
     log.debug "Loaded directory", directory
     @emit 'added initial files' if directory == '.' #this is the first dir
 
+  #TODO: Chokidar now notices dirs, so we should remove this.
+  #It's probably safe, but maybe will double up some events?
   #we are assuming that the watcher does not notice dirs, so complete
   #missing parent dirs
   # When a filesystem event happens:
