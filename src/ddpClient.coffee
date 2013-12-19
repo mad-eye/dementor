@@ -130,7 +130,7 @@ class DdpClient extends EventEmitter
     @cleanFile file
     @ddpClient.call 'addFile', [file], (err) =>
       if err
-        log.warn "Error in adding file:", err
+        log.warn "Error in adding file #{file.path}:", err
       else
         log.trace "Added file #{file.path}"
 
