@@ -110,11 +110,18 @@ class ProjectFiles extends events.EventEmitter
       @_handleScanError error, (err) =>
         log.error err if err
 
-    @watcher.on "add", (path, stats) =>
+    @watcher.on "add", (path) =>
       @makeFileData path, (err, file) =>
         return log.error err if err
         return unless file
         log.debug "Local file added:", file.path
+        @emit 'file added', file
+
+    @watcher.on "addDir", (path) =>
+      @makeFileData path, (err, file) =>
+        return log.error err if err
+        return unless file
+        log.debug "Local dir added:", file.path
         @emit 'file added', file
 
     @watcher.on "change", (path, stats) =>
@@ -130,7 +137,14 @@ class ProjectFiles extends events.EventEmitter
       log.debug "Local file removed:", relativePath
       @emit 'file removed', relativePath
 
-    #TODO: Moved
+    @watcher.on "unlinkDir", (path) =>
+      relativePath = @cleanPath path
+      return unless @shouldInclude relativePath
+      log.debug "Local dir removed:", relativePath
+      @emit 'file removed', relativePath
+
+    #TODO: Moved.  If there's an unlink/add event next to each other, and the
+    #file has the same inode, issue a move event.
 
   _handleScanError: (error, callback) ->
     if error.code == 'ELOOP' or error.code == 'ENOENT'
