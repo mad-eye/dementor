@@ -42,7 +42,7 @@ run = ->
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
-    .option('--madeyeUrl [url]', 'url to point to (instead of madeye.io)')
+    .option('--madeyeUrl [url]', 'url to point to (instead of https://madeye.io)')
     .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
