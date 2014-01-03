@@ -38,6 +38,11 @@ class Dementor extends events.EventEmitter
     return unless msg?
     @emit 'message-warning', msg
 
+  handleError: (error) ->
+    return unless error?
+    message = error.details ? error.message ? error
+    log.error message
+
   enable: ->
     if false and @captureViaDebugger
       console.log "fetch meteor pid"
@@ -51,7 +56,7 @@ class Dementor extends events.EventEmitter
     @ddpClient.connect()
     @ddpClient.once 'connected', =>
       @registerProject (err) =>
-        return log.error err if err
+        return @handleError err if err
         #don't need to wait for this callback
         @ddpClient.subscribe 'commands', @projectId
         #don't need to wait for this callback
@@ -59,12 +64,12 @@ class Dementor extends events.EventEmitter
           @setupTunnels()
         #need to be subscribed before adding fs files
         @ddpClient.subscribe 'files', @projectId, (err) =>
-          return log.error err if err
+          return @handleError err if err
           log.trace 'Initial enable done, now adding files'
           #don't need to wait for this callback
           @ddpClient.subscribe 'activeDirectories', @projectId
           @projectFiles.readdir '', (err, files) =>
-            return log.error err if err
+            return @handleError err if err
             @fileTree.loadDirectory null, files
             @watchProject()
 
@@ -76,7 +81,7 @@ class Dementor extends events.EventEmitter
       version: @version
       nodeVersion: process.version
     @ddpClient.registerProject params, (err, projectId, warning) =>
-      return log.error err if err
+      return @handleError err if err
       if warning
         @emit 'message-warning', warning
       @projectId = projectId
