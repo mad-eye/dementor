@@ -2,7 +2,6 @@ Dementor = require './src/dementor'
 DdpClient = require './src/ddpClient'
 TunnelManager = require './src/tunnelManager'
 Home = require './src/home'
-{Settings} = require './madeye-common/common'
 Logger = require 'pince'
 util = require 'util'
 clc = require 'cli-color'
@@ -25,7 +24,7 @@ getMeteorPid = (meteorPort, callback)->
   exec cmd, (err, stdout, stderr)->
     callback null, _s.trim(stdout)
 
-run = ->
+run = (Settings) ->
   #Check to see if we are already in a madeye session -- don't cross the streams!
   if process.env.MADEYE_ACTIVE
     console.error "You are already in the terminal of a MadEye session!"
@@ -42,7 +41,7 @@ run = ->
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
-    .option('--madeyeUrl [url]', 'url to point to (instead of https://madeye.io)')
+    #.option('--madeyeUrl [url]', 'url to point to (instead of https://madeye.io)')
     .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
@@ -61,7 +60,7 @@ run = ->
 
   program.parse(process.argv)
   execute
-    directory:process.cwd()
+    directory: process.cwd()
     clean: program.clean
     ignorefile: program.ignorefile
     tunnel: program.tunnel
@@ -69,7 +68,7 @@ run = ->
     trace: program.trace
     terminal: program.terminal
     fullTerminal: program.fullTerminal
-    madeyeUrl: program.madeyeUrl
+    settings: Settings
 
 ###
 #options:
@@ -97,49 +96,18 @@ execute = (options) ->
     #Don't print standard error log output
     return false
 
-  log.trace "Checking madeyeUrl: #{options.madeyeUrl}"
-  if options.madeyeUrl
-    apogeeUrl = options.madeyeUrl
-    azkabanUrl = "#{options.madeyeUrl}/api"
-    parsedUrl = require('url').parse options.madeyeUrl
-
-  log.trace "Checking madeyeUrl switch: #{options.madeyeUrl}"
-  log.trace "Checking MADEYE_URL: #{process.env.MADEYE_URL}"
-  log.trace "Checking MADEYE_BASE_URL: #{process.env.MADEYE_BASE_URL}"
-  madeyeUrl = options.madeyeUrl ?
-    process.env.MADEYE_URL ?
-    process.env.MADEYE_BASE_URL
-  log.debug "Using madeyeUrl", madeyeUrl
-
-  if madeyeUrl
-    apogeeUrl = madeyeUrl
-    azkabanUrl = "#{madeyeUrl}/api"
-    parsedUrl = require('url').parse madeyeUrl
-    ddpPort = switch
-      when parsedUrl.port then parsedUrl.port
-      when parsedUrl.protocol == 'http:' then 80
-      when parsedUrl.protocol == 'https:' then 443
-      else log.error "Can't figure out port for url #{madeyeUrl}"
-    ddpHost = parsedUrl.hostname
-  else
-    apogeeUrl = Settings.apogeeUrl
-    azkabanUrl = Settings.azkabanUrl
-    ddpHost = Settings.ddpHost
-    ddpPort = Settings.ddpPort
-
-  #FIXME: Need to handle custom case differently?
-  tunnelHost = Settings.tunnelHost
+  Settings = options.settings
 
   ddpClient = new DdpClient
-    host: ddpHost
-    port: ddpPort
+    host: Settings.ddpHost
+    port: Settings.ddpPort
   ddpClient.on 'message-warning', (msg) ->
     console.warn clc.bold('Warning:'), msg
 
   home = new Home options.directory
   home.init()
 
-  tunnelManager = new TunnelManager {tunnelHost, home, azkabanUrl}
+  tunnelManager = new TunnelManager {tunnelHost:Settings.tunnelHost, home, azkabanUrl:Settings.azkabanUrl}
   Logger.listen tunnelManager, 'tunnelManager'
 
 
@@ -163,10 +131,10 @@ execute = (options) ->
 
 
   dementor.once 'enabled', ->
-    apogeeUrl = "#{apogeeUrl}/edit/#{dementor.projectId}"
-    hangoutUrl = "#{azkabanUrl}/hangout/#{dementor.projectId}"
+    projectUrl = "#{Settings.apogeeUrl}/edit/#{dementor.projectId}"
+    hangoutUrl = "#{Settings.azkabanUrl}/hangout/#{dementor.projectId}"
 
-    util.puts "View your project with MadEye at " + clc.bold apogeeUrl
+    util.puts "View your project with MadEye at " + clc.bold projectUrl
     util.puts "Use MadEye within a Google Hangout at " + clc.bold hangoutUrl
 
   dementor.once 'webTunnel enabled', (port) ->
