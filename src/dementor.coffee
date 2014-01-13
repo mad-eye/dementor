@@ -40,8 +40,13 @@ class Dementor extends events.EventEmitter
 
   handleError: (error) ->
     return unless error?
-    message = error.details ? error.message ? error
-    log.error message
+    if error.reason == 'VersionOutOfDate'
+      log.debug "Received VersionOutOfDate error; signalling update."
+      #Let's autoupdate
+      @emit error.reason, error
+    else
+      message = error.details ? error.message ? error
+      log.error message
 
   enable: ->
     if false and @captureViaDebugger

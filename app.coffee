@@ -12,6 +12,12 @@ Constants = require './constants'
 dementor = null
 debug = false
 log = new Logger name:'app'
+Logger.onError (msgs) ->
+  msgs.unshift clc.red('ERROR:')
+  console.error.apply console, msgs
+  shutdown(1)
+  #Don't print standard error log output
+  return false
 
 try
   tty = require './ttyjs'
@@ -59,16 +65,21 @@ run = (Settings) ->
       program.option('-f --fullTerminal', 'Share a read/write terminal within MadEye (premium feature)')
 
   program.parse(process.argv)
-  execute
-    directory: process.cwd()
-    clean: program.clean
-    ignorefile: program.ignorefile
-    tunnel: program.tunnel
-    debug: program.debug
-    trace: program.trace
-    terminal: program.terminal
-    fullTerminal: program.fullTerminal
-    settings: Settings
+
+  log.trace "Found args", program.args
+  if program.args[0] == 'update'
+    updateMadeye Settings
+  else
+    execute
+      directory: process.cwd()
+      clean: program.clean
+      ignorefile: program.ignorefile
+      tunnel: program.tunnel
+      debug: program.debug
+      trace: program.trace
+      terminal: program.terminal
+      fullTerminal: program.fullTerminal
+      settings: Settings
 
 ###
 #options:
@@ -89,12 +100,6 @@ execute = (options) ->
     else 'info'
 
   Logger.setLevel logLevel
-  Logger.onError (msgs) ->
-    msgs.unshift clc.red('ERROR:')
-    console.error.apply console, msgs
-    shutdown(1)
-    #Don't print standard error log output
-    return false
 
   Settings = options.settings
 
@@ -189,13 +194,21 @@ execute = (options) ->
     return if logLevel == 'error' or logLevel == 'warn'
     console.log msg
 
+  dementor.on 'VersionOutOfDate', (err) ->
+    console.warn clc.bold('Warning:'), "Your version of MadEye is out of date; we'll update it."
+    updateMadeye Settings, (err) ->
+      unless err
+        console.log "Please rerun the new and improved MadEye!"
+        shutdown()
+
+
   dementor.enable()
 
   if options.linkToMeteorProcess
     setInterval ->
       getMeteorPid options.appPort, (err, pid)->
         console.log "found meteor pid", pid
-        #TODO if metoer process isn't found then exit this process
+        #TODO if meteor process isn't found then exit this process
         #how to best handle a rapid restart...
     , 2000
 
@@ -221,7 +234,8 @@ shutdownGracefully = (returnVal=0) ->
   SHUTTING_DOWN = true
   console.log "Shutting down MadEye.  Press ^C to force shutdown."
   dementor.shutdown ->
-    console.log "Closed out connections."
+    log.debug "Closed out connections."
+    console.log "Shutdown completed."
     process.exit returnVal
 
   setTimeout ->
@@ -229,13 +243,17 @@ shutdownGracefully = (returnVal=0) ->
     process.exit(returnVal || 1)
   , 20*1000
 
-process.on 'SIGINT', ->
-  log.debug 'Received SIGINT.'
-  shutdown()
-
-process.on 'SIGTERM', ->
-  log.debug "Received kill signal (SIGTERM)"
-  shutdown()
+#callback: (err) ->
+updateMadeye = (Settings, callback=->) ->
+  log.debug "Updating MadEye"
+  exec "curl '#{Settings.apogeeUrl}/install' | sh", {}, (err, stdout, stderr) ->
+    log.debug stdout if stdout
+    if err
+      message = error.details ? error.message ? error
+      log.error message
+    else
+      console.log "MadEye successfully updated."
+    callback err
 
 exports.run = run
 exports.execute = execute
