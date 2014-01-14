@@ -111,7 +111,6 @@ class DdpClient extends EventEmitter
   registerProject: (params, callback) ->
     #Don't trigger this on reconnect.
     return if @projectId
-    params.dementor = true
     log.trace "Registering project with params", params
     @ddpClient.call 'registerProject', [params], (err, result) =>
       return callback err if err
