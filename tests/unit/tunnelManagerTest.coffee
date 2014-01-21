@@ -5,12 +5,19 @@ sinon = require 'sinon'
 TunnelManager = require '../../src/tunnelManager'
 
 describe 'TunnelManager', ->
-  createFakeTunnel = ->
+  createFakeTunnel = (data) ->
     fakeTunnel = new EventEmitter
-    fakeTunnel.name = "fake"
+    fakeTunnel._emitError = (message, options) ->
+      err = new Error message
+      _.extend err, options
+      fakeTunnel.emit 'error', err
+      return err
     _.extend fakeTunnel,
       open: sinon.spy()
       close: sinon.spy()
+      shutdown: sinon.spy()
+    _.extend fakeTunnel, data
+    fakeTunnel.name ?= "fake"
     return fakeTunnel
     
   createHookSpies = ->
@@ -38,12 +45,11 @@ describe 'TunnelManager', ->
         tunnelManager.startTunnel {}, hooks
         
       it 'should on the first error call home.clearPublicKeyRegistered && home.getKeys', ->
-        fakeTunnel.emit 'error', new Error 'Auth problem!'
+        fakeTunnel._emitError 'Auth problem!', level: 'authentication'
         assert.isTrue home.clearPublicKeyRegistered.called
         assert.isTrue home.getKeys.called
         
       it 'should on the first error send submit keys request!', ->
-        Logger.setLevel 'trace'
         home.hasAlreadyRegisteredPublicKey = sinon.stub()
         home.hasAlreadyRegisteredPublicKey.returns false
         home.getKeys = sinon.stub()
@@ -52,17 +58,51 @@ describe 'TunnelManager', ->
         stub = sinon.stub(tunnelManager, "submitPublicKey")
         #Call callback given to submitPublicKey
         stub.callsArg(1)
-        fakeTunnel.emit 'error', new Error 'Auth problem!'
+        fakeTunnel._emitError 'Auth problem!', level: 'authentication'
         assert.isTrue stub.called
         Logger.setLevel 'error'
       
       #two auth errors means something went wrong, bail
       it 'should on the second error call hooks.error with error', ->
-        fakeTunnel.emit 'error', new Error 'Auth problem!'
-        err = new Error 'Auth problem!'
-        fakeTunnel.emit 'error', err
+        fakeTunnel._emitError 'Auth problem!', level: 'authentication'
+        err = fakeTunnel._emitError 'Auth problem 2!', level: 'authentication'
         assert.isTrue hooks.error.called
         assert.deepEqual hooks.error.args[0], [err]
+
+    describe 'on random error', ->
+      tunnelManager = hooks = home = fakeTunnel = tunnelData = null
+      startTunnelStub = null
+      remotePort = 87322
+      beforeEach ->
+        home = createFakeHome()
+        hooks = createHookSpies()
+        tunnelData = name: 'fake', localPort: 12399
+        tunnelManager = new TunnelManager {home}
+        tunnelManager._makeTunnel = (data) ->
+          fakeTunnel = createFakeTunnel data
+          fakeTunnel.remotePort = remotePort
+          return fakeTunnel
+        tunnelManager.startTunnel tunnelData, hooks
+        startTunnelStub = sinon.stub(tunnelManager, "startTunnel")
+        fakeTunnel._emitError 'Unexpected problem!'
+        
+      it 'should shutdown erroring tunnel', ->
+        assert.isTrue fakeTunnel.shutdown.called
+
+      it 'should reconnect a new tunnel with the same data', ->
+        assert.isTrue startTunnelStub.called
+        calledArgs = startTunnelStub.getCall(0).args
+        assert.deepEqual calledArgs[0], tunnelData
+
+      it 'should reconnect a new tunnel with new remoteport', ->
+        assert.isTrue startTunnelStub.called
+        calledArgs = startTunnelStub.getCall(0).args
+        assert.equal calledArgs[0].remotePort, remotePort
+
+      it 'should reconnect a new tunnel with same hooks', ->
+        assert.isTrue startTunnelStub.called
+        calledArgs = startTunnelStub.getCall(0).args
+        assert.equal calledArgs[1], hooks
 
     describe 'on tunnel close', ->
       tunnelManager = hooks = fakeTunnel = clock = null
@@ -78,7 +118,7 @@ describe 'TunnelManager', ->
       afterEach ->
         clock?.restore()
 
-      it 'should set up reconnect if not preceeded by an auth error', ->
+      it 'should set up reconnect if not preceded by an auth error', ->
         #It's called once in startTunnel
         assert.isTrue fakeTunnel.open.calledOnce
         clock = sinon.useFakeTimers()
@@ -88,11 +128,11 @@ describe 'TunnelManager', ->
         #The exact number of additional calls is an implementation detail.
         assert.isTrue fakeTunnel.open.callCount > 1, "Open was called #{fakeTunnel.open.callCount} times"
 
-      it 'should not set reconnect if preceeded by an auth error', ->
+      it 'should not set reconnect if preceded by an auth error', ->
         #It's called once in startTunnel
         assert.isTrue fakeTunnel.open.calledOnce
         clock = sinon.useFakeTimers()
-        fakeTunnel.emit 'error', new Error 'Auth problem!'
+        fakeTunnel._emitError 'Auth problem!', level: 'authentication'
         fakeTunnel.emit 'close'
         clock.tick 10 * 1000
         #tunnel.open is called once in startTunnel; check for more calls

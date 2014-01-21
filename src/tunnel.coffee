@@ -50,9 +50,10 @@ class Tunnel extends EventEmitter
     connection.on 'error', (err) =>
       if err.level == 'authentication'
         @log.debug "Authentication error:", err
-        @emit 'error', err
       else
         @log.warn "Connection error:", err
+      #XXX: Think about whether we should emit this error differently depending on case.
+      @emit 'error', err
 
     connection.on 'close', (hadError) =>
       @log.debug "Tunnel closing"
