@@ -8,6 +8,7 @@ clc = require 'cli-color'
 exec = require("child_process").exec
 _s = require 'underscore.string'
 Constants = require './constants'
+{canUseInstaller} = require './madeye-common/common'
 
 dementor = null
 debug = false
@@ -195,7 +196,7 @@ execute = (options) ->
     console.log msg
 
   dementor.on 'VersionOutOfDate', (err) ->
-    console.warn clc.bold('Warning:'), "Your version of MadEye is out of date; we'll update it."
+    console.warn clc.bold('Warning:'), "Your version of MadEye is out of date."
     updateMadeye Settings, (err) ->
       unless err
         console.log "Please rerun the new and improved MadEye!"
@@ -245,15 +246,23 @@ shutdownGracefully = (returnVal=0) ->
 
 #callback: (err) ->
 updateMadeye = (Settings, callback=->) ->
-  log.debug "Updating MadEye"
-  exec "curl '#{Settings.apogeeUrl}/install' | sh", {}, (err, stdout, stderr) ->
-    log.debug stdout if stdout
-    if err
-      message = error.details ? error.message ? error
-      log.error message
-    else
-      console.log "MadEye successfully updated."
-    callback err
+  os = require 'os'
+  if canUseInstaller(platform: os.platform(), arch: os.arch())
+    console.log "We'll try to update MadEye for you; this will just take a second."
+    installUrl = Settings.apogeeUrl + "/install"
+    log.debug "Using installUrl #{installUrl}"
+    exec "curl '#{installUrl}' | sh", {}, (err, stdout, stderr) ->
+      log.debug stdout if stdout
+      if err
+        message = err.details ? err.message ? err
+        log.error message
+      else
+        console.log "MadEye successfully updated."
+      callback err
+  else
+    console.log "To update MadEye on your system, please run 'sudo npm install -g madeye' or equivalent."
+    shutdown()
+
 
 exports.run = run
 exports.execute = execute
