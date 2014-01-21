@@ -80,11 +80,18 @@ class Dementor extends events.EventEmitter
 
   #callback: (err) ->
   registerProject: (callback) ->
+    os = require 'os'
     params =
       projectId: @projectId
       projectName: @projectName
       version: @version
       nodeVersion: process.version
+      dementor: true
+      os:
+        platform: os.platform()
+        arch: os.arch()
+        release: os.release()
+
     @ddpClient.registerProject params, (err, projectId, warning) =>
       return @handleError err if err
       if warning

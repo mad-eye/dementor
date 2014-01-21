@@ -51,6 +51,7 @@ class TunnelManager extends events.EventEmitter
       clearTimeout @reconnectTimeouts[tunnel.name]
       delete @reconnectTimeouts[tunnel.name]
       @backoffCounter = 2
+      tunnelData.remotePort = remotePort
       hooks.ready remotePort
 
     tunnel.on 'close', =>
@@ -64,23 +65,35 @@ class TunnelManager extends events.EventEmitter
         , (@backoffCounter++)*1000
 
     tunnel.on 'error', (err) =>
-      if hadAuthenticationError
-        #We've already had one authentication error; bail.
-        log.warn "Could not authenticate for tunnels; skipping tunnels."
-        hooks.error err
-        return
+      if err.level == 'authentication'
+        if hadAuthenticationError
+          #We've already had one authentication error; bail.
+          log.warn "Could not authenticate for tunnels; skipping tunnels."
+          hooks.error err
+          return
+        else
+          #Try again, but mark that we've had at least one error.
+          hadAuthenticationError = true
+          log.debug "Had authentication error establishing tunnels, submitting public key again."
+          @home.clearPublicKeyRegistered()
+          @initializeKeys (err) =>
+            if err
+              log.warn "Could not authenticate for tunnels; skipping tunnels."
+              hooks.error err
+              return
+            log.trace "Submitted public key.  Reconnecting"
+            tunnel.open()
       else
-        #Try again, but mark that we've had at least one error.
-        hadAuthenticationError = true
-        log.debug "Had authentication error establishing tunnels, submitting public key again."
-        @home.clearPublicKeyRegistered()
-        @initializeKeys (err) =>
-          if err
-            log.warn "Could not authenticate for tunnels; skipping tunnels."
-            hooks.error err
-            return
-          log.trace "Submitted public key.  Reconnecting"
-          tunnel.open()
+        #not an authentication error; if it's a stream it'll collapse.
+        #let's close and reopen it.
+        log.debug "Unexpected tunnel #{tunnel.name} error.  Shutting down and restarting"
+        tunnel.shutdown()
+        tunnelData.remotePort = tunnel.remotePort
+        @startTunnel tunnelData, hooks
+
+
+
+        
 
     tunnel.open @connectionOptions
 
