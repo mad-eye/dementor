@@ -13,6 +13,7 @@ DEFAULT_OPTIONS =
   auto_reconnect: true
   auto_reconnect_timer: 500
   use_ejson: true
+  maintain_collections: false
 
 makeIdSelector = (id) ->
   {"_id":{"$type":"oid","$value":id}}
