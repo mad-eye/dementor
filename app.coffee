@@ -54,6 +54,7 @@ run = (Settings) ->
 
     .option('--tunnel [port]', "create a tunnel from a public MadEye server to this local port")
     .option('--ignorefile [file]', '.gitignore style file of patterns to not share with madeye (default .madeyeignore)')
+    .option('--update', 'Update MadEye to the latest version and exit.')
     .on("--help", ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
       console.log "  Give the returned url to your friends, and you can edit the project"
@@ -67,8 +68,7 @@ run = (Settings) ->
 
   program.parse(process.argv)
 
-  log.trace "Found args", program.args
-  if program.args[0] == 'update'
+  if program.update
     updateMadeye Settings
   else
     execute
@@ -81,6 +81,8 @@ run = (Settings) ->
       terminal: program.terminal
       fullTerminal: program.fullTerminal
       settings: Settings
+
+
 
 ###
 #options:
