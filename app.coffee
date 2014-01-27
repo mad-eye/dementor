@@ -236,15 +236,18 @@ shutdownGracefully = (returnVal=0) ->
   return if SHUTTING_DOWN
   SHUTTING_DOWN = true
   console.log "Shutting down MadEye.  Press ^C to force shutdown."
-  dementor.shutdown ->
-    log.debug "Closed out connections."
-    console.log "Shutdown completed."
+  if dementor
+    dementor.shutdown ->
+      log.debug "Closed out connections."
+      console.log "Shutdown completed."
+      process.exit returnVal
+    setTimeout ->
+      console.error "Could not close connections in time, shutting down harder."
+      process.exit(returnVal || 1)
+    , 20*1000
+  else
     process.exit returnVal
 
-  setTimeout ->
-    console.error "Could not close connections in time, shutting down harder."
-    process.exit(returnVal || 1)
-  , 20*1000
 
 #callback: (err) ->
 updateMadeye = (Settings, callback=->) ->
