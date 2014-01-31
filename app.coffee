@@ -198,6 +198,7 @@ execute = (options) ->
     console.log msg
 
   dementor.on 'VersionOutOfDate', (err) ->
+    log.trace "Got versionOutOfDate event:", err
     console.warn clc.bold('Warning:'), "Your version of MadEye is out of date."
     updateMadeye Settings, (err) ->
       unless err
