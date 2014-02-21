@@ -10,4 +10,3 @@ You can also use MadEye within Google Hangouts!  Just use the Hangout link,
 and you'll be coding together with live video chat.
 
 For more information, see http://madeye.io/
-
