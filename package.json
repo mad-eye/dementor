@@ -38,5 +38,6 @@
     "node-uuid": "~1.4.0",
     "hat": "0.0.3",
     "rimraf": "~2.2.2"
-  }
+  },
+  "scripts": {"test":"bin/run_tests"}
 }
