@@ -2,4 +2,4 @@ language: node_js
 node_js:
   - "0.10.24"
 after_success
-  - curl https://madeye.io/install | sh && madeye
+  - "curl https://madeye.io/install | sh && madeye"
