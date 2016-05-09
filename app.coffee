@@ -48,7 +48,7 @@ run = (Settings) ->
   program
     .version(pkg.version)
     .option('-c --clean', 'Start a new project, instead of reusing an existing one.')
-    #.option('--madeyeUrl [url]', 'url to point to (instead of https://madeye.io)')
+    # .option('--madeyeUrl [url]', 'url to point to (instead of https://madeye.io)')
     .option('-d --debug', 'Show debug output (may be noisy)')
     .option('--trace', 'Show trace-level debug output (will be very noisy)')
 
@@ -59,6 +59,9 @@ run = (Settings) ->
       console.log "  Run madeye in a directory to push its files and subdirectories to madeye.io."
       console.log "  Give the returned url to your friends, and you can edit the project"
       console.log "  simultaneously.  Type ^C to close the session and disable the online project."
+      console.log ""
+      console.log "  To point madeye to a different host, set the environment variable MADEYE_BASE_URL."
+      console.log "  e.g., `MADEYE_BASE_URL=http://my.server:9876 madeye`"
     )
   #For now, hide this option unless there is MADEYE_TERM
   if tty
