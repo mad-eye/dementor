@@ -2,4 +2,8 @@
 .filenametags
 .cscope.files
 .tags
+.travis.yml
+circle.yml
+.gitmodules
+.test_area/
 dist/
