@@ -3,6 +3,8 @@ Settings.tunnelHost = process.env.MADEYE_TUNNEL_HOST;
 
 if (process.env.MADEYE_BASE_URL) {
   var madeyeUrl = process.env.MADEYE_BASE_URL;
+  madeyeUrl = madeyeUrl.replace(/\/$/, "");
+
   Settings.apogeeUrl = madeyeUrl;
   Settings.azkabanUrl = madeyeUrl + "/api";
 
@@ -18,6 +20,7 @@ if (process.env.MADEYE_BASE_URL) {
   }
 } else if (process.env.MADEYE_DEV_HOST) {
   var madeyeUrl = 'http://' + process.env.MADEYE_DEV_HOST;
+  madeyeUrl = madeyeUrl.replace(/\/$/, "");
   Settings.apogeeUrl = madeyeUrl + ':' + process.env.MADEYE_NGINX_PORT;
   Settings.azkabanUrl = madeyeUrl + ':' + process.env.MADEYE_AZKABAN_PORT;
   Settings.ddpHost = process.env.MADEYE_DEV_HOST;
